@@ -1,10 +1,12 @@
 --[[
     Key capture for the Menus tab Keybind row.
 
-    StartCapture(onKey, onCancel) grabs the keyboard until a key is pressed:
-        a key (with modifiers)  onKey("ALT-CTRL-SHIFT-KEY" in WoW binding order)
-        Escape                  onCancel()
-        modifiers alone         ignored, keep listening
+    StartCapture(onKey, onCancel) grabs the keyboard and mouse until a key or button is pressed:
+        a key (with modifiers)           onKey("ALT-CTRL-SHIFT-KEY" in WoW binding order)
+        mouse button 3 and up (same)     onKey("SHIFT-BUTTON4", ...)
+        Escape, left or right click      onCancel() (plain and modified left / right clicks are
+                                         what the rest of the UI runs on: never a keybind)
+        modifiers alone                  ignored, keep listening
     Not available in combat (keyboard propagation is protected).
 ]]
 
@@ -16,15 +18,23 @@ local MODIFIER_KEYS = {
     LMETA = true, RMETA = true, UNKNOWN = true
 }
 
+-- Covers the screen while listening, so a mouse press anywhere is caught (and doesn't click
+-- through to what's under it).
 local capture = CreateFrame("Frame", nil, UIParent)
 capture:SetFrameStrata("TOOLTIP")
+capture:SetAllPoints(UIParent)
 capture:Hide()
+
+-- Mouse buttons as WoW binding keys; buttons past 5 follow the same pattern (Button6 = BUTTON6).
+local MOUSE_BUTTONS = { MiddleButton = "BUTTON3" }
+local CANCEL_BUTTONS = { LeftButton = true, RightButton = true }
 
 local onKey, onCancel
 
 local function Stop()
     capture:Hide()
     capture:EnableKeyboard(false)
+    capture:EnableMouse(false)
     onKey, onCancel = nil, nil
 end
 
@@ -54,6 +64,18 @@ capture:SetScript("OnKeyDown", function(_, key)
     end
 end)
 
+capture:SetScript("OnMouseDown", function(_, button)
+    local keyCallback, cancelCallback = onKey, onCancel
+    local number = button and button:match("^Button(%d+)$")
+    local key = MOUSE_BUTTONS[button] or (number and "BUTTON" .. number)
+    Stop()
+    if CANCEL_BUTTONS[button] or not key then
+        if cancelCallback then cancelCallback() end
+    elseif keyCallback then
+        keyCallback(Rings_Keybind.BuildKey(key))
+    end
+end)
+
 --- @return boolean started false in combat
 function Rings_Keybind.StartCapture(keyCallback, cancelCallback)
     if InCombatLockdown() then return false end
@@ -61,6 +83,7 @@ function Rings_Keybind.StartCapture(keyCallback, cancelCallback)
     onKey, onCancel = keyCallback, cancelCallback
     capture:Show()
     capture:EnableKeyboard(true)
+    capture:EnableMouse(true)
     capture:SetPropagateKeyboardInput(false) -- keep the key from also triggering its binding
     return true
 end
@@ -85,7 +108,16 @@ function Rings_Keybind.GetBlizzardConflict(key)
 end
 
 --- Localized, readable key text ("Alt-Space" rather than "ALT-SPACE") where the client has one.
+--- Mouse buttons are shortened ("Shift-Mouse 4" rather than "Shift-Mouse Button 4").
 function Rings_Keybind.GetDisplayText(key)
     local text = GetBindingText and GetBindingText(key)
-    return (text and text ~= "") and text or key
+    if not text or text == "" then return key end
+
+    local number = key:match("BUTTON(%d+)$")
+    local long = number and GetBindingText("BUTTON" .. number)
+    local at = long and long ~= "" and text:find(long, 1, true)
+    if at then
+        text = text:sub(1, at - 1) .. format(env.L["Config - Rings - Keybind - Mouse"], number) .. text:sub(at + #long)
+    end
+    return text
 end
