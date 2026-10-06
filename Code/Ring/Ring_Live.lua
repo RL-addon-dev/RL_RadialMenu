@@ -7,8 +7,9 @@
         - Actions with nothing to fire are left out (Ring_Actions.IsSliceAvailable).
         - Spread submenus (slice.expand) are replaced by their own actions, at any depth.
         - Scroll submenus (kind "ring", not spread) stay one action: the mouse wheel cycles through
-          their scroll list, the submenu's live actions without submenus left in it (those fire
-          nothing). The wedge shows the current one.
+          their scroll list, the submenu's live actions with every submenu inside it spread in
+          (whatever its own setting, at any depth). So a menu is at most two levels deep in game:
+          the menu you pressed, and a scroll slot's flat list. The wedge shows the current one.
         - A menu never contains itself: loops are refused when editing; walking skips them anyway.
 
     A live entry: { slice, key, top, ownerId, ownerIndex }
@@ -39,14 +40,15 @@ function Ring_Live.IsScroll(slice)
     return Ring_Live.IsSubmenu(slice) and not slice.expand
 end
 
-local function AddEntries(entries, slices, ownerId, top, visited, depth)
+--- @param flatten boolean|nil spread every submenu, scroll ones too (inside a scroll list)
+local function AddEntries(entries, slices, ownerId, top, visited, depth, flatten)
     for index, slice in ipairs(slices) do
         if Ring_Actions.IsSliceAvailable(slice) then
-            if Ring_Live.IsSpread(slice) then
+            if Ring_Live.IsSpread(slice) or (flatten and Ring_Live.IsSubmenu(slice)) then
                 local child = Ring_Data.GetRing(slice.ring)
                 if child and not visited[child.id] and depth < MAX_DEPTH then
                     visited[child.id] = true
-                    AddEntries(entries, child.slices, child.id, top or index, visited, depth + 1)
+                    AddEntries(entries, child.slices, child.id, top or index, visited, depth + 1, flatten)
                     visited[child.id] = nil
                 end
             else
@@ -83,14 +85,26 @@ function Ring_Live.Build(ring)
     }
 end
 
---- What a scroll submenu slice cycles through (empty when it isn't one, or has nothing to show).
+--- What a scroll submenu slice cycles through: the submenu's actions, with every submenu inside
+--- it spread in place (a scroll list is always flat). Empty when it isn't one, or has nothing to
+--- show.
 function Ring_Live.GetScrollSlices(slice)
     local slices = {}
-    if not Ring_Live.IsScroll(slice) then return slices end
-    for _, entry in ipairs(Ring_Live.GetEntries(Ring_Data.GetRing(slice.ring))) do
-        if not Ring_Live.IsSubmenu(entry.slice) then slices[#slices + 1] = entry.slice end
-    end
+    local ring = Ring_Live.IsScroll(slice) and Ring_Data.GetRing(slice.ring)
+    if not ring then return slices end
+    local entries = {}
+    AddEntries(entries, ring.slices, ring.id, nil, { [ring.id] = true }, 0, true)
+    for index, entry in ipairs(entries) do slices[index] = entry.slice end
     return slices
+end
+
+--- Whether submenu `ringId` has submenus of its own (spread into its scroll list when it's one).
+function Ring_Live.HasSubmenus(ringId)
+    local ring = Ring_Data.GetRing(ringId)
+    for _, slice in ipairs(ring and ring.slices or {}) do
+        if Ring_Live.IsSubmenu(slice) then return true end
+    end
+    return false
 end
 
 --- The action a wedge shows for `slice`: a scroll submenu shows its current action.

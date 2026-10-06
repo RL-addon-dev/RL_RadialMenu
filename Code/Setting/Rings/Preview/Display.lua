@@ -9,6 +9,7 @@ local L = env.L
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
+local Ring_Live = env.AX_Modules:Await("@\\Ring\\Live")
 local Rings_Preview = env.AX_Modules:Import("@\\Setting\\Rings\\Preview")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
 
@@ -228,7 +229,12 @@ function PreviewMixin:SetTooltipIndex(index)
     end
     Group(L["Config - Rings - Tooltip - Control"] .. " " .. control)
     if slice.kind == "ring" then
-        Group(slice.expand and L["Config - Rings - Nest - Expand"] or L["Config - Rings - Nest - Description"])
+        local nest = slice.expand and L["Config - Rings - Nest - Expand"] or L["Config - Rings - Nest - Description"]
+        -- A scroll list is flat: say so when this submenu has submenus of its own.
+        if not slice.expand and Ring_Live.HasSubmenus(slice.ring) then
+            nest = nest .. " " .. L["Config - Rings - Nest - Flatten"]
+        end
+        Group(nest)
     end
     AddVisibilityGroup(slice)
     GameTooltip:Show()

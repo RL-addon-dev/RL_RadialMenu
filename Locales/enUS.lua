@@ -67,6 +67,7 @@ L["Config - Rings - Drag - QuickRing - Hint"] = "Drag one of its spells here ins
 L["Config - Rings - Nest - Badge"] = "Scroll"
 L["Config - Rings - Nest - Expand"] = "Submenu: its actions are spread into this menu, in that menu's order. To change them, edit that menu."
 L["Config - Rings - Nest - Description"] = "Submenu: while holding the menu keybind, scroll the mouse wheel over it to cycle through that menu's actions, then release to use the one shown."
+L["Config - Rings - Nest - Flatten"] = "Its own submenus are added to the scroll list, as if spread."
 L["Config - Rings - AddSlice"] = "Add Action"
 L["Config - Rings - Search - AtEnd"] = "Adding at the end"
 L["Config - Rings - Search - AtIndex"] = "Inserting as action %d"
