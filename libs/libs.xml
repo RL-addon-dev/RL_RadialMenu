@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!-- LibEditMode (unmodified, v15) loaded in namespaced mode: lives at env.LibEditMode, no LibStub needed -->
+    <Script file="LibEditMode\namespaced.lua"/>
+    <Include file="LibEditMode\embed.xml"/>
+</Ui>
