@@ -1,0 +1,18 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!-- One file per action kind (see Ring_Kinds.lua). The order is the Add Action filter order. -->
+    <Script file="Ring.lua"/>
+    <Script file="Spell.lua"/>
+    <Script file="Pet.lua"/>
+    <Script file="Item.lua"/>
+    <Script file="Toy.lua"/>
+    <Script file="Mount.lua"/>
+    <Script file="BattlePet.lua"/>
+    <Script file="Macro.lua"/>
+    <Script file="Emote.lua"/>
+    <Script file="TargetMarker.lua"/>
+    <Script file="WorldMarker.lua"/>
+    <Script file="EquipSlot.lua"/>
+    <Script file="Extra.lua"/>
+    <Script file="Zone.lua"/>
+</Ui>
