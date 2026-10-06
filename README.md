@@ -8,7 +8,7 @@ wheel. **Hold a key, flick the mouse, release.**
 - One keybind per menu, as many menus as you like.
 - Works in combat.
 - Built-in menus that fill themselves: quest items, hearthstones, trinkets, season teleports,
-  markers.
+  markers, specializations and talent loadouts.
 - A **quick action** for a tap: press and release without moving, and the action fires without
   the menu ever appearing.
 
@@ -48,6 +48,8 @@ Then hold your key in the game, move the mouse toward an action and let go.
 | World Markers | placed under the mouse, or with a targeting circle; and Clear | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Zone Ability, Extra Action | follow the game's buttons; hidden while there's none | ✓ | — |
+| Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |
+| Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
 Actions that have nothing to fire right now (an item you're out of, a pet ability with no pet)
@@ -70,6 +72,8 @@ These fill themselves and stay up to date. Give them a keybind and rearrange the
 | Target Markers | all eight target markers, and Clear | ✓ | ✓ |
 | World Markers | all eight world markers, and Clear | ✓ | ✓ |
 | Zone and Extra | the Zone Ability and the Extra Action Button | ✓ | — |
+| Specializations | the specs of your class you can switch to | ✓ | — |
+| Talent Loadouts | your current spec's saved builds, except the active one | ✓ | — |
 
 ## Settings
 

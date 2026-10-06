@@ -8,4 +8,6 @@
     <Script file="Season.lua"/>
     <Script file="TargetMarkers.lua"/>
     <Script file="WorldMarkers.lua"/>
+    <Script file="Specs.lua"/>
+    <Script file="Loadouts.lua"/>
 </Ui>
