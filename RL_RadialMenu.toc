@@ -1,0 +1,27 @@
+## Interface: 120100, 120105, 16001
+## Title: RL: |cff00e900Radial Menu|r
+## Notes: Radial menus for your spells, items, toys, mounts and markers. Hold a key, flick, release.
+## Author: RL
+## Category: Action Bars
+## X-License: GPL-3.0
+## IconTexture: Interface/AddOns/RL_RadialMenu/Art/Icon/logo-1024.png
+## Version: 0.0.3
+## SavedVariables: RL_RadialMenuDB_Global, RL_RadialMenuDB_Global_Persistent
+## SavedVariablesPerCharacter: RL_RadialMenuDB_Local, RL_RadialMenuDB_Local_Persistent
+## AddonCompartmentFunc: RLRadialMenuAPI_OpenSettingUI
+
+
+libs\AX_Modules\packages.xml
+libs\libs.xml
+
+Preload.lua
+Config.lua
+Locales\Locales.xml
+
+libs\AX_Settings\AX_Settings.xml
+
+Code\Setting\Setting.xml
+Code\Ring\Ring.xml
+Code\Commands.lua
+
+API.lua
