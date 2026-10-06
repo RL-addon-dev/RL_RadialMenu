@@ -93,6 +93,26 @@ function Ring_Kinds.SetSpell(button, suffix, spell)
     Ring_Kinds.SetAttribute(button, "spell", suffix, spell)
 end
 
+-- Hidden plain buttons for actions the game has no secure action type for (changing spec,
+-- loading a talent build): the slice "clicks" one, and its OnClick makes the call. One per key,
+-- created on first use (frames can't be destroyed; there are only a few).
+local clickHandlers = {}
+
+--- The slice runs `onClick()` (insecure code, so only for calls that aren't protected; the game
+--- still refuses some of them in combat). `key` names the handler, e.g. "spec:250".
+--- Must be called out of combat.
+function Ring_Kinds.SetClick(button, suffix, key, onClick)
+    local handler = clickHandlers[key]
+    if not handler then
+        handler = CreateFrame("Button", nil, UIParent)
+        handler:Hide()
+        clickHandlers[key] = handler
+    end
+    handler:SetScript("OnClick", function() onClick() end)
+    Ring_Kinds.SetAttribute(button, "type", suffix, "click")
+    Ring_Kinds.SetAttribute(button, "clickbutton", suffix, handler)
+end
+
 --- Nothing fires for this slice (e.g. a submenu, or a zone ability while there is none).
 function Ring_Kinds.ClearAction(button, suffix)
     Ring_Kinds.SetAttribute(button, "type", suffix, nil)
@@ -195,6 +215,41 @@ function Ring_Kinds.GetSpellRank(spellID)
     local text = GetSpellSubtext(spellID)
     local number = text and tonumber(text:match("%d+"))
     if number then return text, number end
+end
+
+local SpecInfo = C_SpecializationInfo or {}
+local GetSpecialization = SpecInfo.GetSpecialization or GetSpecialization
+local GetSpecializationInfo = SpecInfo.GetSpecializationInfo or GetSpecializationInfo
+local GetNumSpecializations = SpecInfo.GetNumSpecializations or GetNumSpecializations
+
+--- Calls fn(index, specID) for every specialization of the player's class, in the game's order.
+function Ring_Kinds.ForEachSpec(fn)
+    for index = 1, (GetNumSpecializations and GetNumSpecializations()) or 0 do
+        local specID = GetSpecializationInfo(index)
+        if specID then fn(index, specID) end
+    end
+end
+
+--- The player's spec index for spec `specID` (nil when the class has no such spec).
+function Ring_Kinds.GetSpecIndex(specID)
+    for index = 1, (GetNumSpecializations and GetNumSpecializations()) or 0 do
+        if GetSpecializationInfo(index) == specID then return index end
+    end
+end
+
+--- Name, description and icon of spec `specID` (any class).
+--- @return string|nil name, string|nil description, number|string|nil icon
+function Ring_Kinds.GetSpecInfo(specID)
+    if not GetSpecializationInfoByID then return nil end
+    local _, name, description, icon = GetSpecializationInfoByID(specID)
+    return name, description, icon
+end
+
+--- @return number|nil index, number|nil specID the player's current specialization
+function Ring_Kinds.GetCurrentSpec()
+    local index = GetSpecialization and GetSpecialization()
+    if not index then return nil end
+    return index, GetSpecializationInfo(index)
 end
 
 --- Whether item `itemID` is a toy you own (toys are their own action kind, not items).
