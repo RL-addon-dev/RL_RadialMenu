@@ -1,0 +1,11 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!-- One file per built-in menu (see Code\Ring\Data\BuiltIn.lua). The sidebar sorts them by name. -->
+    <Script file="Quest.lua"/>
+    <Script file="Special.lua"/>
+    <Script file="Gear.lua"/>
+    <Script file="Hearth.lua"/>
+    <Script file="Season.lua"/>
+    <Script file="TargetMarkers.lua"/>
+    <Script file="WorldMarkers.lua"/>
+</Ui>
