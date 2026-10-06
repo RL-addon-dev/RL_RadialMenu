@@ -125,6 +125,12 @@ do -- Schema
                             key               = "ShowActionNames"
                         },
                         {
+                            widgetName        = L["Config - Display - ActionTooltips"],
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - Display - ActionTooltips - Description"] },
+                            widgetType        = Setting_Enum.WidgetType.CheckButton,
+                            key               = "ShowActionTooltips"
+                        },
+                        {
                             widgetName        = L["Config - Display - CursorGuide"],
                             widgetDescription = Setting_Define.Descriptor{ description = L["Config - Display - CursorGuide - Description"] },
                             widgetType        = Setting_Enum.WidgetType.CheckButton,
