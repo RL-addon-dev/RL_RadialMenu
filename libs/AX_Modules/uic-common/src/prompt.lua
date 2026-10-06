@@ -15,8 +15,8 @@ local UICCommonPrompt = env.AX_Modules:New("ax_modules\\uic-common\\prompt")
 
 local Mixin = Mixin
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\panel.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\panel.png" }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "panel.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "panel.png") }
 local UIDef = {
     UIPrompt = ATLAS{ inset = 64, scale = 0.425, left = 256 / 512, top = 256 / 512, right = 384 / 512, bottom = 384 / 512 }
 }

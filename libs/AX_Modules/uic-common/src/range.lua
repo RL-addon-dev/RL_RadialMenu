@@ -13,8 +13,8 @@ local UICCommonRange = env.AX_Modules:New("ax_modules\\uic-common\\range")
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\range.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\range.png" }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "range.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "range.png") }
 local UIDef = {
     --Stepper
     UIStepperArrowLeft              = ATLAS{ inset = 0, scale = 1, left = 0 / 256, top = 64 / 256, right = 64 / 256, bottom = 128 / 256 },

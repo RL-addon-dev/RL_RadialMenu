@@ -2,8 +2,9 @@
 PLAN.md
 REFACTOR_PLAN.md
 
-# Script that generated Art/Ring/Wedge_Count_*.png (the images are committed)
+# Art scripts (not committed)
 Art/Ring/generate_wedges.py
+Art/recolor_forever.py
 
 # Editor and OS files
 .vscode/

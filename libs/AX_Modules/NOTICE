@@ -11,3 +11,5 @@ Changes from WaypointUI:
   env.AX_Modules, and module names start with ax_modules\ instead of packages\.
 - Texture paths are relative to the toolkit's own folder (path: Path.Modules).
 - Some modules were edited for the settings framework, and some it doesn't use were left out.
+- Added a WoW Forever art variant: recoloured widget sheets in uic-common\resources\forever,
+  picked by game version (path: Path.Skin, Path.Skinned).

@@ -12,8 +12,8 @@ local UICCommonSelectionMenu = env.AX_Modules:New("ax_modules\\uic-common\\selec
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\selection-menu.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\selection-menu.png" }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "selection-menu.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "selection-menu.png") }
 local UIDef = {
     UIRow               = ATLAS{ inset = 32, scale = 0.175, left = 256 / 320, right = 320 / 320, top = 0 / 192, bottom = 64 / 192 },
     UIMenu              = ATLAS{ inset = { 82, 82, 58, 58 }, scale = 0.7, left = 0 / 320, right = 256 / 320, top = 0 / 192, bottom = 128 / 192 },
