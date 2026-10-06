@@ -37,7 +37,9 @@ L["Config - Display - Appearance"] = "Appearance"
 L["Config - Display - Scale"] = "Menu Size"
 L["Config - Display - Scale - Description"] = "Size of the menu on screen."
 L["Config - Display - ActionNames"] = "Show Action Names"
-L["Config - Display - ActionNames - Description"] = "The name of the action you're pointing at, beside its icon."
+L["Config - Display - ActionNames - Description"] = "The name of the selected action, beside its icon."
+L["Config - Display - ActionTooltips"] = "Show Action Tooltips"
+L["Config - Display - ActionTooltips - Description"] = "The tooltip of the selected action, where your HUD Tooltip is placed in Edit Mode."
 
 -- Menus (the code calls them rings; actions are slices, submenus are nested rings)
 L["Config - Rings"] = "Menus"

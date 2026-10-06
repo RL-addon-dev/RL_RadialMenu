@@ -75,6 +75,28 @@ local function UpdateAnimation(self, now)
     return true
 end
 
+--- With Show Action Tooltips: the tooltip of what a release would fire, at the HUD Tooltip position
+--- (Edit Mode), like an action button's. `index`: a slice index, "quick" (the center's quick
+--- action) or nil (hide). Re-shown only when it changes.
+local function SetActionTooltip(self, index)
+    if index == self.tooltipIndex then return end
+    self.tooltipIndex = index
+    local slice = index and self.showTooltips and (index == "quick" and self.quickSlice or self.slices[index])
+    if not slice then
+        if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+        return
+    end
+    if GameTooltip_SetDefaultAnchor then
+        GameTooltip_SetDefaultAnchor(GameTooltip, self)
+    else
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+    end
+    if not Ring_Actions.SetTooltip(GameTooltip, slice) then
+        GameTooltip:SetText(Ring_Actions.GetLabel(slice), 1, 1, 1) -- nothing richer than a name
+    end
+    GameTooltip:Show()
+end
+
 --- Every frame while open: animation, then the highlight, pointer and center for the cursor.
 local function OnUpdate(self)
     local now = GetTime()
@@ -99,6 +121,13 @@ local function OnUpdate(self)
         index = Ring_Layout.GetSliceIndex(dx, dy, #self.ring.slices, self.deadzone)
     end
     self:SetSelection(index)
+    -- What a release would fire: the highlighted slice, else the center (the quick action, or a
+    -- lone slice) until the cursor has left it. Not before the menu is revealed: a tap never shows one.
+    local tooltip = index
+    if not index and not moved then
+        tooltip = self.isSingleCentered and 1 or (self.quickSlice and "quick") or nil
+    end
+    SetActionTooltip(self, self.revealStart and tooltip or nil)
     self:SetPointerAngle(index and atan2(dy, dx) or nil)
     if self.useGuide then Guide:Update(index, index and atan2(dy, dx) or nil, moved) end
     UpdateCenter(self, index == nil, moved)
@@ -126,6 +155,10 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices)
     View.animatedOffset = -ANIM_DISTANCE
 
     View:SetShowLabels(Config.DBGlobal:GetVariable("ShowActionNames"))
+    View.showTooltips = Config.DBGlobal:GetVariable("ShowActionTooltips") and true or false
+    -- Opened again without closing (another menu's key pressed while one is held): drop its tooltip.
+    if GameTooltip:GetOwner() == View then GameTooltip:Hide() end
+    View.tooltipIndex = nil
     View:SetSlices(displaySlices or ring.slices, View.animatedOffset, ring.quickSlice ~= nil)
     View:SetScrollBadges(ring.slices, true)
     View:SetQuickIcon(quickSlice and Ring_Actions.GetIcon(quickSlice), quickSlice)
@@ -169,7 +202,13 @@ end
 
 --- Updates one wedge's icon while the ring is open (mouse wheel on a nested scroll slice).
 function Ring_View:SetSliceIcon(index, slice)
-    if View:IsShown() then View:SetSliceSlice(index, slice) end
+    if not View:IsShown() then return end
+    View:SetSliceSlice(index, slice)
+    -- Scrolled the highlighted slot: its tooltip follows.
+    if index == View.tooltipIndex then
+        View.tooltipIndex = nil
+        SetActionTooltip(View, index)
+    end
 end
 
 --- Updates the center's quick action while the ring is open (its scroll slice was scrolled).
@@ -177,10 +216,15 @@ function Ring_View:SetQuickSlice(slice)
     if not (View:IsShown() and slice) then return end
     View.quickSlice = slice
     View:SetQuickIcon(Ring_Actions.GetIcon(slice), slice)
+    if View.tooltipIndex == "quick" then
+        View.tooltipIndex = nil
+        SetActionTooltip(View, "quick")
+    end
 end
 
 function Ring_View:Close()
     if not View:IsShown() then return end
+    SetActionTooltip(View, nil)
 
     -- Closed before the reveal delay passed (a tap): nothing was visible, just hide.
     if not View.revealStart then

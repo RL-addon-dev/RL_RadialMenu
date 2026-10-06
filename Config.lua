@@ -58,6 +58,7 @@ local DB_GLOBAL_DEFAULTS = {
     DisplayOpenAt = Enum.OpenAt.Cursor,
     DisplayScale  = 100, -- percent
     ShowActionNames = true, -- the highlighted action's name in the in-game menu
+    ShowActionTooltips = false, -- its tooltip, at the HUD Tooltip position
     SelectFrom    = Enum.SelectFrom.Cursor, -- fixed position: where angles are measured from
     CursorGuide   = false, -- fixed position: outline of the gesture at the cursor
     CursorGuideColor = { r = 1, g = 1, b = 1 },
