@@ -21,8 +21,9 @@
     scroll positions), and Last Used is saved by slice identity.
 
     Nested rings that scroll (a slice of kind "ring", not expanded): the parent button also carries the child's
-    slices as "*type-sN_C". While the ring is held, the mouse wheel is bound to the helper button,
-    which steps "ring-scroll-N" for the slice under the cursor. Release fires "sN_<current>".
+    slices as "*type-sN_C". While the ring is held, the mouse wheel is bound to the helper button
+    (plain, and with the ring keybind's modifiers, "ring-wheelmods": a CTRL-SPACE ring keeps CTRL
+    held), which steps "ring-scroll-N" for the slice under the cursor. Release fires "sN_<current>".
 
     The wheel bindings are owned by the helper button and cleared on every ring key down and
     release. All snippets share the controller's restricted environment
@@ -72,6 +73,13 @@ local PRE_CLICK = [[
         if self:GetAttribute("ring-hasscroll") then
             helper:SetBindingClick(true, "MOUSEWHEELUP", helper, "WheelUp")
             helper:SetBindingClick(true, "MOUSEWHEELDOWN", helper, "WheelDown")
+            -- A keybind with modifiers (CTRL-SPACE) keeps them held, and the wheel then arrives
+            -- as CTRL-MOUSEWHEELUP: bind that too.
+            local wheelMods = self:GetAttribute("ring-wheelmods")
+            if wheelMods then
+                helper:SetBindingClick(true, wheelMods .. "MOUSEWHEELUP", helper, "WheelUp")
+                helper:SetBindingClick(true, wheelMods .. "MOUSEWHEELDOWN", helper, "WheelDown")
+            end
         end
 
         owner:CallMethod("OnRingOpen", ringId, START_X, START_Y)
@@ -192,6 +200,23 @@ local QueueRebuild -- defined with the rebuild queue below
 
 -- Button suffix of the tap-only quick action ("*type-sQ" ...), and its "ring-quick" value.
 local QUICK_SUFFIX = "Q"
+
+-- Modifiers a binding string can start with, in WoW's order (ALT-CTRL-SHIFT-KEY).
+local MODIFIERS = { "ALT-", "CTRL-", "SHIFT-", "META-" }
+
+--- The modifier part of a keybind ("CTRL-" for "CTRL-SPACE", "ALT-SHIFT-" for "ALT-SHIFT-F"), or
+--- nil without modifiers: held with the key, so the mouse wheel needs it too (PRE_CLICK).
+local function GetModifierPrefix(binding)
+    if not binding then return nil end
+    local prefix, rest = "", binding
+    for _, modifier in ipairs(MODIFIERS) do
+        if rest:sub(1, #modifier) == modifier and #rest > #modifier then
+            prefix = prefix .. modifier
+            rest = rest:sub(#modifier + 1)
+        end
+    end
+    return prefix ~= "" and prefix or nil
+end
 
 --- The action live slice `index` shows: a scroll submenu shows its current action.
 local function GetLiveShownSlice(live, index, scrollIndex)
@@ -357,6 +382,7 @@ local function SetupRing(ring)
 
     ringsById[ring.id] = live
     local binding, isAccount = Ring_Data.GetBinding(ring.id)
+    button:SetAttribute("ring-wheelmods", GetModifierPrefix(binding))
     if binding and (count > 0 or live.quickSlice) then
         pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), account = isAccount }
     end
