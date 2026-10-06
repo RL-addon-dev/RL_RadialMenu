@@ -1,0 +1,341 @@
+--[[
+    Menus tab ("Rings" in code; Setting_Enum.WidgetType.Custom).
+
+    Two parts:
+        Sidebar       a list nav (AX_Settings Setting.AttachListNav) with two sections:
+                      built-in rings (room for two, then it scrolls) and the user's rings with
+                      "+ New Menu". Cards show name, keybind and scope; clicking one opens this
+                      tab on that ring.
+        Tab page      single column (the content area is too narrow for two): the wheel preview
+                      (with the Add Action panel under it while adding; the quick action is set on
+                      the preview's center), then Menu Settings: Name, Keybind (capture),
+                      Available On, and Delete
+
+    Everything edits Ring_Data; both parts rebuild on "Ring.DataChanged" while the settings are
+    shown (and on "Setting.Refresh" when they're shown again, see OnSettingRefresh).
+
+    Files (one module, Rings_Tab; the page's methods in PageMixin, shared through
+    "@\\Setting\\Rings\\Tab\\Private"):
+        Tab.lua           this file: the page, sidebar list, preview + Add Action, wiring
+        SettingRows.lua   the Ring Settings rows (name, keybind capture, scope) and Delete
+]]
+
+local env = select(2, ...)
+local L = env.L
+local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
+local Frame, _, _, LayoutVertical = unpack(UIKit.UI.Frames)
+local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
+local Setting_Widgets = env.AX_Modules:Import("@\\Setting\\Widgets")
+local Setting = env.AX_Modules:Await("@\\Setting")
+local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
+local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
+local Rings_Preview = env.AX_Modules:Import("@\\Setting\\Rings\\Preview")
+local Rings_AddSlice = env.AX_Modules:Import("@\\Setting\\Rings\\AddSlice")
+local Rings_Keybind = env.AX_Modules:Import("@\\Setting\\Rings\\Keybind")
+local Rings_Tab = env.AX_Modules:New("@\\Setting\\Rings\\Tab")
+local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
+
+local format = string.format
+
+local BUILT_IN_VISIBLE = 2 -- built-in cards shown before that list scrolls
+
+local SettingFrame = _G[Setting_Preload.FRAME_NAME]
+
+
+
+-- Tab page
+
+--- Methods of the page; SettingRows.lua adds the settings rows' ones.
+local PageMixin = {}
+Private.PageMixin = PageMixin
+
+function PageMixin:GetSelectedRing()
+    return self.selectedRingId and Ring_Data.GetRing(self.selectedRingId)
+end
+
+--- A card was clicked (the list nav then opens this tab).
+function PageMixin:SelectRing(ringId)
+    if ringId ~= self.selectedRingId then
+        self.isAddingSlice = false
+        Rings_Keybind.CancelCapture()
+    end
+    self.selectedRingId = ringId
+    self:Refresh()
+end
+
+local function FormatRingMeta(ring)
+    local _, scope = Ring_Data.GetRing(ring.id)
+    local key = Ring_Data.GetBinding(ring.id)
+    local keyText = key and Rings_Keybind.GetDisplayText(key) or L["Config - Rings - Card - NoKey"]
+    local scopeText = scope == Ring_Data.Scope.Character and L["Config - Rings - Card - Character"] or L["Config - Rings - Card - Account"]
+    return keyText, scopeText
+end
+
+--- List nav items for the built-in rings or the user's rings.
+function PageMixin:GetNavItems(builtIn)
+    local items = {}
+    for _, ring in ipairs(Ring_Data.GetRings()) do
+        if Ring_Data.IsBuiltIn(ring) == builtIn then
+            local keyText, scopeText = FormatRingMeta(ring)
+            items[#items + 1] = { id = ring.id, title = ring.name, left = keyText, right = scopeText }
+        end
+    end
+    return items
+end
+
+function PageMixin:RefreshNav()
+    -- Keep a ring selected: the user's first ring, else the first built-in one.
+    if not (self.selectedRingId and Ring_Data.GetRing(self.selectedRingId)) then
+        local first = self:GetNavItems(false)[1] or self:GetNavItems(true)[1]
+        self.selectedRingId = first and first.id or nil
+    end
+    self.Nav:Refresh()
+end
+
+--- Opens the Add Slice panel under the preview (pushing Ring Settings down). Already open: just
+--- moves where the next slice goes, keeping the search.
+--- @param index number|nil insert so the new slice becomes #index (nil = add at the end)
+function PageMixin:ShowAddSlice(index)
+    if self.isAddingSlice then
+        self.AddSlice:SetInsertIndex(index)
+        return
+    end
+    self.isAddingSlice = true
+    self:RefreshSettings()
+    self.AddSlice:Open(index)
+    self.tab:_Render()
+end
+
+function PageMixin:ShowPreview()
+    if not self.isAddingSlice then return end
+    self.isAddingSlice = false
+    self.AddSlice.SearchBox:GetInput():ClearFocus()
+    self:RefreshSettings()
+    self.tab:_Render()
+end
+
+function PageMixin:RefreshSettings()
+    local ring = self:GetSelectedRing()
+    -- Automatic rings can't be edited by hand, so there's nothing to add.
+    if not ring or Ring_Data.IsBuiltIn(ring) then self.isAddingSlice = false end
+    -- The Add Slice panel opens under the preview while adding.
+    self.Preview:SetShown(ring ~= nil)
+    self.AddSlice:SetShown(ring ~= nil and self.isAddingSlice)
+    self.Settings:SetShown(ring ~= nil)
+    self.DeleteBox:SetShown(ring ~= nil)
+    self.Empty:SetShown(ring == nil)
+    self.preview:SetReadOnly(Ring_Data.IsBuiltIn(ring), ring and ring.builtin)
+    self.preview:SetRing(ring)
+    if not ring then return end
+
+    if self.isAddingSlice then
+        self.AddSlice:UpdateTitle()
+        self.AddSlice:Update()
+    end
+
+    self:RefreshSettingRows(ring)
+end
+
+function PageMixin:Refresh()
+    self:RefreshNav()
+    self:RefreshSettings()
+    self.tab:_Render()
+end
+
+function PageMixin:OnSettingRefresh()
+    -- Settings panel re-shown: ring data may have changed while it was hidden.
+    if SettingFrame:IsVisible() then self:Refresh() end
+end
+
+
+
+-- Actions
+
+function PageMixin:CreateNewRing()
+    local ring = Ring_Data.CreateRing(L["Config - Rings - NewRing - DefaultName"], Ring_Data.Scope.Account)
+    self.Nav:Select(ring.id)
+end
+
+
+
+-- Preview edits
+
+--- An edit's result: a click sound when it worked, the reason in chat when it didn't.
+local function Report(ok, err)
+    if ok then
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+    elseif err then
+        env.Print(format(L["Config - Rings - Search - AddFailed"], err))
+    end
+    return ok
+end
+
+--- What the preview's wheel does to the selected menu (see Rings_Preview.Create).
+local function PreviewCallbacks(page)
+    local QuickAction = Ring_Data.QuickAction
+    -- fn(ring, ...) for the selected menu; false without one.
+    local function Edit(fn)
+        return function(...)
+            local ring = page:GetSelectedRing()
+            if not ring then return false end
+            return fn(ring, ...)
+        end
+    end
+
+    return {
+        onAdd = function(index) page:ShowAddSlice(index) end,
+        onRemove = Edit(function(ring, index) Ring_Data.RemoveSlice(ring.id, index) end),
+        onMove = Edit(function(ring, from, to) Ring_Data.MoveSlice(ring.id, from, to) end),
+        onSwap = Edit(function(ring, a, b) Ring_Data.SwapSlices(ring.id, a, b) end),
+        -- Dropped from the game: onto a slice, between slices, onto the center (tap-only).
+        onReplace = Edit(function(ring, index, slice) return Report(Ring_Data.ReplaceSlice(ring.id, index, slice)) end),
+        onDrop = Edit(function(ring, slice, index) return Report(Ring_Data.AddSlice(ring.id, slice, index)) end),
+        onSetQuick = Edit(function(ring, slice) return Report(Ring_Data.SetQuickSlice(ring.id, slice)) end),
+        -- A wheel slice dragged onto the center, and the tap-only quick action dragged onto the wheel.
+        onQuickFromSlice = Edit(function(ring, index)
+            if ring.quickAction ~= index then Report(Ring_Data.SetQuickAction(ring.id, index)) end
+        end),
+        onQuickToWheel = Edit(function(ring, index, replace)
+            Report(Ring_Data.MoveQuickSliceToWheel(ring.id, index, replace))
+        end),
+        -- The center's X.
+        onClearQuick = Edit(function(ring)
+            if ring.quickAction == QuickAction.None then return end
+            local cleared = ring.quickAction ~= QuickAction.Last and Ring_Data.GetQuickActionSlice(ring)
+            if cleared then
+                env.Print(format(L["Config - Rings - QuickAction - Cleared"], Ring_Actions.GetLabel(cleared)))
+            end
+            Ring_Data.SetQuickAction(ring.id, QuickAction.None)
+        end),
+        -- Double-click on the center: None <-> Last Used Slice. A slice as the quick action is
+        -- only cleared with the X, never by a double-click.
+        onToggleQuick = Edit(function(ring)
+            if ring.quickAction ~= QuickAction.None and ring.quickAction ~= QuickAction.Last then return end
+            local value = ring.quickAction == QuickAction.None and QuickAction.Last or QuickAction.None
+            Report(Ring_Data.SetQuickAction(ring.id, value))
+        end),
+        -- Double-click on a submenu: scroll <-> spread.
+        onToggleExpand = Edit(function(ring, index)
+            local slice = ring.slices[index]
+            if slice then Report(Ring_Data.SetSliceExpand(ring.id, index, not slice.expand)) end
+        end),
+    }
+end
+
+
+
+-- Construction
+
+local Page = UIKit.Template(function(id, name, children, ...)
+    local frame =
+        LayoutVertical(name, {
+            -- Untitled: the page only ever shows one ring (its name is in the sidebar).
+            Setting_Widgets.Container(name .. ".Preview", {
+                Frame(name .. ".PreviewHost")
+                    :id("PreviewHost", id)
+                    :size(UIKit.UI.P_FILL, Rings_Preview.HEIGHT)
+            })
+                :id("Preview", id),
+
+            -- Shown in the preview's place while adding a slice.
+            Rings_AddSlice.Panel(name .. ".AddSlice")
+                :id("AddSlice", id),
+
+            Setting_Widgets.ContainerWithTitle(name .. ".Settings", {
+                Setting_Widgets.ElementInput(name .. ".Name"):id("NameRow", id),
+                Setting_Widgets.ElementButton(name .. ".Keybind"):id("KeybindRow", id),
+                Setting_Widgets.ElementSelectionMenu(name .. ".Scope"):id("ScopeRow", id)
+            })
+                :id("Settings", id),
+
+            -- Delete Ring in its own untitled box, apart from the settings.
+            Setting_Widgets.Container(name .. ".DeleteBox", {
+                Setting_Widgets.ElementButton(name .. ".Delete"):id("DeleteRow", id)
+            })
+                :id("DeleteBox", id),
+
+            Setting_Widgets.ElementText(name .. ".Empty")
+                :id("Empty", id)
+        })
+        :size(UIKit.UI.P_FILL, UIKit.Define.Fit{})
+        :layoutSpacing(10)
+        :_updateMode(UIKit.Enum.UpdateMode.ChildrenVisibilityChanged)
+
+    frame.Preview = UIKit.GetElementById("Preview", id)
+    frame.PreviewHost = UIKit.GetElementById("PreviewHost", id)
+    frame.AddSlice = UIKit.GetElementById("AddSlice", id)
+    frame.Settings = UIKit.GetElementById("Settings", id)
+    frame.DeleteBox = UIKit.GetElementById("DeleteBox", id)
+    frame.Empty = UIKit.GetElementById("Empty", id)
+    frame.NameRow = UIKit.GetElementById("NameRow", id)
+    frame.KeybindRow = UIKit.GetElementById("KeybindRow", id)
+    frame.ScopeRow = UIKit.GetElementById("ScopeRow", id)
+    frame.DeleteRow = UIKit.GetElementById("DeleteRow", id)
+
+    Mixin(frame, PageMixin)
+
+    return frame
+end)
+
+--- Setting_Enum.WidgetType.Custom builder. Also attaches the ring list to the sidebar, right under
+--- this tab's button (the Menus tab is the last non-footer tab).
+function Rings_Tab.Build(parent, tab)
+    local page = Page("RLRM_RingsPage")
+    page:parent(parent)
+    page.tab = tab
+
+    page.Settings:SetSubcontainer(false) -- container background art, as Build.Container does
+    page.Settings.Title:SetText(L["Config - Rings - Settings - Title"])
+    page.DeleteBox:SetSubcontainer(false)
+    page.Preview:SetTransparent(true) -- wheel sits on the page background, no box
+    page.AddSlice:Setup(function() return page:GetSelectedRing() end, function() page:ShowPreview() end)
+    -- Moving between Options and our window changes how many results fit: re-render if open.
+    -- Deferred a frame: the host change happens inside a UIKit render pass.
+    CallbackRegistry.Add("Setting.HostChanged", function()
+        if not page.isAddingSlice then return end
+        C_Timer.After(0, function()
+            if page.AddSlice:UpdateResultsHeight() then page.tab:_Render() end
+        end)
+    end)
+    page.AddSlice:ForwardMouseWheelWhenIdle(tab.Content)
+    page.AddSlice:Hide()
+    page.preview = Rings_Preview.Create(page.PreviewHost, PreviewCallbacks(page))
+    page.Empty:SetInfo(L["Config - Rings - Empty"], nil)
+    Private.SetupSettingRows(page)
+
+    page.Nav = Setting.AttachListNav(tab, {
+        sections = {
+            {
+                title    = L["Config - Rings - Nav - BuiltIn"],
+                visible  = BUILT_IN_VISIBLE,
+                getItems = function() return page:GetNavItems(true) end,
+            },
+            {
+                title     = L["Config - Rings - Nav - Custom"],
+                newButton = { text = L["Config - Rings - NewRing"], onClick = function() page:CreateNewRing() end },
+                getItems  = function() return page:GetNavItems(false) end,
+            },
+        },
+        getSelected = function() return page.selectedRingId end,
+        onSelect    = function(ringId) page:SelectRing(ringId) end,
+    })
+
+    tab:HookScript("OnHide", function()
+        Rings_Keybind.CancelCapture()
+        page:ShowPreview()
+    end)
+
+    -- Only while the settings are shown: automatic refills (bags, quests) happen all the time, and
+    -- reopening the settings refreshes anyway (OnSettingRefresh).
+    CallbackRegistry.Add("Ring.DataChanged", function()
+        if SettingFrame:IsVisible() then page:Refresh() end
+    end)
+    -- The preview center shows the last used slice for "Last Used Slice" rings.
+    CallbackRegistry.Add("Ring.LastUsedChanged", function()
+        if SettingFrame:IsVisible() then page.preview:SetRing(page:GetSelectedRing()) end
+    end)
+    page:Refresh()
+
+    return page
+end

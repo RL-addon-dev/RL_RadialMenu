@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!-- Rings_Preview, one module over several files (see Preview.lua). Preview first. -->
+    <Script file="Preview.lua"/>
+    <Script file="Display.lua"/>
+    <Script file="Input.lua"/>
+</Ui>
