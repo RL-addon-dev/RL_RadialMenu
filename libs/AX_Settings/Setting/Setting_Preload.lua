@@ -1,10 +1,11 @@
 local env = select(2, ...)
+local Path = env.AX_Modules:Import("ax_modules\\path")
 local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
 local Setting_Options = env.AX_Modules:Import("@\\Setting\\Options")
 local Setting_Preload = env.AX_Modules:New("@\\Setting\\Preload")
 
 local ATLAS_TAB_BUTTON = UIKit.Define.Texture_Atlas{ path = Setting_Options.Path .. "\\Art\\Setting\\TabButton.png", inset = 128 }
-local ATLAS_CONTAINER = UIKit.Define.Texture_Atlas{ path = Setting_Options.Path .. "\\Art\\Setting\\WidgetContainer.png", inset = 70, sliceMode = Enum.UITextureSliceMode.Stretched }
+local ATLAS_CONTAINER = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Setting_Options.Path .. "\\Art\\Setting", "WidgetContainer.png"), inset = 70, sliceMode = Enum.UITextureSliceMode.Stretched }
 Setting_Preload.UIDef = {
     Divider                         = UIKit.Define.Texture{ path = Setting_Options.Path .. "\\Art\\Shape\\Square.png" },
 

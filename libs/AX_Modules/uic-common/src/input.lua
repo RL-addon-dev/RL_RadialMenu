@@ -11,8 +11,8 @@ local UICCommonInput = env.AX_Modules:New("ax_modules\\uic-common\\input")
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\input.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\input.png", inset = 37, scale = 0.5 }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "input.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "input.png"), inset = 37, scale = 0.5 }
 local UIDef = {
     UIInput             = ATLAS{ left = 0 / 192, top = 0 / 128, right = 64 / 192, bottom = 64 / 128 },
     UIInput_Highlighted = ATLAS{ left = 64 / 192, top = 0 / 128, right = 128 / 192, bottom = 64 / 128 },

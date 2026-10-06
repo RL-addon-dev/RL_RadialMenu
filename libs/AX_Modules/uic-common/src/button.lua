@@ -13,8 +13,8 @@ local UICCommonButton = env.AX_Modules:New("ax_modules\\uic-common\\button")
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\button.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\button.png", inset = 37, scale = 0.5 }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "button.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "button.png"), inset = 37, scale = 0.5 }
 local UIDef = {
     Close                           = ATLAS{ left = 64 / 512, top = 256 / 320, right = 128 / 512, bottom = 320 / 320 },
     SelectionMenu                   = ATLAS{ left = 0 / 512, top = 256 / 320, right = 64 / 512, bottom = 320 / 320 },

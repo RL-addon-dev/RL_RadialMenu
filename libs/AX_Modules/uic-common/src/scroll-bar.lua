@@ -11,8 +11,8 @@ local UICCommonScrollBar = env.AX_Modules:New("ax_modules\\uic-common\\scroll-ba
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\scroll-bar.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\scroll-bar.png" }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "scroll-bar.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "scroll-bar.png") }
 local UIDef = {
     UIScrollBarTrack             = ATLAS{ inset = 32, scale = 0.25, left = 0 / 320, right = 64 / 320, top = 0 / 128, bottom = 128 / 128 },
     UIScrollBarThumb             = ATLAS{ inset = 32, scale = 0.25, left = 64 / 320, right = 128 / 320, top = 0 / 128, bottom = 64 / 128 },

@@ -17,3 +17,4 @@ Changes from WaypointUI:
   between them), host detection (Setting.GetHost, "Setting.HostChanged"), the Custom widget type,
   list tabs (Setting\Setting_ListNav.lua), and dropdowns kept above other frames.
 - Removed WaypointUI-specific settings and the font preference listener.
+- Added a WoW Forever variant of the section box art (Art\Setting\forever).

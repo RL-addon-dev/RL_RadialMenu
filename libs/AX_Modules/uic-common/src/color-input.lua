@@ -11,8 +11,8 @@ local UICCommonColorInput = env.AX_Modules:New("ax_modules\\uic-common\\color-in
 local Mixin = Mixin
 local CreateFromMixins = CreateFromMixins
 
-Utils_Texture.Preload(Path.Modules .. "\\uic-common\\resources\\color-input.png")
-local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Modules .. "\\uic-common\\resources\\color-input.png", inset = 37, scale = 0.5 }
+Utils_Texture.Preload(Path.Skinned(Path.Modules .. "\\uic-common\\resources", "color-input.png"))
+local ATLAS = UIKit.Define.Texture_Atlas{ path = Path.Skinned(Path.Modules .. "\\uic-common\\resources", "color-input.png"), inset = 37, scale = 0.5 }
 local UIDef = {
     UIColorInput              = ATLAS{ left = 0 / 384, right = 128 / 384, top = 0 / 128, bottom = 64 / 128 },
     UIColorInput_Disabled     = ATLAS{ left = 256 / 384, right = 384 / 384, top = 0 / 128, bottom = 64 / 128 },
