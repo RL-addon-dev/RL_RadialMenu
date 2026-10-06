@@ -1,0 +1,19 @@
+AX_Settings
+
+Based on the settings UI of WaypointUI by AdaptiveX, licensed under the GNU General Public
+License version 3. AX_Settings is distributed under the same licence (see LICENSE).
+Named in honour of AdaptiveX (AX).
+
+Built on AX_Modules, the toolkit extracted from the same addon (its own folder, with its own
+NOTICE).
+
+Changes from WaypointUI:
+- Extracted the settings framework (Setting\*) and its art into a standalone library embedded
+  per addon.
+- Addon-specific wiring replaced by options (Setting\Setting_Options.lua): frame name prefix,
+  title, storage adapter, window position, schema.
+- Texture paths are relative to the library's own folder (Setting_Options.Path).
+- Added: an own movable settings window next to the Options -> AddOns panel (the same UI, moved
+  between them), host detection (Setting.GetHost, "Setting.HostChanged"), the Custom widget type,
+  list tabs (Setting\Setting_ListNav.lua), and dropdowns kept above other frames.
+- Removed WaypointUI-specific settings and the font preference listener.

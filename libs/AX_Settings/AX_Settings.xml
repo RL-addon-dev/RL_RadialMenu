@@ -1,0 +1,17 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!--
+        AX_Settings: the settings window / Options panel framework, based on WaypointUI by
+        AdaptiveX. Load its toolkit first (AX_Modules\packages.xml), then this file once the
+        addon has set env.AX_SettingsOptions (see Setting\Setting_Options.lua).
+    -->
+    <Script file="Setting\Setting_Options.lua"/>
+    <Script file="Setting\Setting_Define.lua"/>
+    <Script file="Setting\Setting_Enum.lua"/>
+    <Script file="Setting\Setting_Preload.lua"/>
+    <Script file="Setting\Setting_Widgets.lua"/>
+    <Script file="Setting\Setting_UI.lua"/>
+    <Script file="Setting\Setting.lua"/>
+    <Script file="Setting\Setting_Constructor.lua"/>
+    <Script file="Setting\Setting_ListNav.lua"/>
+</Ui>
