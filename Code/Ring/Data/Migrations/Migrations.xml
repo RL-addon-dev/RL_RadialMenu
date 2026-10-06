@@ -1,0 +1,26 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!--
+        Saved-data migrations: one file per change to the saved data, listed here oldest first.
+        Each runs once, at startup (Startup.lua), and is remembered by its flag. Add new files at
+        the end; never rename, reorder or reuse one.
+
+        Name files by order and change, e.g. 001_SomethingRenamed.lua, and start each with a
+        comment saying what changed and what the migration does about it:
+
+            local env = select(2, ...)
+            local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
+
+            Private.RegisterMigration({
+                flag = "SomethingRenamed",
+                db   = "account",
+                run  = function(stored) end,
+            })
+
+        flag  remembered in that saved variables table once the migration has run
+        db    "account", or "character" (then it runs once on every character)
+        run   gets that saved variables table
+
+        None yet.
+    -->
+</Ui>
