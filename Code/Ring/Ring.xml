@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <Include file="Data\Data.xml"/>
+    <Script file="Ring_Kinds.lua"/>
+    <Include file="Kinds\Kinds.xml"/>
+    <Include file="BuiltIns\BuiltIns.xml"/>
+    <Script file="Ring_Actions.lua"/>
+    <Script file="Ring_Live.lua"/>
+    <Script file="Ring_Search.lua"/>
+    <Script file="Ring_Auto.lua"/>
+    <Script file="Ring_Display.lua"/>
+    <Include file="Layout\Layout.xml"/>
+    <Script file="Ring_CursorGuide.lua"/>
+    <Script file="Ring_View.lua"/>
+    <Script file="Ring_Secure.lua"/>
+</Ui>
