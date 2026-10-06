@@ -1,0 +1,7 @@
+package-as: RL_RadialMenu
+
+# Left out of the release zip: repo-only files. LICENSE and NOTICE stay in (GPL).
+ignore:
+  - README.md
+  - Media
+  - libs/AX_Settings/Examples

@@ -1,0 +1,13 @@
+# Developer notes kept on this PC only
+PLAN.md
+REFACTOR_PLAN.md
+
+# Script that generated Art/Ring/Wedge_Count_*.png (the images are committed)
+Art/Ring/generate_wedges.py
+
+# Editor and OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+__pycache__/
