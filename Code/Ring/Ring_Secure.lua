@@ -27,10 +27,18 @@
     Right click while held dismisses the ring (Right-Click to Cancel setting, "ring-rightclick"): the
     helper closes it (OPEN_RING cleared), so the key's release fires nothing.
 
-    These mouse bindings (plain, and with the ring keybind's modifiers, "ring-keymods": a
+    Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
+    (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
+    secure code can't time the press in combat, so it couldn't tell a tap from a still hold. Left
+    click is bound to the ring button itself as "RelaxedSelect", which picks on the click's up by
+    the same rules as a Quick release (slice, quick action while the cursor never left the probe,
+    else nothing). Escape (and right click, with Right-Click to Cancel) dismisses it through the
+    helper, and the keybind's next key down closes it.
+
+    These bindings (plain, and with the ring keybind's modifiers, "ring-keymods": a
     CTRL-SPACE ring keeps CTRL held) are owned by the helper button and cleared on every ring key
-    down, release and dismiss. All snippets share the controller's restricted environment
-    (OPEN_RING, OPEN_BUTTON, START_X/Y).
+    down, close and dismiss. All snippets share the controller's restricted environment
+    (OPEN_RING, OPEN_BUTTON, RELAXED_OPEN, START_X/Y).
 
     Rebuilds (after "Ring.DataChanged" and settings changes) happen out of combat, and never while
     a menu is held open: the attributes the release is about to use must match what's shown.
@@ -54,8 +62,24 @@ local PRE_CLICK = [[
     local probe = owner:GetFrameRef("probe")
     local helper = owner:GetFrameRef("helper")
     local ringId = self:GetAttribute("ring-id")
+    local relaxed = self:GetAttribute("ring-relaxed")
+    -- Relaxed: a left click on the open menu ("RelaxedSelect", bound below) picks, on its release.
+    local isPick = button == "RelaxedSelect"
+    if isPick and down then return false end
 
     if down then
+        -- Relaxed: the keybind again closes the open menu, firing nothing.
+        if RELAXED_OPEN == ringId and OPEN_RING == ringId then
+            OPEN_RING = nil
+            OPEN_BUTTON = nil
+            RELAXED_OPEN = nil
+            helper:ClearBindings()
+            probe:UnregisterAutoHide()
+            probe:Hide()
+            owner:CallMethod("OnRingClose", ringId, "cancel", nil)
+            return false
+        end
+
         -- A ring opens with slices on its wheel, or with only a (tap-only) quick action.
         if (self:GetAttribute("ring-count") or 0) == 0 and not self:GetAttribute("ring-quick") then return false end
         local x, y = screen:GetMousePosition()
@@ -65,6 +89,7 @@ local PRE_CLICK = [[
         START_X, START_Y = x * screen:GetWidth(), y * screen:GetHeight()
         OPEN_RING = ringId
         OPEN_BUTTON = self
+        RELAXED_OPEN = nil
 
         local probeSize = self:GetAttribute("ring-probe")
         probe:ClearAllPoints()
@@ -74,13 +99,22 @@ local PRE_CLICK = [[
         probe:Show()
         probe:RegisterAutoHide(0)
 
-        -- While held: right click dismisses the ring, and the mouse wheel scrolls its scroll
-        -- slices. A keybind with modifiers (CTRL-SPACE) keeps them held, and the mouse then
-        -- arrives as CTRL-BUTTON2 / CTRL-MOUSEWHEELUP: bind those too.
+        -- While open: right click dismisses the ring, and the mouse wheel scrolls its scroll
+        -- slices. Relaxed: also left click picks and Escape dismisses. A keybind with modifiers
+        -- (CTRL-SPACE) may keep them held, and the mouse then arrives as CTRL-BUTTON2 /
+        -- CTRL-MOUSEWHEELUP: bind those too.
         local keyMods = self:GetAttribute("ring-keymods")
         if self:GetAttribute("ring-rightclick") then -- Right-Click to Cancel setting
             helper:SetBindingClick(true, "BUTTON2", helper, "Dismiss")
             if keyMods then helper:SetBindingClick(true, keyMods .. "BUTTON2", helper, "Dismiss") end
+        end
+        if relaxed then
+            helper:SetBindingClick(true, "BUTTON1", self, "RelaxedSelect")
+            helper:SetBindingClick(true, "ESCAPE", helper, "Dismiss")
+            if keyMods then
+                helper:SetBindingClick(true, keyMods .. "BUTTON1", self, "RelaxedSelect")
+                helper:SetBindingClick(true, keyMods .. "ESCAPE", helper, "Dismiss")
+            end
         end
         if self:GetAttribute("ring-hasscroll") then
             helper:SetBindingClick(true, "MOUSEWHEELUP", helper, "WheelUp")
@@ -95,16 +129,10 @@ local PRE_CLICK = [[
         return false
     end
 
+    -- The keybind's release, or a Relaxed pick.
     if OPEN_RING ~= ringId then return false end
 
-    OPEN_RING = nil
-    OPEN_BUTTON = nil
-    helper:ClearBindings()
-
     local moved = not probe:IsShown()
-    probe:UnregisterAutoHide()
-    probe:Hide()
-
     local result, index
     local x, y = screen:GetMousePosition()
     if x then
@@ -117,10 +145,12 @@ local PRE_CLICK = [[
         local dy = y * screen:GetHeight() - originY
         local deadzone = self:GetAttribute("ring-deadzone")
         local count = self:GetAttribute("ring-count") or 0
+        local outside = count > 0 and dx * dx + dy * dy > deadzone * deadzone
+        -- A Relaxed pick (click) follows the same rules as a Quick release.
         if fromMenu and not moved then
             index = self:GetAttribute("ring-quick")
             if index then result = "quick" end
-        elseif count > 0 and dx * dx + dy * dy > deadzone * deadzone then
+        elseif outside then
             local step = 360 / count
             local offset = (90 - math.deg(math.atan2(dy, dx))) % 360
             index = math.floor((offset + step / 2) / step) % count + 1
@@ -130,6 +160,22 @@ local PRE_CLICK = [[
             if index then result = "quick" end
         end
     end
+
+    -- Relaxed: the release fires nothing. The menu stays open, with its bindings, until a pick or
+    -- a dismiss. The probe stays up: leaving it still dismisses the quick action.
+    if relaxed and not isPick then
+        if RELAXED_OPEN == ringId then return false end
+        RELAXED_OPEN = ringId
+        owner:CallMethod("OnRingRelaxed", ringId)
+        return false
+    end
+
+    OPEN_RING = nil
+    OPEN_BUTTON = nil
+    RELAXED_OPEN = nil
+    helper:ClearBindings()
+    probe:UnregisterAutoHide()
+    probe:Hide()
     result = result or "cancel"
 
     if index and self:GetAttribute("ring-quickmode") == "last" then
@@ -144,18 +190,19 @@ local PRE_CLICK = [[
     return "s" .. index
 ]]
 
--- Helper button: target of the temporary mouse bindings while a ring is held (right click
--- dismisses it, the wheel scrolls).
+-- Helper button: target of the temporary bindings while a ring is open (right click, and Escape
+-- in Relaxed, dismiss it; the wheel scrolls).
 local HELPER_CLICK = [[
     local ring = OPEN_BUTTON
     if not ring then return false end
 
-    -- Right click: close the ring now, firing nothing. The key's release then finds no open ring
-    -- (PRE_CLICK) and does nothing either.
+    -- Right click / Escape: close the ring now, firing nothing. The key's release then finds no
+    -- open ring (PRE_CLICK) and does nothing either.
     if button == "Dismiss" then
         local ringId = ring:GetAttribute("ring-id")
         OPEN_RING = nil
         OPEN_BUTTON = nil
+        RELAXED_OPEN = nil
         self:ClearBindings()
         local probe = owner:GetFrameRef("probe")
         probe:UnregisterAutoHide()
@@ -216,9 +263,10 @@ local pendingBindings = {} -- filled by SetupRing, bound by Rebuild (account key
 local buttonsById = {}
 
 -- The menu held open right now (between OnRingOpen and OnRingClose), and since when. Rebuilds
--- wait until it's released.
-local openRingId, openSince
-local MAX_OPEN_TIME = 30 -- s; a menu "open" longer than this missed its release: don't wait for it
+-- wait until it's released. A Relaxed menu left open (OnRingRelaxed) waits for its click or
+-- dismiss however long that takes: a rebuild would clear its bindings.
+local openRingId, openSince, openRelaxed
+local MAX_OPEN_TIME = 30 -- s; a held menu "open" longer than this missed its release: don't wait for it
 
 local QueueRebuild -- defined with the rebuild queue below
 
@@ -265,12 +313,12 @@ function Controller:OnRingOpen(ringId, startX, startY)
     local ring = ringsById[ringId]
     if not ring then return end
 
-    openRingId, openSince = ringId, GetTime()
+    openRingId, openSince, openRelaxed = ringId, GetTime(), false
     local button = buttonsById[ringId]
     local displaySlices = GetDisplaySlices(ring, button)
     local quickIndex = button:GetAttribute("ring-quick")
     local quickSlice = quickIndex == QUICK_SUFFIX and ring.quickSlice or (quickIndex and displaySlices[quickIndex])
-    Ring_View:Open(ring, startX, startY, Probe, quickSlice, displaySlices)
+    Ring_View:Open(ring, startX, startY, Probe, quickSlice, displaySlices, button:GetAttribute("ring-relaxed") and true or false)
 end
 
 --- The mouse wheel moved scroll slice `index` to its child `current`: remember it, update the wedge.
@@ -286,11 +334,17 @@ function Controller:OnRingScroll(ringId, index, current)
     if buttonsById[ringId]:GetAttribute("ring-quick") == index then Ring_View:SetQuickSlice(shown) end
 end
 
+--- Relaxed: the keybind was released and the menu stays open until a click or dismiss.
+function Controller:OnRingRelaxed(ringId)
+    if openRingId ~= ringId then return end
+    openRelaxed = true
+end
+
 --- @param result string "slice" | "quick" | "cancel"
 --- @param index number|string|nil live index, or QUICK_SUFFIX for the tap-only quick action
 function Controller:OnRingClose(ringId, result, index)
     Ring_View:Close()
-    openRingId = nil
+    openRingId, openRelaxed = nil, false
 
     local live = ringsById[ringId]
     local button = buttonsById[ringId]
@@ -409,6 +463,7 @@ local function SetupRing(ring)
     local binding, isAccount = Ring_Data.GetBinding(ring.id)
     button:SetAttribute("ring-keymods", GetModifierPrefix(binding))
     button:SetAttribute("ring-rightclick", Config.DBGlobal:GetVariable("RightClickDismiss") and true or nil)
+    button:SetAttribute("ring-relaxed", Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed or nil)
     if binding and (count > 0 or live.quickSlice) then
         pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), account = isAccount }
     end
@@ -469,7 +524,7 @@ QueueRebuild = function()
         combatWaiter:RegisterEvent("PLAYER_REGEN_ENABLED")
         return
     end
-    if openRingId and GetTime() - openSince < MAX_OPEN_TIME then return end
+    if openRingId and (openRelaxed or GetTime() - openSince < MAX_OPEN_TIME) then return end
     Rebuild()
 end
 
@@ -503,6 +558,8 @@ SavedVariables.OnChange("RL_RadialMenuDB_Global", "ProbeSize", RequestRebuild)
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "WorldMarkerPlacement", RequestRebuild)
 -- Right-Click to Cancel decides whether held menus bind right click.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", RequestRebuild)
+-- Menu Style decides what the release and the mouse do.
+SavedVariables.OnChange("RL_RadialMenuDB_Global", "MenuStyle", RequestRebuild)
 CallbackRegistry.Add("Config.Reset", RequestRebuild)
 -- Open At, Select From = Menu Center, and the fixed menu's center live in secure attributes too.
 CallbackRegistry.Add("Ring.DisplayMoved", function() RequestRebuild(nil, "auto") end)
