@@ -182,6 +182,12 @@ do -- Schema
                             key                        = "ProbeSize"
                         },
                         {
+                            widgetName        = L["Config - Behavior - RightClickDismiss"],
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - Behavior - RightClickDismiss - Description"] },
+                            widgetType        = Setting_Enum.WidgetType.CheckButton,
+                            key               = "RightClickDismiss"
+                        },
+                        {
                             widgetName               = L["Config - Behavior - WorldMarkerPlacement"],
                             widgetDescription        = Setting_Define.Descriptor{ description = L["Config - Behavior - WorldMarkerPlacement - Description"] },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,

@@ -21,12 +21,15 @@
     scroll positions), and Last Used is saved by slice identity.
 
     Nested rings that scroll (a slice of kind "ring", not expanded): the parent button also carries the child's
-    slices as "*type-sN_C". While the ring is held, the mouse wheel is bound to the helper button
-    (plain, and with the ring keybind's modifiers, "ring-wheelmods": a CTRL-SPACE ring keeps CTRL
-    held), which steps "ring-scroll-N" for the slice under the cursor. Release fires "sN_<current>".
+    slices as "*type-sN_C". While the ring is held, the mouse wheel is bound to the helper button,
+    which steps "ring-scroll-N" for the slice under the cursor. Release fires "sN_<current>".
 
-    The wheel bindings are owned by the helper button and cleared on every ring key down and
-    release. All snippets share the controller's restricted environment
+    Right click while held dismisses the ring (Right-Click to Cancel setting, "ring-rightclick"): the
+    helper closes it (OPEN_RING cleared), so the key's release fires nothing.
+
+    These mouse bindings (plain, and with the ring keybind's modifiers, "ring-keymods": a
+    CTRL-SPACE ring keeps CTRL held) are owned by the helper button and cleared on every ring key
+    down, release and dismiss. All snippets share the controller's restricted environment
     (OPEN_RING, OPEN_BUTTON, START_X/Y).
 
     Rebuilds (after "Ring.DataChanged" and settings changes) happen out of combat, and never while
@@ -34,6 +37,7 @@
 ]]
 
 local env = select(2, ...)
+local Config = env.Config
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
@@ -70,15 +74,20 @@ local PRE_CLICK = [[
         probe:Show()
         probe:RegisterAutoHide(0)
 
+        -- While held: right click dismisses the ring, and the mouse wheel scrolls its scroll
+        -- slices. A keybind with modifiers (CTRL-SPACE) keeps them held, and the mouse then
+        -- arrives as CTRL-BUTTON2 / CTRL-MOUSEWHEELUP: bind those too.
+        local keyMods = self:GetAttribute("ring-keymods")
+        if self:GetAttribute("ring-rightclick") then -- Right-Click to Cancel setting
+            helper:SetBindingClick(true, "BUTTON2", helper, "Dismiss")
+            if keyMods then helper:SetBindingClick(true, keyMods .. "BUTTON2", helper, "Dismiss") end
+        end
         if self:GetAttribute("ring-hasscroll") then
             helper:SetBindingClick(true, "MOUSEWHEELUP", helper, "WheelUp")
             helper:SetBindingClick(true, "MOUSEWHEELDOWN", helper, "WheelDown")
-            -- A keybind with modifiers (CTRL-SPACE) keeps them held, and the wheel then arrives
-            -- as CTRL-MOUSEWHEELUP: bind that too.
-            local wheelMods = self:GetAttribute("ring-wheelmods")
-            if wheelMods then
-                helper:SetBindingClick(true, wheelMods .. "MOUSEWHEELUP", helper, "WheelUp")
-                helper:SetBindingClick(true, wheelMods .. "MOUSEWHEELDOWN", helper, "WheelDown")
+            if keyMods then
+                helper:SetBindingClick(true, keyMods .. "MOUSEWHEELUP", helper, "WheelUp")
+                helper:SetBindingClick(true, keyMods .. "MOUSEWHEELDOWN", helper, "WheelDown")
             end
         end
 
@@ -135,10 +144,25 @@ local PRE_CLICK = [[
     return "s" .. index
 ]]
 
--- Helper button: target of the temporary mouse wheel bindings while a ring is held.
+-- Helper button: target of the temporary mouse bindings while a ring is held (right click
+-- dismisses it, the wheel scrolls).
 local HELPER_CLICK = [[
     local ring = OPEN_BUTTON
     if not ring then return false end
+
+    -- Right click: close the ring now, firing nothing. The key's release then finds no open ring
+    -- (PRE_CLICK) and does nothing either.
+    if button == "Dismiss" then
+        local ringId = ring:GetAttribute("ring-id")
+        OPEN_RING = nil
+        OPEN_BUTTON = nil
+        self:ClearBindings()
+        local probe = owner:GetFrameRef("probe")
+        probe:UnregisterAutoHide()
+        probe:Hide()
+        owner:CallMethod("OnRingClose", ringId, "cancel", nil)
+        return false
+    end
 
     local screen = owner:GetFrameRef("screen")
     local x, y = screen:GetMousePosition()
@@ -205,7 +229,8 @@ local QUICK_SUFFIX = "Q"
 local MODIFIERS = { "ALT-", "CTRL-", "SHIFT-", "META-" }
 
 --- The modifier part of a keybind ("CTRL-" for "CTRL-SPACE", "ALT-SHIFT-" for "ALT-SHIFT-F"), or
---- nil without modifiers: held with the key, so the mouse wheel needs it too (PRE_CLICK).
+--- nil without modifiers: held with the key, so the mouse bindings while held need it too
+--- (PRE_CLICK: right click, wheel).
 local function GetModifierPrefix(binding)
     if not binding then return nil end
     local prefix, rest = "", binding
@@ -382,7 +407,8 @@ local function SetupRing(ring)
 
     ringsById[ring.id] = live
     local binding, isAccount = Ring_Data.GetBinding(ring.id)
-    button:SetAttribute("ring-wheelmods", GetModifierPrefix(binding))
+    button:SetAttribute("ring-keymods", GetModifierPrefix(binding))
+    button:SetAttribute("ring-rightclick", Config.DBGlobal:GetVariable("RightClickDismiss") and true or nil)
     if binding and (count > 0 or live.quickSlice) then
         pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), account = isAccount }
     end
@@ -475,6 +501,8 @@ SavedVariables.OnChange("RL_RadialMenuDB_Global", "Deadzone", RequestRebuild)
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "ProbeSize", RequestRebuild)
 -- World marker actions' macro depends on Place World Markers.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "WorldMarkerPlacement", RequestRebuild)
+-- Right-Click to Cancel decides whether held menus bind right click.
+SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", RequestRebuild)
 CallbackRegistry.Add("Config.Reset", RequestRebuild)
 -- Open At, Select From = Menu Center, and the fixed menu's center live in secure attributes too.
 CallbackRegistry.Add("Ring.DisplayMoved", function() RequestRebuild(nil, "auto") end)

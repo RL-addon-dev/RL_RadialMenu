@@ -65,6 +65,7 @@ local DB_GLOBAL_DEFAULTS = {
     RevealDelay   = 0.15, -- seconds
     Deadzone      = 24,   -- px
     ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)
+    RightClickDismiss = true, -- right click closes a held menu (Ring_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
 }
 local DB_GLOBAL_PERSISTENT_DEFAULTS = {}
