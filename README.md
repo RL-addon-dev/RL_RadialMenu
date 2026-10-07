@@ -53,7 +53,7 @@ Then hold your key in the game, move the mouse toward an action and let go.
 | Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
-Actions that have nothing to fire right now (an item you're out of, a pet ability with no pet)
+Actions that have nothing to fire right now (an item you're out of, a pet ability with no pet, another class's spell)
 are left out of the menu until they're usable again. Cooldowns and charges show on the icons.
 
 **Submenus:** a menu can contain another menu. By default it takes one slot: while holding your

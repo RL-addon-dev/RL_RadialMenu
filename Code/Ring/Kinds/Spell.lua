@@ -8,6 +8,9 @@
             byId: true to always cast by id (profession spells: by name, the game can pick the
             passive skill-line spell of the same name, which does nothing)
             pet: true for a pet ability (hidden while you have no pet)
+
+    Spells you don't know (another class's, an untaken talent, a rank you haven't learned) are
+    hidden in game. Pet abilities follow the pet instead.
 ]]
 
 local env = select(2, ...)
@@ -15,6 +18,14 @@ local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local NUM_PET_ACTION_SLOTS = NUM_PET_ACTION_SLOTS or 10
+local GetSpellInfoByName = C_Spell.GetSpellInfo or GetSpellInfo -- nil for a name you don't know
+
+--- Whether you know spell `id`: C_SpellBook.IsSpellKnown, or where a client doesn't have it, the
+--- older calls it replaces.
+local function IsSpellKnown(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then return C_SpellBook.IsSpellKnown(id) and true or false end
+    return IsPlayerSpell(id) or (IsSpellKnownOrOverridesKnown and IsSpellKnownOrOverridesKnown(id)) or false
+end
 
 --- Pet ability id for cursor info from the pet spellbook or pet bar. The values differ by source
 --- (spell id, pet action id, or pet bar slot), so each is checked against the pet spellbook.
@@ -110,6 +121,15 @@ local function SpellByName(slice)
     return slice.name or C_Spell.GetSpellName(slice.id) or slice.id
 end
 
+--- Whether you can cast the spell the action casts. Cast by name, the name resolves only to
+--- spells you know, whichever variant, replacement or rank that is. Cast by id (an exact rank,
+--- a profession spell), that id must be known.
+local function IsKnown(slice)
+    local spell = SpellByName(slice)
+    if type(spell) == "string" then return (GetSpellInfoByName(spell)) ~= nil end
+    return IsSpellKnown(spell)
+end
+
 --- The spell id a tooltip shows: for a highest-rank spell, the rank its name resolves to now.
 local function GetShownSpellID(slice)
     if slice.anyRank and C_Spell.GetSpellInfo then
@@ -143,8 +163,16 @@ Ring_Kinds.Register({
 
     cooldown = function(slice) return "spell", SpellByName(slice) end,
 
-    condition = function(slice) return slice.pet and "pet" or nil end,
-    available = Ring_Kinds.HasPet,
+    -- A spell you know has no rule at all (no badge on every spell in the preview); one you don't
+    -- gets "known", and shows again once you learn it (Ring_Auto rebuilds on SPELLS_CHANGED).
+    condition = function(slice)
+        if slice.pet then return "pet" end
+        if not IsKnown(slice) then return "known" end
+    end,
+    available = function(slice)
+        if slice.pet then return Ring_Kinds.HasPet() end
+        return IsKnown(slice)
+    end,
 
     tooltip = function(tooltip, slice)
         local spellID = GetShownSpellID(slice)
@@ -165,7 +193,7 @@ Ring_Kinds.Register({
 
     lookupId = function(id)
         if not C_Spell.GetSpellName(id) then return nil end
-        local known = IsPlayerSpell(id) or (IsSpellKnownOrOverridesKnown and IsSpellKnownOrOverridesKnown(id))
+        local known = IsSpellKnown(id)
         local note = Ring_Kinds.GetSpellRank(id)
         if not known then
             local notKnown = L["Config - Rings - Search - Note - NotKnown"]
