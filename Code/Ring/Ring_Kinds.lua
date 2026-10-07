@@ -40,6 +40,9 @@
     or id lookups, and saved actions of that kind are hidden in game (Ring_Actions). A built-in menu
     must only use kinds that exist in all of its versions.
 
+    A definition can also be search-only (Kinds\Profession.lua): just `search`, listing slices of
+    another kind (spell actions) under its own filter; nothing is ever saved with its kind.
+
     Every field except `kind` is optional. Definitions are asked in registration order (filter
     entries, cursor handlers, id lookups), so each handler checks its own case (item skips toys).
 
@@ -250,6 +253,36 @@ function Ring_Kinds.GetCurrentSpec()
     local index = GetSpecialization and GetSpecialization()
     if not index then return nil end
     return index, GetSpecializationInfo(index)
+end
+
+--- Castable spell ids of your professions, from the spellbook's Professions section: your two
+--- primary professions, then Cooking, Fishing, Archaeology; each the profession itself (opens its
+--- window) and its extra spells (Disenchant, Survey, ...). Passive entries are left out. Empty
+--- where the client has no profession list (GetProfessions).
+--- Cast these by id (spell `byId`): a profession's passive skill-line spell shares the castable
+--- spell's name, so casting by name can pick the one that does nothing.
+function Ring_Kinds.GetProfessionSpells()
+    local spellIDs, seen = {}, {}
+    if not (GetProfessions and GetProfessionInfo and C_SpellBook and C_SpellBook.GetSpellBookItemInfo) then
+        return spellIDs
+    end
+    local bank, spellType = Enum.SpellBookSpellBank.Player, Enum.SpellBookItemType.Spell
+    -- GetProfessions: primary, primary, archaeology, fishing, cooking (nil where you have none).
+    local prof1, prof2, archaeology, fishing, cooking = GetProfessions()
+    for _, profIndex in ipairs({ prof1 or false, prof2 or false, cooking or false, fishing or false, archaeology or false }) do
+        if profIndex then
+            local _, _, _, _, numAbilities, spellOffset = GetProfessionInfo(profIndex)
+            for slot = (spellOffset or 0) + 1, (spellOffset or 0) + (numAbilities or 0) do
+                local item = C_SpellBook.GetSpellBookItemInfo(slot, bank)
+                local spellID = item and item.itemType == spellType and not item.isPassive and item.spellID
+                if spellID and not seen[spellID] then
+                    seen[spellID] = true
+                    spellIDs[#spellIDs + 1] = spellID
+                end
+            end
+        end
+    end
+    return spellIDs
 end
 
 --- Whether item `itemID` is a toy you own (toys are their own action kind, not items).
