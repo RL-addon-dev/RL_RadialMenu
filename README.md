@@ -14,7 +14,7 @@ wheel. **Hold a key, flick the mouse, release.**
 
 ## Getting started
 
-1. Type `/radial`, or open it from the addon drawer on the minimap.
+1. Type `/radial` (or `/radialmenu`, `/rm`), or open it from the addon drawer on the minimap.
 2. On the **Menus** tab, click **+ New Menu**.
 3. Click **Keybind** and press the key (or combination) you want to hold.
 4. Add actions: click **+** on the menu and search, or drag spells, items, toys, macros and
