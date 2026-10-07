@@ -38,6 +38,13 @@ Enum.SelectFrom = {
     Menu   = 2
 }
 
+-- Menu Style (MenuStyle), named like the ping wheel's: Quick picks on the keybind's release;
+-- Relaxed keeps the menu open after the release, and a left click picks (Ring_Secure).
+Enum.MenuStyle = {
+    Quick   = 1,
+    Relaxed = 2
+}
+
 -- Place World Markers (WorldMarkerPlacement): on the ground under the mouse, or with the game's
 -- targeting circle (click the ground).
 Enum.WorldMarkerPlacement = {
@@ -62,6 +69,7 @@ local DB_GLOBAL_DEFAULTS = {
     SelectFrom    = Enum.SelectFrom.Cursor, -- fixed position: where angles are measured from
     CursorGuide   = false, -- fixed position: outline of the gesture at the cursor
     CursorGuideColor = { r = 1, g = 1, b = 1 },
+    MenuStyle     = Enum.MenuStyle.Quick,
     RevealDelay   = 0.15, -- seconds
     Deadzone      = 24,   -- px
     ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)

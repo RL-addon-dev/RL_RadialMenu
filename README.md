@@ -35,6 +35,11 @@ Then hold your key in the game, move the mouse toward an action and let go.
 
 ![A tap fires the quick action without the menu appearing](Media/quick-action.gif)
 
+**Relaxed style** (Menu Style, in the settings): press the keybind and the menu opens and stays
+open. Click an action to use it. Clicking the center uses the quick action, like releasing there
+in Quick: until you move the mouse away, then it closes the menu. Escape, the keybind again or
+right-click (Right-Click to Cancel) also close it.
+
 ## What a menu can hold
 
 | Action | | Retail | Forever |
@@ -98,8 +103,8 @@ Everything is in `/radial` (also under Options → AddOns).
 - **Show Cursor Guide** (fixed position): a faint outline of the menu at the cursor, so you can
   see the directions while the menu is elsewhere.
 - **Menu Size** and **Show Action Names**.
-- **Menu Behavior:** Reveal Delay, Distance to Select, Distance to Cancel Quick Action, and
-  how world markers are placed.
+- **Menu Behavior:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), Distance to Select,
+  Distance to Cancel Quick Action, Right-Click to Cancel, and how world markers are placed.
 - **Per menu:** name, keybind, quick action, and whether it's on all your characters or just
   this one.
 

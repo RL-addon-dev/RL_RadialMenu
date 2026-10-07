@@ -2,7 +2,8 @@
     Insecure in-game ring: a Ring_Layout wheel plus open/close animation and live selection.
 
     Driven by the secure controller via CallMethod. Mirrors the secure selection math
-    every frame so the highlight matches what will fire on release.
+    every frame so the highlight matches what will fire on release (Relaxed, once the keybind is
+    released: on a left click).
 ]]
 
 local env = select(2, ...)
@@ -125,13 +126,15 @@ local function OnUpdate(self)
 
     -- Same rules as the secure snippet (Ring_Secure). Select From = Menu Center: nothing is
     -- picked until the cursor leaves the quick action square, wherever it is over the menu.
+    -- Relaxed: a click picks by the same rules.
     local index
     if not (self.fromMenu and not moved) then
         index = Ring_Layout.GetSliceIndex(dx, dy, #self.ring.slices, self.deadzone)
     end
     self:SetSelection(index)
-    -- What a release would fire: the highlighted slice, else the center (the quick action, or a
-    -- lone slice) until the cursor has left it. Not before the menu is revealed: a tap never shows one.
+    -- What a release (or Relaxed click) would fire: the highlighted slice, else the center (the
+    -- quick action, or a lone slice) until the cursor has left it. Not before the menu is
+    -- revealed: a tap never shows one.
     local tooltip = index
     if not index and not moved then
         tooltip = self.isSingleCentered and 1 or (self.quickSlice and "quick") or nil
@@ -151,13 +154,14 @@ end
 --- @param quickSlice table|nil slice the quick action would fire
 --- @param displaySlices table|nil what each wedge shows (nested scroll slices show the child's
 ---                     current slice); defaults to ring.slices
-function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices)
+--- @param relaxed boolean Menu Style = Relaxed: shown at once (no tap to wait for)
+function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, relaxed)
     View.ring = ring
     View.startX, View.startY = startX, startY
     View.probe = probe
     View.quickSlice = quickSlice
     View.openTime = GetTime()
-    View.revealDelay = Ring_Data.GetRevealDelay()
+    View.revealDelay = relaxed and 0 or Ring_Data.GetRevealDelay()
     View.deadzone = Ring_Data.GetDeadzone()
     View.revealStart = nil
     View.closing = false

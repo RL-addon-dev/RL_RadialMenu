@@ -9,6 +9,7 @@ local env = select(2, ...)
 local Config = env.Config
 local L = env.L
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Setting_Define = env.AX_Modules:Import("@\\Setting\\Define")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
@@ -30,6 +31,12 @@ end
 -- Which Position / Appearance settings apply (Ring_Display loads after this file: read at refresh).
 local function IsFixed() return Ring_Display.IsFixed() end
 local function UsesCursorGuide() return Ring_Display.IsFixed() and not Ring_Display.IsSelectFromMenu() end
+local function IsRelaxed() return Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed end
+
+-- Menu Style decides whether Reveal Delay shows.
+SavedVariables.OnChange("RL_RadialMenuDB_Global", "MenuStyle", function() CallbackRegistry.Trigger("Setting.Refresh") end)
+-- Right-Click to Cancel changes how the Menu Style description says a Relaxed menu closes.
+SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", function() CallbackRegistry.Trigger("Setting.Refresh") end)
 
 --- Behavior settings describe distances from where they're measured: the key-down spot, or the
 --- fixed menu's center with Select From = Menu Center.
@@ -152,6 +159,21 @@ do -- Schema
                     widgetType = Setting_Enum.WidgetType.Container,
                     children   = {
                         {
+                            widgetName               = L["Config - Behavior - MenuStyle"],
+                            widgetDescription        = Setting_Define.Descriptor{ description = function()
+                                -- How a Relaxed menu closes depends on Right-Click to Cancel.
+                                local key = "Config - Behavior - MenuStyle - Description"
+                                if Config.DBGlobal:GetVariable("RightClickDismiss") then key = key .. " - RightClick" end
+                                return L[key]
+                            end },
+                            widgetType               = Setting_Enum.WidgetType.SelectionMenu,
+                            widgetSelectionMenu_data = { -- in env.Enum.MenuStyle's order (Config.lua)
+                                L["Config - Behavior - MenuStyle - Quick"],
+                                L["Config - Behavior - MenuStyle - Relaxed"]
+                            },
+                            key                      = "MenuStyle"
+                        },
+                        {
                             widgetName                     = L["Config - Behavior - RevealDelay"],
                             widgetDescription              = Setting_Define.Descriptor{ description = L["Config - Behavior - RevealDelay - Description"] },
                             widgetType                     = Setting_Enum.WidgetType.Range,
@@ -159,7 +181,9 @@ do -- Schema
                             widgetRange_max                = 0.5,
                             widgetRange_step               = 0.05,
                             widgetRange_textFormattingFunc = function(value) return string.format("%.2fs", value) end,
-                            key                            = "RevealDelay"
+                            key                            = "RevealDelay",
+                            -- Relaxed menus show at once: there's no tap to wait for.
+                            showWhen                       = function() return not IsRelaxed() end
                         },
                         {
                             widgetName                 = L["Config - Behavior - Deadzone"],
