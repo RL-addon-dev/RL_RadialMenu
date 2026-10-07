@@ -5,6 +5,8 @@
             name the game would always cast the highest rank
             anyRank: true to cast the highest rank you know instead (by name; WoW Forever), so it
             upgrades itself as you learn ranks. `id` is then just one of its ranks
+            byId: true to always cast by id (profession spells: by name, the game can pick the
+            passive skill-line spell of the same name, which does nothing)
             pet: true for a pet ability (hidden while you have no pet)
 ]]
 
@@ -103,6 +105,7 @@ end
 --- work by id at all (Survival's Kill Command: no cast, no charges); the id is only the fallback
 --- when the name isn't known yet.
 local function SpellByName(slice)
+    if slice.byId and slice.id then return slice.id end
     if not slice.anyRank and Ring_Kinds.GetSpellRank(slice.id) then return slice.id end -- this exact rank
     return slice.name or C_Spell.GetSpellName(slice.id) or slice.id
 end

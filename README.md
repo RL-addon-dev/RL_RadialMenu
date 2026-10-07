@@ -8,7 +8,7 @@ wheel. **Hold a key, flick the mouse, release.**
 - One keybind per menu, as many menus as you like.
 - Works in combat.
 - Built-in menus that fill themselves: quest items, hearthstones, trinkets, season teleports,
-  markers, specializations and talent loadouts.
+  markers, specializations, talent loadouts and professions.
 - A **quick action** for a tap: press and release without moving, and the action fires without
   the menu ever appearing.
 
@@ -66,15 +66,16 @@ These fill themselves and stay up to date. Give them a keybind and rearrange the
 
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
-| Quest Items | usable quest items from your quest log and bags (Forever: from your bags) | ✓ | ✓ |
 | Hearthstones | your Hearthstone and the hearthstone toys you own | ✓ | — |
-| Trinkets & On-Use | every equipped item with a use effect | ✓ | ✓ |
+| Professions | your professions (opens their window) and their extra spells: Disenchant, Prospecting, Survey, Fishing… | ✓ | ✓ |
+| Quest Items | usable quest items from your quest log and bags (Forever: from your bags) | ✓ | ✓ |
 | Season Teleports | the current Mythic+ season's dungeon teleports you've earned | ✓ | — |
-| Target Markers | all eight target markers, and Clear | ✓ | ✓ |
-| World Markers | all eight world markers, and Clear | ✓ | ✓ |
-| Zone and Extra | the Zone Ability and the Extra Action Button | ✓ | — |
 | Specializations | the specs of your class you can switch to | ✓ | — |
 | Talent Loadouts | your current spec's saved builds, except the active one | ✓ | — |
+| Target Markers | all eight target markers, and Clear | ✓ | ✓ |
+| Trinkets & On-Use | every equipped item with a use effect | ✓ | ✓ |
+| World Markers | all eight world markers, and Clear | ✓ | ✓ |
+| Zone and Extra | the Zone Ability and the Extra Action Button | ✓ | — |
 
 ## Settings
 
