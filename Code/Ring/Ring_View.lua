@@ -21,6 +21,10 @@ local INTRO_DURATION = 0.2
 local OUTRO_DURATION = 0.13
 local ANIM_DISTANCE = 20
 
+-- Icon states (resources, range, active): range has no event of its own, so all of them are
+-- refreshed this often while open. Blizzard's action bars check range on the same interval.
+local STATE_INTERVAL = TOOLTIP_UPDATE_TIME or 0.2
+
 local function Clamp01(value) return min(max(value, 0), 1) end
 
 local function InOutCubic(p)
@@ -34,6 +38,7 @@ local Guide = env.AX_Modules:Import("@\\Ring\\CursorGuide").Frame
 
 local View = Ring_Layout.CreateWheel(UIParent, "RLRM_RingView")
 View:SetFrameStrata("FULLSCREEN_DIALOG")
+View:SetShowStates(true)
 View:Hide()
 
 local function UpdateCenter(self, inDeadzone, moved)
@@ -104,6 +109,10 @@ local function OnUpdate(self)
         self.revealStart = now
     end
     local alive = UpdateAnimation(self, now)
+    if alive and not self.closing and now >= (self.nextStateUpdate or 0) then
+        self.nextStateUpdate = now + STATE_INTERVAL
+        self:UpdateStates()
+    end
     if self.useGuide then
         if alive then Guide:SetAlpha(self:GetAlpha()) else Guide:Hide() end
     end
@@ -152,6 +161,7 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices)
     View.deadzone = Ring_Data.GetDeadzone()
     View.revealStart = nil
     View.closing = false
+    View.nextStateUpdate = nil
     View.animatedOffset = -ANIM_DISTANCE
 
     View:SetShowLabels(Config.DBGlobal:GetVariable("ShowActionNames"))

@@ -5,6 +5,13 @@
 local env = select(2, ...)
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
+--- The spell the macro would cast right now (its cooldown and state follow it).
+local function MacroSpell(slice)
+    local index = slice.name and GetMacroIndexByName(slice.name)
+    local spellID = index and index > 0 and GetMacroSpell(index)
+    if spellID then return "spell", spellID end
+end
+
 Ring_Kinds.Register({
     kind = "macro",
 
@@ -21,11 +28,8 @@ Ring_Kinds.Register({
     label = function(slice) return slice.name end,
 
     -- Follows the spell the macro would cast.
-    cooldown = function(slice)
-        local index = slice.name and GetMacroIndexByName(slice.name)
-        local spellID = index and index > 0 and GetMacroSpell(index)
-        if spellID then return "spell", spellID end
-    end,
+    cooldown = MacroSpell,
+    state    = MacroSpell,
 
     search = {
         filter = "macro",

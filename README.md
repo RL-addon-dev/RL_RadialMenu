@@ -9,8 +9,8 @@ wheel. **Hold a key, flick the mouse, release.**
 - Works in combat.
 - Built-in menus that fill themselves: quest items, hearthstones, trinkets, season teleports,
   markers, specializations, talent loadouts and professions.
-- A **quick action** for a tap: press and release without moving, and the action fires without
-  the menu ever appearing.
+- A **quick action** for a tap: press and release without moving. The action fires without the
+  menu ever appearing.
 
 ## Getting started
 
@@ -30,8 +30,8 @@ Then hold your key in the game, move the mouse toward an action and let go.
 - **Cancel:** right-click (Right-Click to Cancel, on by default), or move back to the center (the X)
   and release.
 - **Quick action:** tap the keybind without moving the mouse. Release before the **Reveal
-  Delay** and the menu never even shows. The quick action can be the last
-  action you used, a fixed one, or an action that's only on the tap and not in the menu.
+  Delay** and the menu never even shows. The quick action can be the last action you used, a
+  fixed one, or an action that's only on the tap and not in the menu.
 
 ![A tap fires the quick action without the menu appearing](Media/quick-action.gif)
 
@@ -53,12 +53,20 @@ Then hold your key in the game, move the mouse toward an action and let go.
 | Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
-Actions that have nothing to fire right now (an item you're out of, a pet ability with no pet, another class's spell)
-are left out of the menu until they're usable again. Cooldowns and charges show on the icons.
+Actions that have nothing to fire right now are left out of the menu until they're usable again:
+an item you're out of, a pet ability with no pet, another class's spell.
 
-**Submenus:** a menu can contain another menu. By default it takes one slot: while holding your
-keybind, **scroll the mouse wheel** over it to cycle through its actions, then release on the
-one shown. Double-click it in the settings to **spread** its actions into the menu instead.
+The icons show what the game shows on your action bars:
+
+- Cooldowns and charges.
+- Blue without enough resources, grey while unusable.
+- Red when your target is out of range (like Blizzard's Cooldown Manager).
+- A glow when the spell procs.
+- A highlight on your active stance or form.
+
+**Submenus:** a menu can contain another menu. By default it takes one slot. While holding your
+keybind, **scroll the mouse wheel** over it to cycle through its actions, and release on the one
+shown. Double-click it in the settings to **spread** its actions into the menu instead.
 
 ## Built-in menus
 

@@ -242,7 +242,7 @@ local CURRENT_SEASON = {
 -- { map = 525, spell = 1216786, name = "Operation: Floodgate" },
 -- { map = 542, spell = 1237215, name = "Eco-Dome Al'dani" },
 
-local IsKnown = (C_SpellBook and C_SpellBook.IsSpellKnown) or IsPlayerSpell
+local IsKnown = C_SpellBook.IsSpellKnown
 
 --- The spell (or the one of a faction's spells) you know, or nil.
 local function KnownSpell(spell)
