@@ -57,6 +57,15 @@ function Ring_Actions.GetCooldownSource(slice)
     if definition and definition.cooldown then return definition.cooldown(slice) end
 end
 
+--- What a slice's icon state follows in the in-game menu (usable, in range, active): a spell, an
+--- item or an equipped slot. Toys and the like have none (they're always usable).
+--- @return string|nil kind "spell" | "item" | "inventory"
+--- @return number|string|nil id (a spell may be a name: cast by name, see Spell.lua)
+function Ring_Actions.GetStateSource(slice)
+    local definition = Get(slice.kind)
+    if definition and definition.state then return definition.state(slice) end
+end
+
 --- Shows `slice` in `tooltip` (already owned); false when the kind has nothing richer than a name.
 function Ring_Actions.SetTooltip(tooltip, slice)
     local definition = Get(slice.kind)

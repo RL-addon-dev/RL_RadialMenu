@@ -49,6 +49,7 @@ Ring_Kinds.Register({
     end,
 
     cooldown = function(slice) return "inventory", slice.slot end,
+    state    = function(slice) return "inventory", slice.slot end,
 
     condition = "equipslot",
     available = function(slice) return HasUse(slice.slot) end,

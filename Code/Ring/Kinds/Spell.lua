@@ -18,13 +18,10 @@ local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local NUM_PET_ACTION_SLOTS = NUM_PET_ACTION_SLOTS or 10
-local GetSpellInfoByName = C_Spell.GetSpellInfo or GetSpellInfo -- nil for a name you don't know
 
---- Whether you know spell `id`: C_SpellBook.IsSpellKnown, or where a client doesn't have it, the
---- older calls it replaces.
+--- Whether you know spell `id`.
 local function IsSpellKnown(id)
-    if C_SpellBook and C_SpellBook.IsSpellKnown then return C_SpellBook.IsSpellKnown(id) and true or false end
-    return IsPlayerSpell(id) or (IsSpellKnownOrOverridesKnown and IsSpellKnownOrOverridesKnown(id)) or false
+    return C_SpellBook.IsSpellKnown(id) and true or false
 end
 
 --- Pet ability id for cursor info from the pet spellbook or pet bar. The values differ by source
@@ -126,13 +123,13 @@ end
 --- a profession spell), that id must be known.
 local function IsKnown(slice)
     local spell = SpellByName(slice)
-    if type(spell) == "string" then return (GetSpellInfoByName(spell)) ~= nil end
+    if type(spell) == "string" then return C_Spell.GetSpellInfo(spell) ~= nil end -- nil for a name you don't know
     return IsSpellKnown(spell)
 end
 
 --- The spell id a tooltip shows: for a highest-rank spell, the rank its name resolves to now.
 local function GetShownSpellID(slice)
-    if slice.anyRank and C_Spell.GetSpellInfo then
+    if slice.anyRank then
         local info = C_Spell.GetSpellInfo(SpellByName(slice))
         if info and info.spellID then return info.spellID end
     end
@@ -162,6 +159,8 @@ Ring_Kinds.Register({
     end,
 
     cooldown = function(slice) return "spell", SpellByName(slice) end,
+    -- Not pet abilities: the player spell checks don't answer for them (they'd look unusable).
+    state    = function(slice) if not slice.pet then return "spell", SpellByName(slice) end end,
 
     -- A spell you know has no rule at all (no badge on every spell in the preview); one you don't
     -- gets "known", and shows again once you learn it (Ring_Auto rebuilds on SPELLS_CHANGED).

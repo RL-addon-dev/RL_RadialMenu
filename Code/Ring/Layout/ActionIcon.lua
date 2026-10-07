@@ -13,6 +13,10 @@ local GetAtlasInfo = C_Texture.GetAtlasInfo
 -- Retail action button look (ActionButtonTemplate: 45x45 button, 46x45 frame art)
 local ATLAS_ICON_BORDER = "UI-HUD-ActionBar-IconFrame"
 local ATLAS_ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"
+local ATLAS_ICON_CHECKED = "UI-HUD-ActionBar-IconFrame-Mouseover" -- ActionButtonTemplate's CheckedTexture
+local CHECKED_FALLBACK = "Interface\\Buttons\\CheckButtonHilight"
+local ATLAS_OUT_OF_RANGE = "UI-CooldownManager-OORshadow" -- the Cooldown Manager's out of range shade
+local OUT_OF_RANGE_ALPHA = 0.5
 local ACTION_BUTTON_SIZE = 45
 local ICON_BORDER_WIDTH_RATIO = 46 / ACTION_BUTTON_SIZE
 local COOLDOWN_INSET_RATIO = 1 / ACTION_BUTTON_SIZE
@@ -61,10 +65,34 @@ function Ring_Layout.CreateActionIcon(parent, size)
     mask:SetPoint("CENTER", frame.Icon)
     frame.Icon:AddMaskTexture(mask)
 
+    -- Out of range: a shadow over the icon besides its red tint, like the Cooldown Manager
+    -- (UpdateIconState). Clients without its art get the tint only.
+    if Private.HasAtlas(ATLAS_OUT_OF_RANGE) then
+        frame.OutOfRange = frame:CreateTexture(nil, "OVERLAY", nil, 4)
+        frame.OutOfRange:SetAtlas(ATLAS_OUT_OF_RANGE)
+        frame.OutOfRange:SetAlpha(OUT_OF_RANGE_ALPHA)
+        frame.OutOfRange:SetAllPoints(frame.Icon)
+        frame.OutOfRange:AddMaskTexture(mask)
+        frame.OutOfRange:Hide()
+    end
+
     frame.Border = frame:CreateTexture(nil, "OVERLAY", nil, 4)
     frame.Border:SetAtlas(ATLAS_ICON_BORDER)
     frame.Border:SetSize(size * ICON_BORDER_WIDTH_RATIO, size)
     frame.Border:SetPoint("TOPLEFT")
+
+    -- Active stance, form or current spell: the action bars' checked frame (UpdateIconState).
+    frame.Checked = frame:CreateTexture(nil, "OVERLAY", nil, 5)
+    if Private.HasAtlas(ATLAS_ICON_CHECKED) then
+        frame.Checked:SetAtlas(ATLAS_ICON_CHECKED)
+        frame.Checked:SetSize(size * ICON_BORDER_WIDTH_RATIO, size)
+        frame.Checked:SetPoint("TOPLEFT")
+    else
+        frame.Checked:SetTexture(CHECKED_FALLBACK)
+        frame.Checked:SetBlendMode("ADD")
+        frame.Checked:SetAllPoints(frame.Icon)
+    end
+    frame.Checked:Hide()
 
     -- Cooldown swipe, inset so it stays inside the border, plus the charge recharge edge
     -- (like ActionButtonTemplate / LibActionButton's charge cooldown).
@@ -154,5 +182,115 @@ function Ring_Layout.UpdateIconCooldown(icon, slice)
         icon.Cooldown:Clear()
         icon.ChargeCooldown:Clear()
         icon.Count:SetText(nil)
+    end
+end
+
+
+
+-- Icon states (in-game menu): Blizzard's action button colors and checked frame
+
+local IsSpellUsable, IsSpellInRange, IsCurrentSpell = C_Spell.IsSpellUsable, C_Spell.IsSpellInRange, C_Spell.IsCurrentSpell
+local IsUsableItem = C_Item.IsUsableItem
+local IsSpellOverlayed = C_SpellActivationOverlay.IsSpellOverlayed
+
+-- The Cooldown Manager's colors (CooldownViewerConstants), the same as the action bars' blue and grey.
+local COLOR_OUT_OF_RANGE = { 0.64, 0.15, 0.15 }
+local COLOR_NO_RESOURCES = { 0.5, 0.5, 1.0 }
+local COLOR_UNUSABLE = { 0.4, 0.4, 0.4 }
+
+--- A value to act on: nil while it's secret (12.0 combat), so the icon just stays plain.
+local function Plain(value)
+    if issecretvalue(value) then return nil end
+    return value
+end
+
+--- Whether `spell` (an id or a name) is the active stance / form / aura on the stance bar.
+local function IsActiveForm(spell)
+    local name = type(spell) == "number" and C_Spell.GetSpellName(spell) or spell
+    for i = 1, GetNumShapeshiftForms() do
+        local _, active, _, formSpellID = GetShapeshiftFormInfo(i)
+        if Plain(active) and formSpellID and (formSpellID == spell or C_Spell.GetSpellName(formSpellID) == name) then
+            return true
+        end
+    end
+    return false
+end
+
+--- Whether `spell` (an id or a name) has its proc glow up, like on the action bars: the spell
+--- itself or what it's replaced by right now.
+local function IsProcGlowing(spell)
+    local spellID = spell
+    if type(spell) ~= "number" then
+        local info = C_Spell.GetSpellInfo(spell)
+        spellID = info and info.spellID
+    end
+    if not spellID then return false end
+    if Plain(IsSpellOverlayed(spellID)) then return true end
+    local override = C_Spell.GetOverrideSpell and C_Spell.GetOverrideSpell(spellID) -- not on every client (classic era lacks it)
+    return override and override ~= spellID and Plain(IsSpellOverlayed(override)) and true or false
+end
+
+--- Shows or hides the proc glow: Blizzard's spell alert (the action bars' and the Cooldown
+--- Manager's). `skipBirth`: straight to the loop, without the burst (the glow was already up when
+--- the icon appeared). Shown again from scratch each time: the alert's loop doesn't restart by
+--- itself after the menu was hidden.
+local function SetProcGlow(icon, shown, skipBirth)
+    ActionButtonSpellAlertManager:HideAlert(icon)
+    if shown then ActionButtonSpellAlertManager:ShowAlert(icon, skipBirth) end
+end
+
+--- @return boolean|nil usable
+--- @return boolean|nil noResources
+--- @return boolean|nil inRange nil: no range to show (no target, or the spell has none)
+--- @return boolean active
+--- @return boolean glowing proc glow
+local function GetSpellState(spell)
+    local usable, noResources = IsSpellUsable(spell)
+    local inRange
+    if UnitExists("target") then
+        inRange = Plain(IsSpellInRange(spell, "target"))
+    end
+    local active = Plain(IsCurrentSpell(spell)) or IsActiveForm(spell)
+    return Plain(usable), Plain(noResources), inRange, active and true or false, IsProcGlowing(spell)
+end
+
+--- Shows whether `slice` can be used right now, like the Cooldown Manager: red and shaded while
+--- your target is out of range, blue without enough resources, grey while unusable, and the proc
+--- glow; plus the action bars' checked frame while it's your active stance or form. Plain for
+--- slices without a state source (and nil).
+--- @param fresh boolean|nil the icon was just given `slice` (the menu opened, a wedge changed):
+---   its glow is set up again, without the burst
+function Ring_Layout.UpdateIconState(icon, slice, fresh)
+    local kind, id = nil, nil
+    if slice then kind, id = Ring_Actions.GetStateSource(slice) end
+
+    local usable, noResources, inRange, active, glowing = true, false, nil, false, false
+    if kind == "spell" and id then
+        usable, noResources, inRange, active, glowing = GetSpellState(id)
+    elseif kind == "item" and id then
+        usable, noResources = IsUsableItem(id)
+    elseif kind == "inventory" and id then
+        local itemID = GetInventoryItemID("player", id)
+        if itemID then usable, noResources = IsUsableItem(itemID) end
+    end
+    usable, noResources = Plain(usable), Plain(noResources)
+
+    local color
+    if inRange == false then
+        color = COLOR_OUT_OF_RANGE
+    elseif usable == false then
+        color = noResources and COLOR_NO_RESOURCES or COLOR_UNUSABLE
+    end
+    if color then
+        icon.Icon:SetVertexColor(color[1], color[2], color[3])
+    else
+        icon.Icon:SetVertexColor(1, 1, 1)
+    end
+    if icon.OutOfRange then icon.OutOfRange:SetShown(inRange == false) end
+    icon.Checked:SetShown(active)
+
+    if fresh or glowing ~= (icon.procGlowing or false) then
+        if glowing or icon.procGlowing then SetProcGlow(icon, glowing, fresh) end
+        icon.procGlowing = glowing
     end
 end

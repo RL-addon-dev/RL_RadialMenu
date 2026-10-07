@@ -374,6 +374,7 @@ function WheelMixin:SetSlices(slices, iconOffset, hasTapOnly)
     self.slices = {}
     for i = 1, count do self.slices[i] = slices[i] end
     self:UpdateCooldowns()
+    self:UpdateStates(true)
 end
 
 
@@ -445,6 +446,21 @@ function WheelMixin:UpdateCooldowns()
     Ring_Layout.UpdateIconCooldown(self.Quick, self.quickSlice)
 end
 
+--- Icon states (usable, in range, active; Ring_Layout.UpdateIconState): the in-game menu only,
+--- which refreshes them while open (Ring_View). The settings preview keeps plain icons.
+function WheelMixin:SetShowStates(shown)
+    self.showStates = shown
+end
+
+--- @param fresh boolean|nil the icons were just given their slices (Ring_Layout.UpdateIconState)
+function WheelMixin:UpdateStates(fresh)
+    if not self.showStates then return end
+    for i = 1, self.sliceCount or 0 do
+        Ring_Layout.UpdateIconState(self.Wedges[i].Button, self.slices[i], fresh)
+    end
+    Ring_Layout.UpdateIconState(self.Quick, self.quickSlice, fresh)
+end
+
 --- Replaces what one wedge shows (a nested ring scrolled to another child slice).
 function WheelMixin:SetSliceSlice(index, slice)
     local wedge = self.Wedges[index]
@@ -453,6 +469,7 @@ function WheelMixin:SetSliceSlice(index, slice)
     Ring_Layout.SetIcon(wedge.Button.Icon, Ring_Actions.GetIcon(slice))
     SetWedgeLabel(self, wedge, slice)
     Ring_Layout.UpdateIconCooldown(wedge.Button, slice)
+    if self.showStates then Ring_Layout.UpdateIconState(wedge.Button, slice, true) end
 end
 
 --- The highlighted action's name beside its icon (the in-game menu, per the Show Action Names
@@ -473,6 +490,7 @@ function WheelMixin:SetQuickIcon(icon, slice)
     Ring_Layout.SetIcon(self.Quick.Icon, icon)
     self.quickSlice = slice
     Ring_Layout.UpdateIconCooldown(self.Quick, slice)
+    if self.showStates then Ring_Layout.UpdateIconState(self.Quick, slice, true) end
 end
 
 function Ring_Layout.CreateWheel(parent, name)

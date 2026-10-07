@@ -18,6 +18,12 @@ local function GetShownSpell()
     return select(2, GetZoneAbilitySpell())
 end
 
+--- The ability shown right now (its cooldown and state follow it).
+local function ShownSpellSource()
+    local spellID = GetShownSpell()
+    if spellID then return "spell", spellID end
+end
+
 Ring_Kinds.Register({
     kind = "zone",
     versions = { env.GameVersion.Retail },
@@ -44,10 +50,8 @@ Ring_Kinds.Register({
         return name and format("%s: %s", L["Config - Rings - Special - Zone"], name) or L["Config - Rings - Special - Zone"]
     end,
 
-    cooldown = function()
-        local spellID = GetShownSpell()
-        if spellID then return "spell", spellID end
-    end,
+    cooldown = ShownSpellSource,
+    state    = ShownSpellSource,
 
     condition = "zone",
     available = function() return GetZoneAbilitySpell() ~= nil end,

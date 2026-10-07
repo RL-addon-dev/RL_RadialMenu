@@ -24,6 +24,7 @@ Ring_Kinds.Register({
     label = function(slice) return C_Item.GetItemNameByID(slice.id) or ("item:" .. slice.id) end,
 
     cooldown = function(slice) return "item", slice.id end,
+    state    = function(slice) return "item", slice.id end,
 
     condition = "item",
     available = function(slice) return C_Item.GetItemCount(slice.id) > 0 end,

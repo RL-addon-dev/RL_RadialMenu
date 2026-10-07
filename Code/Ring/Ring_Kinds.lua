@@ -13,6 +13,8 @@
             icon      = function(slice, depth) return icon end,
             label     = function(slice) return text end,
             cooldown  = function(slice) return "spell" | "item" | "inventory", id end,
+            state     = function(slice) return "spell" | "item" | "inventory", id end, -- icon states
+                                                                  -- in game (usable, range, active, proc)
             condition = "item" | function(slice) return key end,  -- visibility rule: its locale key
             available = function(slice, depth) return boolean end, -- checked while `condition` is set
             tooltip   = function(tooltip, slice) return handled end, -- Add Action result rows
