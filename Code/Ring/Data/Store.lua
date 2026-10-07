@@ -189,7 +189,8 @@ end
 function Ring_Data.GetSliceKey(slice)
     local value = slice.id or slice.command or slice.slot or slice.guid or slice.ring
         or slice.token or slice.name
-    return slice.kind .. ":" .. tostring(value)
+    -- A highest-rank spell isn't the same action as the rank its id names.
+    return slice.kind .. ":" .. tostring(value) .. (slice.anyRank and ":any" or "")
 end
 
 --- Current child slice of a nested ring slice, remembered per character (1 if never scrolled).
