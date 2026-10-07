@@ -42,6 +42,7 @@ local tinsert = table.insert
 local NAV_INDENT = 12        -- cards and buttons are indented; the scroll bar sits in the gap
 local CARD_HEIGHT = 40
 local CARD_SPACING = 3
+local CARD_RIGHT_WIDTH = 64  -- the detail line's right-hand text; the left text stops short of it
 local NEW_BUTTON_HEIGHT = 28
 local NEW_BUTTON_GAP = 8
 local SCROLLBAR_WIDTH = 6
@@ -71,7 +72,21 @@ function CardMixin:OnLoad()
     self:RegisterMouseEvents()
     self:HookButtonStateChange(self.UpdateAnimation)
     self:HookClick(self.OnCardClick)
+    self:HookMouseEnter(self.ShowFullText)
+    self:HookMouseLeave(function(card) if GameTooltip:GetOwner() == card then GameTooltip:Hide() end end)
     self:UpdateAnimation()
+end
+
+--- Hovered: when any of the card's text is cut off ("..."), a tooltip shows all of it.
+function CardMixin:ShowFullText()
+    if not (self.Title:IsTruncated() or self.Left:IsTruncated() or self.Right:IsTruncated()) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(self.Title:GetText() or "", 1, 1, 1)
+    local left, right = self.Left:GetText(), self.Right:GetText()
+    if (left and left ~= "") or (right and right ~= "") then
+        GameTooltip:AddDoubleLine(left or "", right or "", 0.8, 0.8, 0.8, 0.8, 0.8, 0.8)
+    end
+    GameTooltip:Show()
 end
 
 function CardMixin:OnCardClick()
@@ -101,7 +116,8 @@ function CardMixin:UpdateAnimation()
     self.Info:SetAlpha((self.isSelected or state ~= "NORMAL") and 1 or 0.6)
 end
 
---- Title, and a detail line with text on the left and on the right.
+--- Title, and a detail line with text on the left and on the right. Text that doesn't fit is cut
+--- off with "..."; hovering the card then shows all of it (ShowFullText).
 local Card = UIKit.Template(function(id, name, children, ...)
     local frame =
         Frame(name, {
@@ -125,14 +141,14 @@ local Card = UIKit.Template(function(id, name, children, ...)
                         :fontObject(UIFont.UIFontObjectNormal11)
                         :textAlignment("LEFT", "MIDDLE")
                         :point(UIKit.Enum.Point.Left)
-                        :size(UIKit.UI.P_FILL, 12),
+                        :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = CARD_RIGHT_WIDTH + 4 }, 12),
 
                     Text(name .. ".Detail.Right")
                         :id("Right", id)
                         :fontObject(UIFont.UIFontObjectNormal11)
                         :textAlignment("RIGHT", "MIDDLE")
                         :point(UIKit.Enum.Point.Right)
-                        :size(UIKit.UI.P_FILL, 12)
+                        :size(CARD_RIGHT_WIDTH, 12)
                 })
                     :alpha(0.6)
                     :size(UIKit.UI.P_FILL, 12)
