@@ -3,6 +3,8 @@
             spec variants and talent replacements such as Kill Command resolve correctly. In game
             versions with spell ranks (WoW Forever), a ranked spell is cast by id instead: by
             name the game would always cast the highest rank
+            anyRank: true to cast the highest rank you know instead (by name; WoW Forever), so it
+            upgrades itself as you learn ranks. `id` is then just one of its ranks
             pet: true for a pet ability (hidden while you have no pet)
 ]]
 
@@ -32,38 +34,68 @@ local function PetSpellFromCursor(...)
     end
 end
 
+-- Ranked spells (WoW Forever): each rank shows its rank under the name, like the spellbook, and
+-- the ranks of one spell sort in order. `highest` collects, per name, the highest rank you know.
+local function NoteRank(candidate, spellID, name, icon, highest)
+    local rankText, rank = Ring_Kinds.GetSpellRank(spellID)
+    if not rankText then return end
+    candidate.note = rankText
+    candidate.order = rank
+    local best = highest[name]
+    if name and (not best or rank > best.rank) then
+        highest[name] = { id = spellID, rank = rank, icon = icon }
+    end
+end
+
+--- Each ranked spell once more, not tied to a rank (cast by name: your highest rank), listed
+--- before its ranks (order 0). `fields` adds to the slice (pet = true); `kindLabel` replaces the
+--- kind column's text (Pet Spell).
+local function AddHighestRanks(add, highest, fields, kindLabel)
+    for name, best in pairs(highest) do
+        local slice = { kind = "spell", id = best.id, anyRank = true }
+        for key, value in pairs(fields or {}) do slice[key] = value end
+        local candidate = add(slice, name, best.icon)
+        if candidate then
+            candidate.note = L["Config - Rings - Search - Note - HighestRank"]
+            candidate.order = 0
+            candidate.kindLabel = kindLabel
+        end
+    end
+end
+
 -- Spellbook spells, flyout spells included (Call Pet, Portals, ...).
 local function ScanPlayerSpells(add, seen)
+    local highest = {}
     Ring_Kinds.ForEachPlayerSpell(function(spellID, info)
         if info.isPassive or seen[spellID] then return end
         seen[spellID] = true
         local candidate = add({ kind = "spell", id = spellID }, info.name, info.icon)
         if not candidate then return end
-        -- Ranked spells (WoW Forever): the rank under the name, like the spellbook, and the ranks
-        -- of one spell in order.
-        local rankText, rank = Ring_Kinds.GetSpellRank(spellID)
-        if rankText then
-            candidate.note = rankText
-            candidate.order = rank
-        end
+        NoteRank(candidate, spellID, info.name, info.icon, highest)
         -- Other specializations' spells, for menus used in another spec: listed after.
         if info.isOffSpec then
             candidate.group = 1
             candidate.note = L["Config - Rings - Search - Note - OtherSpec"]
         end
     end)
+    AddHighestRanks(add, highest)
 end
 
 -- Pet abilities (current pet), stored as spell slices marked `pet`.
 local function ScanPetSpells(add, seen)
+    local highest = {}
     for _, petSpell in ipairs(Ring_Kinds.GetPetSpells()) do
         if not seen[petSpell.spellID] then
             seen[petSpell.spellID] = true
             local name = petSpell.name or C_Spell.GetSpellName(petSpell.spellID)
             local candidate = add({ kind = "spell", id = petSpell.spellID, pet = true }, name, petSpell.icon)
-            if candidate then candidate.kindLabel = L["Config - Rings - Search - Kind - PetSpell"] end
+            if candidate then
+                candidate.kindLabel = L["Config - Rings - Search - Kind - PetSpell"]
+                NoteRank(candidate, petSpell.spellID, name, petSpell.icon, highest)
+            end
         end
     end
+    AddHighestRanks(add, highest, { pet = true }, L["Config - Rings - Search - Kind - PetSpell"])
 end
 
 --- The spell to cast and to ask about: its name, like /cast <name>, so the game uses whatever
@@ -71,8 +103,17 @@ end
 --- work by id at all (Survival's Kill Command: no cast, no charges); the id is only the fallback
 --- when the name isn't known yet.
 local function SpellByName(slice)
-    if Ring_Kinds.GetSpellRank(slice.id) then return slice.id end -- this exact rank
+    if not slice.anyRank and Ring_Kinds.GetSpellRank(slice.id) then return slice.id end -- this exact rank
     return slice.name or C_Spell.GetSpellName(slice.id) or slice.id
+end
+
+--- The spell id a tooltip shows: for a highest-rank spell, the rank its name resolves to now.
+local function GetShownSpellID(slice)
+    if slice.anyRank and C_Spell.GetSpellInfo then
+        local info = C_Spell.GetSpellInfo(SpellByName(slice))
+        if info and info.spellID then return info.spellID end
+    end
+    return slice.id
 end
 
 Ring_Kinds.Register({
@@ -93,7 +134,7 @@ Ring_Kinds.Register({
     end,
     label = function(slice)
         local name = C_Spell.GetSpellName(slice.name or slice.id) or tostring(slice.name or slice.id)
-        local rankText = Ring_Kinds.GetSpellRank(slice.id)
+        local rankText = not slice.anyRank and Ring_Kinds.GetSpellRank(slice.id)
         return rankText and format("%s (%s)", name, rankText) or name
     end,
 
@@ -103,8 +144,9 @@ Ring_Kinds.Register({
     available = Ring_Kinds.HasPet,
 
     tooltip = function(tooltip, slice)
-        if not slice.id then return false end
-        tooltip:SetSpellByID(slice.id)
+        local spellID = GetShownSpellID(slice)
+        if not spellID then return false end
+        tooltip:SetSpellByID(spellID)
         return true
     end,
 

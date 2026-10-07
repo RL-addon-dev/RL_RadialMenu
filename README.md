@@ -39,7 +39,7 @@ Then hold your key in the game, move the mouse toward an action and let go.
 
 | Action | | Retail | Forever |
 |---|---|:---:|:---:|
-| Spells | including pet abilities, and spells from flyouts such as portals and dungeon teleports | ✓ | ✓ |
+| Spells | including pet abilities, and spells from flyouts such as portals and dungeon teleports (Forever: a specific rank, or always your highest rank) | ✓ | ✓ |
 | Items | consumables show how many you have; hidden while you have none | ✓ | ✓ |
 | Toys, Mounts, Battle Pets | from your collections, plus a random favorite mount or pet | ✓ | ✓ |
 | Macros | your account and character macros | ✓ | ✓ |
