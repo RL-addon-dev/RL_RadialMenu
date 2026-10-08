@@ -102,25 +102,36 @@ local function GetSavedPositions()
     return stored.EditModePositions
 end
 
---- Moves the anchor to its saved position in Edit Mode layout `layoutName` (default if none).
-local function ApplyPosition(layoutName)
+--- The active Edit Mode layout's name. Not LibEditMode's: it assumes two presets (Modern,
+--- Classic), but Blizzard numbers all its presets first, then the custom layouts.
+local function GetActiveLayoutName()
+    local info, presets = C_EditMode.GetLayouts(), EditModePresetLayoutManager.presetLayoutInfo
+    if info.activeLayout <= 2 then return info.activeLayout == 1 and "Modern" or "Classic" end -- LibEditMode's names
+    local layout = presets[info.activeLayout] or info.layouts[info.activeLayout - #presets]
+    return layout and layout.layoutName
+end
+
+--- Moves the anchor to its saved position in the active Edit Mode layout (default if none).
+local function ApplyPosition()
+    local layoutName = GetActiveLayoutName()
     local position = (layoutName and GetSavedPositions()[layoutName]) or DEFAULT_POSITION
     Anchor:ClearAllPoints()
     Anchor:SetPoint(position.point, UIParent, position.point, position.x, position.y)
     NotifyMoved()
 end
 
---- LibEditMode: the anchor was dragged in layout `layoutName`.
-local function OnPositionChanged(frame, layoutName, point, x, y)
+--- LibEditMode: the anchor was dragged in the active layout.
+local function OnPositionChanged(frame, _, point, x, y)
+    local layoutName = GetActiveLayoutName()
     if not layoutName then return end
     GetSavedPositions()[layoutName] = { point = point, x = x, y = y }
-    ApplyPosition(layoutName)
+    ApplyPosition()
 end
 
 function Ring_Display.ResetPosition()
-    local layoutName = LEM:GetActiveLayoutName()
+    local layoutName = GetActiveLayoutName()
     if layoutName then GetSavedPositions()[layoutName] = nil end
-    ApplyPosition(layoutName)
+    ApplyPosition()
 end
 
 function Ring_Display.OpenEditMode()
