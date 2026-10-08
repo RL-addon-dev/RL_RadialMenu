@@ -36,6 +36,12 @@
     A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
     on it there, since they follow the icon).
 
+    Hide Hidden Actions (the eye in the top corner, PreviewHideHidden): slices hidden in game right
+    now are left out. The wheel's indices are then positions among the shown slices
+    (self.shown[index] = stored index); callbacks translate them back (StoredCallbacks), so edits
+    still work. A slice placed between two shown slices lands right before the second one, after
+    any hidden slices in between.
+
     Files (one module, Rings_Preview; shared state on the preview object, helpers in
     "@\\Setting\\Rings\\Preview\\Private"):
         Preview.lua     this file: building the preview, SetRing / SetReadOnly
@@ -44,6 +50,7 @@
 ]]
 
 local env = select(2, ...)
+local Config = env.Config
 local L = env.L
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
@@ -75,11 +82,54 @@ Private.GAP_BUTTON_SIZE, Private.GAP_BUTTON_RADIUS = GAP_BUTTON_SIZE, GAP_BUTTON
 -- wheel art: the faded background and highlight wedges may reach a little past it.
 local PREVIEW_MARGIN = 6
 Rings_Preview.HEIGHT = math.ceil(2 * (GAP_BUTTON_RADIUS + GAP_BUTTON_SIZE / 2) * PREVIEW_SCALE) + 2 * PREVIEW_MARGIN
+local EYE_SIZE = 24
 
 
 --- Methods of the preview object; Display.lua and Input.lua add theirs.
 local PreviewMixin = {}
 Private.PreviewMixin = PreviewMixin
+
+--- The stored slice at wheel position `index` (Hide Hidden Actions leaves some out), and what it
+--- shows (a scroll submenu shows its current child).
+function PreviewMixin:GetSlice(index)
+    local stored = index and self.shown[index]
+    return stored and self.ring.slices[stored]
+end
+
+function PreviewMixin:GetShownSlice(index)
+    local stored = index and self.shown[index]
+    return stored and Ring_Live.GetStoredShownSlice(self.ring, stored)
+end
+
+--- The callbacks with wheel positions turned back into stored indices (the others are passed
+--- through). A gap position (insert so the new slice becomes #index) goes right before that shown
+--- slice, or at the end past the last.
+local function StoredCallbacks(preview, callbacks)
+    local function Stored(index) return index and preview.shown[index] end
+    local function Gap(index) return index and (preview.shown[index] or #preview.ring.slices + 1) end
+    local function Call(name, ...)
+        if callbacks[name] then return callbacks[name](...) end
+    end
+    return setmetatable({
+        onAdd            = function(index) return Call("onAdd", Gap(index)) end,
+        onRemove         = function(index) return Call("onRemove", Stored(index)) end,
+        onToggleExpand   = function(index) return Call("onToggleExpand", Stored(index)) end,
+        onQuickFromSlice = function(index) return Call("onQuickFromSlice", Stored(index)) end,
+        onQuickToWheel   = function(index, replace) return Call("onQuickToWheel", replace and Stored(index) or Gap(index), replace) end,
+        onSwap           = function(a, b) return Call("onSwap", Stored(a), Stored(b)) end,
+        onDrop           = function(slice, index) return Call("onDrop", slice, Gap(index)) end,
+        onReplace        = function(index, slice) return Call("onReplace", Stored(index), slice) end,
+        -- `to` is its position once taken out: the gap it was dropped into, before removal.
+        onMove           = function(from, to)
+            local fromStored, gap = Stored(from), Gap(to >= from and to + 1 or to)
+            return Call("onMove", fromStored, gap > fromStored and gap - 1 or gap)
+        end,
+    }, { __index = callbacks })
+end
+
+local function IsHidingHidden()
+    return Config.DBGlobal and Config.DBGlobal:GetVariable("PreviewHideHidden") and true or false
+end
 
 --- X on an icon's top-right corner. `onClick` defaults to removing the wedge's slice.
 local function CreateRemoveButton(preview, wedge, onClick)
@@ -116,7 +166,7 @@ end
 function PreviewMixin:SetReadOnly(readOnly, builtInKey)
     self.readOnly = readOnly or false
     local emptyText = self.readOnly and L["Config - Rings - Auto - Empty - " .. tostring(builtInKey)]
-    self.Empty:SetText(emptyText or L["Config - Rings - Preview - Empty"])
+    self.emptyText = emptyText or L["Config - Rings - Preview - Empty"] -- shown by SetRing
 end
 
 --- Redraws the wheel for `ring` (nil clears it).
@@ -129,11 +179,21 @@ function PreviewMixin:SetRing(ring)
     self.tooltipOwner = nil
 
     local wheel = self.wheel
-    local slices = ring and ring.slices or {}
+    -- The slices on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
+    local hideHidden = IsHidingHidden()
+    self.shown = {}
+    local slices = {}
+    for index, slice in ipairs(ring and ring.slices or {}) do
+        if not hideHidden or Ring_Actions.IsSliceAvailable(slice) then
+            self.shown[#self.shown + 1] = index
+            slices[#slices + 1] = slice
+        end
+    end
+    self:UpdateEyeButton(ring and #ring.slices - #slices or 0)
     -- Scroll slices show the child's current slice, like the in-game ring.
     local displaySlices = {}
     for index = 1, #slices do
-        displaySlices[index] = Ring_Live.GetStoredShownSlice(ring, index)
+        displaySlices[index] = self:GetShownSlice(index)
     end
     local hasTapOnly = ring ~= nil and ring.quickAction == Ring_Data.QuickAction.Custom and ring.quickSlice ~= nil
     wheel:SetSlices(displaySlices, nil, hasTapOnly)
@@ -153,8 +213,10 @@ function PreviewMixin:SetRing(ring)
         quickIcon = LAST_USED_ICON
     elseif ring then
         -- A nested (scroll) ring as the quick action shows its current child, like its wedge.
-        local quickIndex = Ring_Data.GetQuickActionIndex(ring)
-        quickSlice = quickIndex and Ring_Live.GetStoredShownSlice(ring, quickIndex) or Ring_Data.GetQuickActionSlice(ring)
+        local quickIndex, stored = Ring_Data.GetQuickActionIndex(ring), Ring_Data.GetQuickActionSlice(ring)
+        quickSlice = quickIndex and Ring_Live.GetStoredShownSlice(ring, quickIndex) or stored
+        -- Hide Hidden Actions: a hidden quick action leaves the center to cancel, like in game.
+        if hideHidden and stored and not Ring_Actions.IsSliceAvailable(stored) then quickSlice = nil end
         quickIcon = quickSlice and Ring_Actions.GetIcon(quickSlice)
     end
     wheel:SetQuickIcon(quickIcon, quickSlice)
@@ -164,8 +226,22 @@ function PreviewMixin:SetRing(ring)
     wheel:SetQuickBadges(self:GetQuickStoredSlice())
     wheel:SetCenterHighlight(false)
 
+    -- Nothing on the wheel: an empty menu, or (Hide Hidden Actions) all of it hidden right now.
+    local allHidden = #slices == 0 and ring ~= nil and #ring.slices > 0
+    self.Empty:SetText(allHidden and L["Config - Rings - Preview - AllHidden"] or self.emptyText)
     self.Empty:SetShown(#slices == 0)
     self:SetGapTarget(nil) -- places the "+" on an empty ring, hides it otherwise
+end
+
+--- The eye toggle shows the current state: crossed out while hidden actions are left out, with
+--- how many are (`hiddenCount`) beside it.
+function PreviewMixin:UpdateEyeButton(hiddenCount)
+    local hiding = IsHidingHidden()
+    local atlas = Ring_Layout.GetEyeAtlas(hiding)
+    if atlas then self.EyeButton.Texture:SetAtlas(atlas) end
+    self.EyeButton:SetAlpha(hiding and 1 or 0.6)
+    local count = hiding and hiddenCount or 0
+    self.EyeCount:SetText(count > 0 and format(L["Config - Rings - Preview - HiddenCount"], count) or "")
 end
 
 --- @param host Frame frame to center the wheel in (at least Rings_Preview.HEIGHT tall)
@@ -184,7 +260,8 @@ end
 ---     onReplace(index, slice) -> ok    dropped from the game onto a slice
 function Rings_Preview.Create(host, callbacks)
     local preview = CreateFromMixins(PreviewMixin)
-    preview.callbacks = callbacks or {}
+    preview.callbacks = StoredCallbacks(preview, callbacks or {})
+    preview.shown = {}
 
     local wheel = Ring_Layout.CreateWheel(host)
     wheel:SetScale(PREVIEW_SCALE)
@@ -255,8 +332,36 @@ function Rings_Preview.Create(host, callbacks)
     preview.Empty = wheel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     preview.Empty:SetPoint("CENTER", wheel, "CENTER", 0, -70)
     preview.Empty:SetWidth(240)
-    preview.Empty:SetText(L["Config - Rings - Preview - Empty"])
+    preview.emptyText = L["Config - Rings - Preview - Empty"] -- the empty text (SetRing shows it)
     preview.Empty:SetAlpha(0.75)
+
+    -- Hide Hidden Actions: the eye in the top corner (remembered, for every menu).
+    local eye = CreateFrame("Button", nil, host)
+    eye:SetSize(EYE_SIZE, EYE_SIZE)
+    eye:SetPoint("TOPRIGHT", host, "TOPRIGHT", -PREVIEW_MARGIN, -PREVIEW_MARGIN)
+    eye:SetFrameLevel(wheel:GetFrameLevel() + 12)
+    eye.Texture = eye:CreateTexture(nil, "OVERLAY")
+    eye.Texture:SetAllPoints()
+    eye:SetScript("OnEnter", function(self)
+        local key = IsHidingHidden() and "Config - Rings - Preview - HideHidden - On" or "Config - Rings - Preview - HideHidden - Off"
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L[key], 1, 1, 1)
+        GameTooltip:AddLine(L[key .. " - Description"], nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    eye:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    eye:SetScript("OnClick", function(self)
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        Config.DBGlobal:SetVariable("PreviewHideHidden", not IsHidingHidden())
+        preview:SetRing(preview.ring)
+        if GameTooltip:GetOwner() == self then self:GetScript("OnEnter")(self) end
+    end)
+    preview.EyeButton = eye
+    -- How many actions it leaves out right now, beside it.
+    preview.EyeCount = host:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    preview.EyeCount:SetPoint("RIGHT", eye, "LEFT", -2, 1)
+    preview.EyeCount:SetAlpha(0.75)
+    preview:UpdateEyeButton(0)
 
     return preview
 end

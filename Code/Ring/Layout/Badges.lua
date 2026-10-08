@@ -10,6 +10,7 @@
 local env = select(2, ...)
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Live = env.AX_Modules:Import("@\\Ring\\Live")
+local Ring_Layout = env.AX_Modules:Import("@\\Ring\\Layout")
 local Private = env.AX_Modules:Import("@\\Ring\\Layout\\Private")
 
 local HasAtlas, CLIP_MASK_TEXTURE = Private.HasAtlas, Private.FILL_TEXTURE
@@ -57,13 +58,16 @@ local SCROLL_PILL_WIDTH = 44
 local SCROLL_PILL_HEIGHT = 14
 
 
--- Nested ring badge
-
-local function GetScrollBadgeAtlas()
-    for _, atlas in ipairs(SCROLL_BADGE_ATLASES) do
-        if HasAtlas(atlas) then return atlas end
+--- The first of `names` this client has, or nil.
+local function FirstAtlas(names)
+    for _, name in ipairs(names) do
+        if HasAtlas(name) then return name end
     end
 end
+
+
+
+-- Nested ring badge
 
 --- Mouse icon on the icon's bottom-right corner (or a "Scroll" pill below it); child of the icon
 --- so it follows the intro/outro slide and the selected scale.
@@ -71,7 +75,7 @@ function Private.CreateScrollBadge(wheel, wedge)
     local badge = CreateFrame("Frame", nil, wedge.Button)
     badge:SetFrameLevel(wheel:GetFrameLevel() + 9)
 
-    local atlas = GetScrollBadgeAtlas()
+    local atlas = FirstAtlas(SCROLL_BADGE_ATLASES)
     if atlas then
         badge:SetSize(SCROLL_BADGE_SIZE, SCROLL_BADGE_SIZE)
         badge:SetPoint("CENTER", wedge.Button, "BOTTOMRIGHT", SCROLL_BADGE_X, SCROLL_BADGE_Y)
@@ -142,6 +146,12 @@ function Private.CreateScrollBadge(wheel, wedge)
     wedge.ExpandBadge = expand
 end
 
+--- The visibility eye's atlas (crossed out with `hidden`), or nil when this client has no such art.
+--- Also the settings preview's Hide Hidden Actions toggle.
+function Ring_Layout.GetEyeAtlas(hidden)
+    return FirstAtlas(hidden and CONDITION_HIDDEN_ATLASES or CONDITION_BADGE_ATLASES)
+end
+
 --- Eye badge on the icon's bottom-left corner: this slice hides when it has nothing to fire. The
 --- hidden (crossed-out) eye means it's hidden right now.
 function Private.CreateConditionBadge(wheel, wedge)
@@ -152,13 +162,8 @@ function Private.CreateConditionBadge(wheel, wedge)
     badge.Texture = badge:CreateTexture(nil, "OVERLAY")
     badge.Texture:SetAllPoints()
 
-    local function FirstAtlas(names)
-        for _, name in ipairs(names) do
-            if HasAtlas(name) then return name end
-        end
-    end
-    local visibleAtlas = FirstAtlas(CONDITION_BADGE_ATLASES)
-    local hiddenAtlas = FirstAtlas(CONDITION_HIDDEN_ATLASES)
+    local visibleAtlas = Ring_Layout.GetEyeAtlas(false)
+    local hiddenAtlas = Ring_Layout.GetEyeAtlas(true)
 
     -- Fallback when there's no hidden-eye art: a dark line under a light one across the eye.
     local function Slash(thickness, r, g, b, a, subLevel)
