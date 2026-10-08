@@ -19,6 +19,7 @@ local UIDef = {
     UIInput_Disabled    = ATLAS{ left = 128 / 192, top = 0 / 128, right = 192 / 192, bottom = 64 / 128 },
     UIInputCaret        = ATLAS{ left = 0 / 192, top = 64 / 128, right = 64 / 192, bottom = 128 / 128 }
 }
+UICCommonInput.UIDef = UIDef -- for boxes that look like an input (AX_Settings ElementCode)
 
 do --Input
     local TEXT_COLOR = UIKit.Define.Color_RGBA{ r = 255, g = 255, b = 255, a = 1 }

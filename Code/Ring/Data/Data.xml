@@ -5,6 +5,7 @@
     <Script file="Keybinds.lua"/>
     <Script file="QuickAction.lua"/>
     <Script file="BuiltIn.lua"/>
+    <Script file="Share.lua"/>
     <Script file="Startup.lua"/>
     <Include file="Migrations\Migrations.xml"/>
 </Ui>

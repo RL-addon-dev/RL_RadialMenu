@@ -20,6 +20,7 @@ UICCommon.ButtonSelectionMenu = UICCommonButton.SelectionMenu
 UICCommon.CheckButton = UICCommonCheckButton.New
 UICCommon.ScrollBar = UICCommonScrollBar.New
 UICCommon.Input = UICCommonInput.New
+UICCommon.InputUIDef = UICCommonInput.UIDef
 UICCommon.Range = UICCommonRange.New
 UICCommon.RangeWithText = UICCommonRange.NewWithText
 UICCommon.SelectionMenu = UICCommonSelectionMenu.New

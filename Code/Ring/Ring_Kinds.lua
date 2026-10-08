@@ -30,6 +30,11 @@
             cursor    = { item = function(info1, info2, info3) return slice end }, -- drag & drop, by cursor type
             attributesChangeWith = function() return value end,   -- apply() depends on game state:
                                                                   -- rings rebuild when this changes
+            share     = {                                         -- sharing menus as text (Data\Share.lua);
+                                                                  -- leave out: travels as is, then validate
+                pack   = function(slice, macros) return slice end,  -- what travels; nil, reason: left out
+                unpack = function(slice, plan) return slice end,    -- back into a menu; nil, reason: skipped
+            },
         })
 
     Kind names are one lowercase word ("worldmarker", "equipslot"), not CamelCase like the code's

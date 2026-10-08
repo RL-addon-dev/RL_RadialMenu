@@ -10,6 +10,10 @@
                     visible   = 2,                      -- items shown before it scrolls; leave out on
                                                         --   the last section to fill the rest
                     newButton = { text = "+ New", onClick = function() end },   -- optional
+                    actions   = {                       -- optional: a row of equal buttons (newButton's
+                        { text = "Import", onClick = function() end },  -- look) under newButton;
+                        ...                             --   the tab opens after onClick
+                    },
                     getItems  = function() return { { id, title, left, right }, ... } end,
                 },
                 ...
@@ -29,7 +33,7 @@ local env = select(2, ...)
 local Sound = env.AX_Modules:Import("ax_modules\\sound")
 local UIFont = env.AX_Modules:Import("ax_modules\\ui-font")
 local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
-local Frame, _, _, LayoutVertical, Text, ScrollView = unpack(UIKit.UI.Frames)
+local Frame, _, LayoutHorizontal, LayoutVertical, Text, ScrollView = unpack(UIKit.UI.Frames)
 local UICSharedMixin = env.AX_Modules:Import("ax_modules\\uic-sharedmixin")
 local UICCommon = env.AX_Modules:Import("ax_modules\\uic-common")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
@@ -45,6 +49,8 @@ local CARD_SPACING = 3
 local CARD_RIGHT_WIDTH = 64  -- the detail line's right-hand text; the left text stops short of it
 local NEW_BUTTON_HEIGHT = 28
 local NEW_BUTTON_GAP = 8
+local ACTION_HEIGHT = 28     -- the row of action buttons under newButton
+local ACTION_SPACING = 6
 local SCROLLBAR_WIDTH = 6
 local SECTION_GAP = 4        -- between a section's list and the next section's header
 -- The sidebar reserves 75px at the bottom for the footer, but a footer tab only uses ~35px.
@@ -258,6 +264,21 @@ local Nav = UIKit.Template(function(id, name, children, aboveHeight, sections)
                 :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = NAV_INDENT }, NEW_BUTTON_HEIGHT))
             y = y - NEW_BUTTON_HEIGHT - NEW_BUTTON_GAP
         end
+        if section.actions and #section.actions > 0 then
+            local buttons = {}
+            local count = #section.actions
+            for actionIndex in ipairs(section.actions) do
+                buttons[actionIndex] = UICCommon.ButtonRedWithText(name .. ".Action" .. index .. "_" .. actionIndex)
+                    :id(key .. "Action" .. actionIndex, id)
+                    :size(UIKit.Define.Percentage{ value = 100 / count, operator = "-", delta = ACTION_SPACING * (count - 1) / count }, ACTION_HEIGHT)
+            end
+            tinsert(elements, LayoutHorizontal(name .. ".Actions" .. index, buttons)
+                :point(UIKit.Enum.Point.TopRight)
+                :y(y)
+                :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = NAV_INDENT }, ACTION_HEIGHT)
+                :layoutSpacing(ACTION_SPACING))
+            y = y - ACTION_HEIGHT - NEW_BUTTON_GAP
+        end
 
         local height
         if section.visible then
@@ -282,10 +303,14 @@ local Nav = UIKit.Template(function(id, name, children, aboveHeight, sections)
         local refs = {
             header = index > 1 and UIKit.GetElementById(key .. "Header", id) or nil,
             newButton = section.newButton and UIKit.GetElementById(key .. "New", id) or nil,
+            actions = {},
             scroll = UIKit.GetElementById(key .. "Scroll", id),
             cards = UIKit.GetElementById(key .. "Cards", id),
             pool = {}
         }
+        for actionIndex in ipairs(section.actions or {}) do
+            refs.actions[actionIndex] = UIKit.GetElementById(key .. "Action" .. actionIndex, id)
+        end
         AutoHideScrollBar(UIKit.GetElementById(key .. "ScrollBar", id), refs.scroll, refs.cards)
         frame.sections[index] = refs
     end
@@ -374,6 +399,15 @@ function Setting_ListNav.Attach(tab, spec)
         if refs.newButton then
             refs.newButton:SetText(section.newButton.text or "")
             refs.newButton:HookClick(function() section.newButton.onClick() end)
+        end
+        for actionIndex, action in ipairs(section.actions or {}) do
+            local button = refs.actions[actionIndex]
+            button:SetText(action.text or "")
+            button:HookClick(function()
+                if action.onClick then action.onClick() end
+                if not tab:IsShown() then Setting:OpenTabByIndex(tabIndex) end
+                nav:Refresh()
+            end)
         end
     end
 
