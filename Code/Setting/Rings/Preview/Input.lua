@@ -9,7 +9,6 @@ local L = env.L
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
-local Ring_Live = env.AX_Modules:Await("@\\Ring\\Live")
 local Ring_Search = env.AX_Modules:Await("@\\Ring\\Search")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
 
@@ -148,7 +147,7 @@ function PreviewMixin:EndDrag(apply)
     end
 
     if target.mode == "center" then
-        local slice = self.ring and self.ring.slices[drag.from]
+        local slice = self.ring and self:GetSlice(drag.from)
         if slice and slice.kind ~= "ring" and self.callbacks.onQuickFromSlice then self.callbacks.onQuickFromSlice(drag.from) end
     elseif target.mode == "over" and target.index ~= drag.from then
         if self.callbacks.onSwap then self.callbacks.onSwap(drag.from, target.index) end
@@ -181,8 +180,8 @@ function PreviewMixin:UpdateDrag()
             Ring_Layout.SetIcon(self.DragIcon.Icon, Ring_Actions.GetIcon(self.ring.quickSlice))
             self.wheel.Quick:SetAlpha(DRAG_SOURCE_ALPHA)
         else
-            local slice = self.ring and self.ring.slices[drag.from]
-            Ring_Layout.SetIcon(self.DragIcon.Icon, slice and Ring_Actions.GetIcon(Ring_Live.GetStoredShownSlice(self.ring, drag.from)) or 134400)
+            local slice = self.ring and self:GetShownSlice(drag.from)
+            Ring_Layout.SetIcon(self.DragIcon.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
             self.wheel.Wedges[drag.from].Button:SetAlpha(DRAG_SOURCE_ALPHA)
         end
         self.DragIcon:Show()
@@ -291,7 +290,7 @@ function Private.OnMouseDown(wheel, button)
     if not index then return end
 
     -- Double-click a nested ring: switch between scrolling and spreading its slices.
-    local slice = preview.ring and preview.ring.slices[index]
+    local slice = preview.ring and preview:GetSlice(index)
     if slice and slice.kind == "ring" and preview.lastPressIndex == index
         and now - preview.lastPressTime <= DOUBLE_CLICK_TIME then
         preview.lastPressIndex = nil

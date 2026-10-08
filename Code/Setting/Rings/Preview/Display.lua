@@ -80,7 +80,7 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
         -- Center: sets the quick action (nothing to do when dragging the quick action itself).
         self:SetSelected(nil)
         -- Nested rings can't be the quick action: say so, and what to do instead.
-        local fromSlice = type(from) == "number" and self.ring and self.ring.slices[from]
+        local fromSlice = type(from) == "number" and self.ring and self:GetSlice(from)
         if fromSlice and fromSlice.kind == "ring" then
             label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickRing - Hint"]
         elseif from ~= "quick" then
@@ -156,7 +156,7 @@ function PreviewMixin:SetGapTarget(target)
         local radius = self:GetGapRadius()
         button:SetPoint("CENTER", self.wheel, "CENTER", cos(target.angle) * radius, sin(target.angle) * radius)
         button:Show()
-    elseif self.ring and #self.ring.slices == 0 then
+    elseif self.ring and #self.shown == 0 then
         button.insertIndex = nil
         button.tooltipAngle = -pi / 2 -- below the wheel center: tooltip opens downwards
         button:SetPoint("TOP", self.Empty, "BOTTOM", 0, -EMPTY_BUTTON_GAP)
@@ -206,7 +206,7 @@ function PreviewMixin:SetTooltipIndex(index)
         return
     end
 
-    local slice = index and self.ring and self.ring.slices[index]
+    local slice = index and self.ring and self:GetSlice(index)
     local wedge = index and self.wheel.Wedges[index]
     if not (slice and wedge) then
         if self.tooltipOwner and GameTooltip:GetOwner() == self.tooltipOwner then GameTooltip:Hide() end

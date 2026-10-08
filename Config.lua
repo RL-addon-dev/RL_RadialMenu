@@ -75,6 +75,7 @@ local DB_GLOBAL_DEFAULTS = {
     ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)
     RightClickDismiss = true, -- right click closes a held menu (Ring_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
+    PreviewHideHidden = false, -- settings preview: leave out actions hidden in game right now (eye toggle)
 }
 local DB_GLOBAL_PERSISTENT_DEFAULTS = {}
 local DB_LOCAL_DEFAULTS = {}

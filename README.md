@@ -59,7 +59,8 @@ right-click (Right-Click to Cancel) also close it.
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
 Actions that have nothing to fire right now are left out of the menu until they're usable again:
-an item you're out of, a pet ability with no pet, another class's spell.
+an item you're out of, a pet ability with no pet, another class's spell. In the settings preview,
+the eye in the top corner leaves them out too, so the preview matches the menu in game.
 
 The icons show what the game shows on your action bars:
 
