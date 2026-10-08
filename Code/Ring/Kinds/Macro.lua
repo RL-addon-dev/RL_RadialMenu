@@ -19,6 +19,23 @@ Ring_Kinds.Register({
         return slice.name ~= nil, "macro needs a name"
     end,
 
+    -- Shared with its text (Ring_Data Share.lua): the importer gets the macro, created if they
+    -- don't have it.
+    share = {
+        pack = function(slice, macros)
+            local _, icon, body = GetMacroInfo(slice.name or "")
+            if not body then return nil, "missing-macro" end
+            macros[slice.name] = { icon = icon, body = body }
+            return { kind = "macro", name = slice.name }
+        end,
+        unpack = function(slice, plan)
+            local name, reason = plan:ResolveMacro(slice.name)
+            if not name then return nil, reason end
+            slice.name = name
+            return slice
+        end,
+    },
+
     apply = function(button, suffix, slice)
         Ring_Kinds.SetAttribute(button, "type", suffix, "macro")
         Ring_Kinds.SetAttribute(button, "macro", suffix, slice.name)

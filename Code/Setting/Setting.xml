@@ -3,6 +3,8 @@
     <Include file="Rings\Preview\Preview.xml"/>
     <Script file="Rings\Rings_AddSlice.lua"/>
     <Script file="Rings\Rings_Keybind.lua"/>
+    <Script file="Rings\Share\Rings_Share.lua"/>
+    <Script file="Rings\Share\Rings_Import.lua"/>
     <Include file="Rings\Tab\Tab.xml"/>
     <Script file="Setting_Schema.lua"/>
 </Ui>

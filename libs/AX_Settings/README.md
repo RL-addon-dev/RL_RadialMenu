@@ -150,6 +150,9 @@ end
   (text on the left and on the right).
 - `visible`: cards shown before the section scrolls; leave it out on the last section to fill the
   rest of the sidebar.
+- `actions` (optional): a row of equal buttons like `newButton`, under it, for pages that aren't
+  an item (Import, Share, ...): `{ { text = "Import", onClick = ShowImport }, ... }`. Clicking one
+  calls `onClick`, opens the tab and refreshes.
 - The tab's own button becomes the first section's header; later sections get their own header.
 - `nav:Refresh()` after items or the selection change; `nav:Select(id)` selects from code
   (calls `onSelect`, opens the tab, refreshes).
@@ -176,6 +179,18 @@ Setting_Preload.UIDef                               -- the library's textures (t
 The widget templates in `Setting\Setting_Widgets.lua` (module `@\\Setting\\Widgets`: `Container`, `ContainerWithTitle`,
 `ElementInput`, `ElementButton`, `ElementSelectionMenu`, ...) can be used in custom pages, and
 the toolkit (UIKit, `uic-common`) is available to the addon too.
+
+```lua
+row:SetInfo(title, description)                     -- any element row
+row:SetIndent(1)                                    -- moved right, under the row above
+row:SetFullWidth(true)                              -- text over the whole row (nothing on the right)
+
+-- Only for custom pages: read-only text in a box (a macro's). Fits up to 3 lines (the row grows),
+-- then scrolls. Can't be clicked or edited.
+local code = Setting_Widgets.ElementCode(name)
+code:SetCode(text)
+code.onResize = function() end                     -- its height changed with its width: re-render
+```
 
 ## Limits
 

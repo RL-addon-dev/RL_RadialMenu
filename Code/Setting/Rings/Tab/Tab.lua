@@ -4,12 +4,14 @@
     Two parts:
         Sidebar       a list nav (AX_Settings Setting.AttachListNav) with two sections:
                       built-in rings (room for two, then it scrolls) and the user's rings with
-                      "+ New Menu". Cards show name, keybind and scope; clicking one opens this
-                      tab on that ring.
+                      "+ New" and Import side by side above them. Cards show name, keybind and
+                      scope; clicking one opens this tab on that ring. Import shows its page
+                      (Share\Rings_Import.lua) in the ring's place (page.isImporting).
         Tab page      single column (the content area is too narrow for two): the wheel preview
                       (with the Add Action panel under it while adding; the quick action is set on
                       the preview's center), then Menu Settings: Name, Keybind (capture),
-                      Available On, and Delete
+                      Available On, then Share Menu (Share\Rings_Share.lua; not for built-in
+                      menus), and Delete
 
     Everything edits Ring_Data; both parts rebuild on "Ring.DataChanged" while the settings are
     shown (and on "Setting.Refresh" when they're shown again, see OnSettingRefresh).
@@ -33,6 +35,8 @@ local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Rings_Preview = env.AX_Modules:Import("@\\Setting\\Rings\\Preview")
 local Rings_AddSlice = env.AX_Modules:Import("@\\Setting\\Rings\\AddSlice")
 local Rings_Keybind = env.AX_Modules:Import("@\\Setting\\Rings\\Keybind")
+local Rings_Share = env.AX_Modules:Import("@\\Setting\\Rings\\Share")
+local Rings_Import = env.AX_Modules:Import("@\\Setting\\Rings\\Import")
 local Rings_Tab = env.AX_Modules:New("@\\Setting\\Rings\\Tab")
 local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
 
@@ -54,14 +58,33 @@ function PageMixin:GetSelectedRing()
     return self.selectedRingId and Ring_Data.GetRing(self.selectedRingId)
 end
 
---- A card was clicked (the list nav then opens this tab).
+--- A card was clicked (the list nav then opens this tab). Leaves Import.
 function PageMixin:SelectRing(ringId)
     if ringId ~= self.selectedRingId then
         self.isAddingSlice = false
         Rings_Keybind.CancelCapture()
     end
+    self.isImporting = false
     self.selectedRingId = ringId
     self:Refresh()
+end
+
+--- The sidebar's Import button: that page instead of a menu's, empty (each click starts a new
+--- import).
+function PageMixin:ShowImport()
+    self.isAddingSlice = false
+    Rings_Keybind.CancelCapture()
+    self.isImporting = true
+    self.ImportPanel:Clear()
+    self:RefreshSettings()
+    self.tab:_Render()
+    -- Next frame: the list nav opens this tab after this (a hidden box can't take focus), and
+    -- the page has its new height. From the top, so the paste box is in view.
+    C_Timer.After(0, function()
+        if not self.isImporting then return end
+        self.tab.Content:ScrollToTop()
+        self.ImportPanel:FocusPaste()
+    end)
 end
 
 local function FormatRingMeta(ring)
@@ -116,6 +139,19 @@ function PageMixin:ShowPreview()
 end
 
 function PageMixin:RefreshSettings()
+    -- Import replaces the menu's page.
+    self.ImportPanel:SetShown(self.isImporting)
+    if self.isImporting then
+        self.Preview:Hide()
+        self.AddSlice:Hide()
+        self.Settings:Hide()
+        self.ShareBox:Hide()
+        self.DeleteBox:Hide()
+        self.Empty:Hide()
+        self.ImportPanel:Refresh()
+        return
+    end
+
     local ring = self:GetSelectedRing()
     -- Automatic rings can't be edited by hand, so there's nothing to add.
     if not ring or Ring_Data.IsBuiltIn(ring) then self.isAddingSlice = false end
@@ -123,6 +159,7 @@ function PageMixin:RefreshSettings()
     self.Preview:SetShown(ring ~= nil)
     self.AddSlice:SetShown(ring ~= nil and self.isAddingSlice)
     self.Settings:SetShown(ring ~= nil)
+    self.ShareBox:SetShown(ring ~= nil and not Ring_Data.IsBuiltIn(ring))
     self.DeleteBox:SetShown(ring ~= nil)
     self.Empty:SetShown(ring == nil)
     self.preview:SetReadOnly(Ring_Data.IsBuiltIn(ring), ring and ring.builtin)
@@ -135,6 +172,7 @@ function PageMixin:RefreshSettings()
     end
 
     self:RefreshSettingRows(ring)
+    if not Ring_Data.IsBuiltIn(ring) then self.ShareBox:SetRing(ring) end
 end
 
 function PageMixin:Refresh()
@@ -249,6 +287,10 @@ local Page = UIKit.Template(function(id, name, children, ...)
             })
                 :id("Settings", id),
 
+            -- This menu's share string (user menus).
+            Rings_Share.Box(name .. ".ShareBox")
+                :id("ShareBox", id),
+
             -- Delete Ring in its own untitled box, apart from the settings.
             Setting_Widgets.Container(name .. ".DeleteBox", {
                 Setting_Widgets.ElementButton(name .. ".Delete"):id("DeleteRow", id)
@@ -256,7 +298,11 @@ local Page = UIKit.Template(function(id, name, children, ...)
                 :id("DeleteBox", id),
 
             Setting_Widgets.ElementText(name .. ".Empty")
-                :id("Empty", id)
+                :id("Empty", id),
+
+            -- The sidebar's Import button shows this instead of a menu.
+            Rings_Import.Panel(name .. ".Import")
+                :id("ImportPanel", id)
         })
         :size(UIKit.UI.P_FILL, UIKit.Define.Fit{})
         :layoutSpacing(10)
@@ -272,6 +318,8 @@ local Page = UIKit.Template(function(id, name, children, ...)
     frame.KeybindRow = UIKit.GetElementById("KeybindRow", id)
     frame.ScopeRow = UIKit.GetElementById("ScopeRow", id)
     frame.DeleteRow = UIKit.GetElementById("DeleteRow", id)
+    frame.ShareBox = UIKit.GetElementById("ShareBox", id)
+    frame.ImportPanel = UIKit.GetElementById("ImportPanel", id)
 
     Mixin(frame, PageMixin)
 
@@ -304,6 +352,15 @@ function Rings_Tab.Build(parent, tab)
     page.Empty:SetInfo(L["Config - Rings - Empty"], nil)
     Private.SetupSettingRows(page)
 
+    page.ShareBox:Setup()
+    -- Import page. Its height changes as it fills: re-render next frame (it can
+    -- happen inside a UIKit render pass, where queued frames would be dropped).
+    local function RenderSoon() C_Timer.After(0, function() page.tab:_Render() end) end
+    page.ImportPanel:Setup(RenderSoon, function(rings)
+        if rings[1] then page.Nav:Select(rings[1].id) end
+    end)
+    page.ImportPanel:Hide()
+
     page.Nav = Setting.AttachListNav(tab, {
         sections = {
             {
@@ -313,11 +370,16 @@ function Rings_Tab.Build(parent, tab)
             },
             {
                 title     = L["Config - Rings - Nav - Custom"],
-                newButton = { text = L["Config - Rings - NewRing"], onClick = function() page:CreateNewRing() end },
+                -- Side by side: both make menus.
+                actions   = {
+                    { text = L["Config - Rings - NewRing"], onClick = function() page:CreateNewRing() end },
+                    { text = L["Config - Rings - Nav - Import"], onClick = function() page:ShowImport() end },
+                },
                 getItems  = function() return page:GetNavItems(false) end,
             },
         },
-        getSelected = function() return page.selectedRingId end,
+        -- No menu card lit while importing.
+        getSelected = function() return not page.isImporting and page.selectedRingId or nil end,
         onSelect    = function(ringId) page:SelectRing(ringId) end,
     })
 

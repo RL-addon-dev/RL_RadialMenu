@@ -15,7 +15,7 @@ wheel. **Hold a key, flick the mouse, release.**
 ## Getting started
 
 1. Type `/radial` (or `/radialmenu`, `/rm`), or open it from the addon drawer on the minimap.
-2. On the **Menus** tab, click **+ New Menu**.
+2. On the **Menus** tab, click **+ New**.
 3. Click **Keybind** and press the key (or combination) you want to hold.
 4. Add actions: click **+** on the menu and search, or drag spells, items, toys, macros and
    mounts straight from your spellbook, bags or collections onto it.
@@ -91,6 +91,28 @@ These fill themselves and stay up to date. Give them a keybind and rearrange the
 | World Markers | all eight world markers, and Clear | ✓ | ✓ |
 | Zone and Extra | the Zone Ability and the Extra Action Button | ✓ | — |
 
+## Sharing menus
+
+**Share:** open one of your menus and find **Share Menu** under its settings. Click the string,
+press Ctrl+C, and send it to a friend.
+
+- Its submenus come along. A built-in submenu links to the importer's own built-in menu.
+- Macros come along with their text. The box lists which ones, so nothing is shared by surprise.
+- Left out: keybinds, battle pets (tied to your account; a random favorite still works), macros
+  you've deleted, and submenus with nothing left in them. The box lists what's left out and why.
+
+**Import:** click **Import** under the menu list and paste the string (Ctrl+V). Before you import,
+the page shows:
+
+- **Menus:** each menu and its action count. A menu is renamed "Name (2)" when you already
+  have one with that name, and the page says so. Actions that can't be added here are skipped,
+  and the page says which and why.
+- **New Macros:** every macro the import creates, with its text, so you can check what it does.
+  They go into your account macros. A macro you already have (same name and text) is reused.
+
+Importing only adds new menus; nothing you have is replaced. Strings only import into the same
+game (Retail or WoW Forever), and not in combat.
+
 ## Settings
 
 Everything is in `/radial` (also under Options → AddOns).
@@ -106,8 +128,8 @@ Everything is in `/radial` (also under Options → AddOns).
 - **Menu Size** and **Show Action Names**.
 - **Menu Behavior:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), Distance to Select,
   Distance to Cancel Quick Action, Right-Click to Cancel, and how world markers are placed.
-- **Per menu:** name, keybind, quick action, and whether it's on all your characters or just
-  this one.
+- **Per menu:** name, keybind, quick action, whether it's on all your characters or just
+  this one, and its share string.
 
 ## Game versions
 

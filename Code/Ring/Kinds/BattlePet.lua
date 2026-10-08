@@ -16,6 +16,15 @@ Ring_Kinds.Register({
         return type(slice.guid) == "string", "battle pet needs a pet GUID (or \"favorite\")"
     end,
 
+    -- Not shared (Ring_Data Share.lua): a pet's GUID only means something on its owner's
+    -- account. A random favorite works anywhere.
+    share = {
+        pack = function(slice)
+            if slice.guid ~= RANDOM_FAVORITE then return nil, "battlepet" end
+            return { kind = "battlepet", guid = RANDOM_FAVORITE }
+        end,
+    },
+
     apply = function(button, suffix, slice)
         -- No secure action type summons companions; the journal API isn't protected.
         if slice.guid == RANDOM_FAVORITE then

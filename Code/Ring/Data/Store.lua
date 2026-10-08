@@ -6,6 +6,7 @@
         Keybinds.lua     keybinds (they follow the menu's scope)
         QuickAction.lua  quick action (tap), Last Used
         BuiltIn.lua      built-in menus: automatic contents, remembered order
+        Share.lua        sharing menus as text: share string, import plan, import
         Startup.lua      Initialize: saved-data migrations (Migrations\), first-run menus, built-ins
     Helpers they share are in the Private module ("@\\Ring\\Data\\Private"), not public.
 

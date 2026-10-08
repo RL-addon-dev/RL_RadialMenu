@@ -85,6 +85,18 @@ do -- Tab
         frame.ScrollBar = UIKit.GetElementById("ScrollBar", id)
         frame.Layout = UIKit.GetElementById("Layout", id)
 
+        -- The page grew or shrank (a custom page filling in): the scroll bar follows without
+        -- waiting for a scroll. Next frame, once the scroll view has its new content height.
+        local syncPending = false
+        frame.Layout:HookScript("OnSizeChanged", function()
+            if syncPending then return end
+            syncPending = true
+            C_Timer.After(0, function()
+                syncPending = false
+                frame.ScrollBar:SyncValue()
+            end)
+        end)
+
         Mixin(frame, TabMixin)
 
         return frame
@@ -414,6 +426,7 @@ do -- Widgets
         local CONTENT_HEIGHT = UIKit.Define.Fit{ delta = MARGIN }
         local INFO_X = math.ceil(MARGIN / 2)
         local INFO_WIDTH = UIKit.Define.Percentage{ value = 55, operator = "-", delta = MARGIN }
+        local INFO_FULL_WIDTH = UIKit.Define.Percentage{ value = 100, operator = "-", delta = MARGIN } -- SetFullWidth
         local INFO_HEIGHT = UIKit.Define.Fit{}
         local INFO_IMAGE_HEIGHT = UIKit.Define.Fit{ delta = math.ceil(MARGIN / 2) }
         local ACTION_X = -math.ceil(MARGIN / 2 - 3)
@@ -478,6 +491,13 @@ do -- Widgets
             self.Content:x(INDENT_MAP[indent].x)
             self.Content:width(INDENT_MAP[indent].width)
         end
+
+        --- Text over the whole row instead of the left part (a row with no control on the right,
+        --- such as a Text widget, so its text wraps at the row's edge).
+        function ElementBaseMixin:SetFullWidth(fullWidth)
+            self.Info:width(fullWidth and INFO_FULL_WIDTH or INFO_WIDTH)
+        end
+
 
         Setting_Widgets.ElementBase = UIKit.Template(function(id, name, children, ...)
             local frame =
@@ -713,6 +733,148 @@ do -- Widgets
             frame.Input.Input:fontSize(14)
 
             Mixin(frame, ElementInputMixin)
+
+            return frame
+        end)
+    end
+
+    do -- Element (Code)
+        --[[
+            Read-only text in a box on the right half of a row, such as a macro's (the title
+            wraps before it). The box fits the text up to MAX_LINES
+            lines (the row grows with it); longer text scrolls (mouse wheel, or the scroll bar
+            that shows then). It can't be clicked, selected or edited.
+
+                row = Setting_Widgets.ElementCode(name)
+                row:SetInfo(title, description)
+                row:SetCode(text)                      -- shown as is (no UI escape codes)
+                row.onResize = function() end          -- the row's height changed after a render
+                                                       --   (its width did): re-render the page
+        ]]
+        local BOX_WIDTH = UIKit.Define.Percentage{ value = 50 }
+        local INFO_WIDTH = UIKit.Define.Percentage{ value = 50, operator = "-", delta = 30 }
+        local BOX_PADDING = 10                  -- one line: 32px tall, like an input
+        local FONT_HEIGHT = 12
+        local LINE_SPACING = 3
+        local MAX_LINES = 3
+        local MAX_TEXT_HEIGHT = MAX_LINES * FONT_HEIGHT + (MAX_LINES - 1) * LINE_SPACING + 1
+        local SCROLLBAR_WIDTH = 4
+        local TEXT_INSET = BOX_PADDING * 2 + SCROLLBAR_WIDTH -- box width minus the text's
+        -- Element Base: a row is its text plus 20px, at least 17px of text. An input (32px) in a
+        -- 37px row leaves 2.5px above and below; a taller box keeps that.
+        local ROW_MIN_INFO_HEIGHT = 17
+        local ROW_EXTRA = 20 - 5
+        local TEXT_COLOR = UIKit.Define.Color_RGBA{ r = 255, g = 255, b = 255, a = 0.9 }
+
+        -- Measures text as the box shows it, to size the box (and the row) from its lines.
+        local measure = UIParent:CreateFontString(nil, "BACKGROUND")
+        measure:Hide()
+        measure:SetFontObject(UIFont.UIFontObjectNormal12)
+        measure:SetSpacing(LINE_SPACING)
+        measure:SetWordWrap(true)
+
+        local ElementCodeMixin = {}
+
+        --- Sizes the box from its text at its current width.
+        --- @return boolean changed the box's height changed
+        function ElementCodeMixin:Measure()
+            local width = self.Box:GetWidth()
+            if not width or width <= TEXT_INSET then return false end
+            measure:SetWidth(width - TEXT_INSET)
+            measure:SetText(self.Code:GetText() or "")
+            local fullHeight = math.max(measure:GetStringHeight(), FONT_HEIGHT)
+            local textHeight = math.min(fullHeight, MAX_TEXT_HEIGHT)
+            local boxHeight = textHeight + BOX_PADDING * 2
+            -- The wheel scrolls the box only when there's more to see; else it scrolls the page.
+            self.Scroll:GetScrollFrame():EnableMouseWheel(fullHeight > MAX_TEXT_HEIGHT + 0.5)
+            if boxHeight == self.boxHeight then return false end
+
+            self.boxHeight = boxHeight
+            self.Box:height(boxHeight)
+            self.Scroll:height(textHeight)
+            self.Info:minHeight(math.max(ROW_MIN_INFO_HEIGHT, boxHeight - ROW_EXTRA))
+            return true
+        end
+
+        function ElementCodeMixin:SetCode(text)
+            self.Code:SetText((tostring(text or ""):gsub("|", "||")))
+            self:Measure()
+            self.Scroll:ScrollToTop()
+        end
+
+        Setting_Widgets.ElementCode = UIKit.Template(function(id, name, children, ...)
+            local frame =
+                Setting_Widgets.ElementBase(name, {
+                    Frame(name .. ".Box", {
+                        Frame(name .. ".Box.Background")
+                            :size(UIKit.UI.FILL)
+                            :background(UICCommon.InputUIDef.UIInput)
+                            :frameLevel(1)
+                            :_excludeFromCalculations(),
+
+                        ScrollView(name .. ".Scroll", {
+                            Text(name .. ".Code")
+                                :id("Code", id)
+                                :point(UIKit.Enum.Point.TopLeft)
+                                :fontObject(UIFont.UIFontObjectNormal12)
+                                :textColor(TEXT_COLOR)
+                                :textAlignment("LEFT", "TOP")
+                                :textVerticalSpacing(LINE_SPACING)
+                                :size(UIKit.UI.P_FILL, UIKit.UI.FIT)
+                                :_updateMode(UIKit.Enum.UpdateMode.All)
+                        })
+                            :id("Scroll", id)
+                            :point(UIKit.Enum.Point.TopLeft)
+                            :x(BOX_PADDING)
+                            :y(-BOX_PADDING)
+                            :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = TEXT_INSET }, FONT_HEIGHT)
+                            :scrollViewContentWidth(UIKit.UI.P_FILL)
+                            :scrollViewContentHeight(UIKit.Define.Fit{})
+                            :layoutDirection(UIKit.Enum.Direction.Vertical)
+                            :scrollStepSize(FONT_HEIGHT + LINE_SPACING)
+                            :frameLevel(2),
+
+                        UICCommon.ScrollBar(name .. ".ScrollBar")
+                            :id("ScrollBar", id)
+                            :point(UIKit.Enum.Point.TopRight)
+                            :x(-3)
+                            :y(-BOX_PADDING)
+                            :size(SCROLLBAR_WIDTH, MAX_TEXT_HEIGHT)
+                            :linkedScrollView(UIKit.NewGroupCaptureString("Scroll", id))
+                            :frameLevel(3)
+                    })
+                        :id("Box", id)
+                        :point(UIKit.Enum.Point.Right)
+                        :size(UIKit.UI.P_FILL, FONT_HEIGHT + BOX_PADDING * 2)
+                })
+
+            frame.Box = UIKit.GetElementById("Box", id)
+            frame.Code = UIKit.GetElementById("Code", id)
+            frame.Scroll = UIKit.GetElementById("Scroll", id)
+            frame.ScrollBar = UIKit.GetElementById("ScrollBar", id)
+            -- The box is half the row; the text wraps before it.
+            frame.Action:width(BOX_WIDTH)
+            frame.Info:width(INFO_WIDTH)
+
+            Mixin(frame, ElementCodeMixin)
+
+            -- The scroll bar shows only while the text overflows (alpha: renders would show it).
+            hooksecurefunc(frame.ScrollBar, "SetThumbVisible", function(bar, isVisible)
+                bar:SetAlpha(isVisible and 1 or 0)
+                bar:EnableMouse(isVisible)
+            end)
+            frame.ScrollBar:SetAlpha(0)
+            frame.ScrollBar:EnableMouse(false)
+            -- Deferred: sizes change inside a UIKit render pass. A new width can change how many
+            -- lines the text wraps to, so the box's height.
+            frame.Code:HookScript("OnSizeChanged", function()
+                C_Timer.After(0, function() frame.ScrollBar:SyncValue() end)
+            end)
+            frame.Box:HookScript("OnSizeChanged", function()
+                C_Timer.After(0, function()
+                    if frame:Measure() and frame.onResize then frame.onResize() end
+                end)
+            end)
 
             return frame
         end)
