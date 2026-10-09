@@ -30,6 +30,9 @@
             cursor    = { item = function(info1, info2, info3) return slice end }, -- drag & drop, by cursor type
             attributesChangeWith = function() return value end,   -- apply() depends on game state:
                                                                   -- rings rebuild when this changes
+            spread    = function(slice) return slices end,        -- in game it's these actions instead,
+                                                                  -- each hidden by its own rule (an
+                                                                  -- action bar: its buttons, Ring_Live)
             share     = {                                         -- sharing menus as text (Data\Share.lua);
                                                                   -- leave out: travels as is, then validate
                 pack   = function(slice, macros) return slice end,  -- what travels; nil, reason: left out

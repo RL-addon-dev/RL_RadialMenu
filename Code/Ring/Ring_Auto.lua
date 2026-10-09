@@ -7,7 +7,7 @@
         2. rebuilds when the state that secure attributes depend on changed (the zone ability a
            zone ability slice casts: Ring_Actions.GetAttributeSignature);
         3. rebuilds when any action's visibility changed (Ring_Actions.IsSliceAvailable: the
-           in-game menus leave out actions with nothing to fire).
+           in-game menus leave out actions with nothing to fire), an action bar's buttons too.
 
     Rebuilds go through "Ring.DataChanged" with reason "auto": quiet, and after combat if needed.
 ]]
@@ -30,6 +30,9 @@ local EVENTS = {
     "SPELLS_CHANGED",           -- pet, zone ability
     "ZONE_CHANGED_NEW_AREA",    -- zone ability, housing Return
     "PLAYER_HOUSE_LIST_UPDATED", "HOUSE_PLOT_ENTERED", "HOUSE_PLOT_EXITED", -- housing (retail)
+    -- Action bars: buttons filled / emptied, Action Bar 1's page
+    "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
+    "UPDATE_OVERRIDE_ACTIONBAR", "UPDATE_VEHICLE_ACTIONBAR", "UPDATE_SHAPESHIFT_FORM",
 }
 
 
@@ -74,14 +77,19 @@ local function HasSliceOfKinds(kinds)
     end
 end
 
---- One character per action with a visibility rule: whether it's shown right now.
+--- One character per action with a visibility rule: whether it's shown right now. Actions that
+--- spread (an action bar) add their own actions' (its buttons, filled or empty).
 local function GetAvailabilitySignature()
     local parts = {}
+    local function Add(slice)
+        if Ring_Actions.GetVisibilityCondition(slice) then
+            parts[#parts + 1] = Ring_Actions.IsSliceAvailable(slice) and "1" or "0"
+        end
+    end
     for _, ring in ipairs((Ring_Data.GetOpenableRings())) do
         for _, slice in ipairs(ring.slices) do
-            if Ring_Actions.GetVisibilityCondition(slice) then
-                parts[#parts + 1] = Ring_Actions.IsSliceAvailable(slice) and "1" or "0"
-            end
+            Add(slice)
+            for _, child in ipairs(Ring_Actions.GetSpreadSlices(slice) or {}) do Add(child) end
         end
     end
     return table.concat(parts)

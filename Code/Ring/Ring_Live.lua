@@ -5,7 +5,9 @@
 
     Rules:
         - Actions with nothing to fire are left out (Ring_Actions.IsSliceAvailable).
-        - Spread submenus (slice.expand) are replaced by their own actions, at any depth.
+        - Spread submenus (slice.expand) are replaced by their own actions, at any depth. So are
+          actions that spread (an action bar: its buttons, Ring_Actions.GetSpreadSlices), each
+          left out by its own rule.
         - Scroll submenus (kind "ring", not spread) stay one action: the mouse wheel cycles through
           their scroll list, the submenu's live actions with every submenu inside it spread in
           (whatever its own setting, at any depth). So a menu is at most two levels deep in game:
@@ -30,9 +32,17 @@ function Ring_Live.IsSubmenu(slice)
     return slice ~= nil and slice.kind == "ring"
 end
 
---- A submenu spread into its parent.
+--- A submenu spread into its parent, or an action that spreads (an action bar).
 function Ring_Live.IsSpread(slice)
-    return Ring_Live.IsSubmenu(slice) and slice.expand == true
+    if Ring_Live.IsSubmenu(slice) then return slice.expand == true end
+    return slice ~= nil and Ring_Actions.GetSpreadSlices(slice) ~= nil
+end
+
+local function AddEntry(entries, slice, ownerId, top, index)
+    entries[#entries + 1] = {
+        slice = slice, key = Ring_Data.GetSliceKey(slice),
+        top = top or index, ownerId = ownerId, ownerIndex = index
+    }
 end
 
 --- A submenu scrolled with the mouse wheel.
@@ -44,7 +54,12 @@ end
 local function AddEntries(entries, slices, ownerId, top, visited, depth, flatten)
     for index, slice in ipairs(slices) do
         if Ring_Actions.IsSliceAvailable(slice) then
-            if Ring_Live.IsSpread(slice) or (flatten and Ring_Live.IsSubmenu(slice)) then
+            local spread = not Ring_Live.IsSubmenu(slice) and Ring_Actions.GetSpreadSlices(slice)
+            if spread then
+                for _, child in ipairs(spread) do
+                    if Ring_Actions.IsSliceAvailable(child) then AddEntry(entries, child, ownerId, top, index) end
+                end
+            elseif Ring_Live.IsSpread(slice) or (flatten and Ring_Live.IsSubmenu(slice)) then
                 local child = Ring_Data.GetRing(slice.ring)
                 if child and not visited[child.id] and depth < MAX_DEPTH then
                     visited[child.id] = true
@@ -52,10 +67,7 @@ local function AddEntries(entries, slices, ownerId, top, visited, depth, flatten
                     visited[child.id] = nil
                 end
             else
-                entries[#entries + 1] = {
-                    slice = slice, key = Ring_Data.GetSliceKey(slice),
-                    top = top or index, ownerId = ownerId, ownerIndex = index
-                }
+                AddEntry(entries, slice, ownerId, top, index)
             end
         end
     end
@@ -120,9 +132,16 @@ function Ring_Live.GetStoredShownSlice(ring, index)
     return Ring_Live.GetShownSlice(ring.slices[index], Ring_Data.GetScrollIndex(ring.id, index))
 end
 
---- How many actions a spread submenu slice adds to its menu right now.
+--- How many actions a spread slice (submenu, action bar) adds to its menu right now.
 function Ring_Live.CountSpread(slice)
     if not Ring_Live.IsSpread(slice) then return 0 end
+    if not Ring_Live.IsSubmenu(slice) then
+        local count = 0
+        for _, child in ipairs(Ring_Actions.GetSpreadSlices(slice)) do
+            if Ring_Actions.IsSliceAvailable(child) then count = count + 1 end
+        end
+        return count
+    end
     return #Ring_Live.GetEntries(Ring_Data.GetRing(slice.ring))
 end
 

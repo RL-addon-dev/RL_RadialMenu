@@ -80,7 +80,7 @@ end
 function Ring_Data.SetQuickSlice(id, slice)
     local ring = Ring_Data.GetRing(id)
     if not ring then return false, "menu not found" end
-    if slice.kind == "ring" then return false, "a submenu can't be the quick action" end
+    if not Ring_Data.CanBeQuickAction(slice) then return false, "a submenu or action bar can't be the quick action" end
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end
     ring.quickAction = Ring_Data.QuickAction.Custom

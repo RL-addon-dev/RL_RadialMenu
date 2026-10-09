@@ -133,10 +133,10 @@ function Private.NormalizeRing(ring)
     for _, slice in ipairs(ring.slices) do
         if slice.kind == "ring" then slice.nest = nil end
     end
-    -- A fixed quick action is one of the ring's own slices, never a nested ring (a tap has no
-    -- single thing to fire there; its spells can be the quick action directly).
+    -- A fixed quick action is one of the ring's own slices, never a nested ring or an action bar
+    -- (a tap has no single thing to fire there; its spells can be the quick action directly).
     local quickSlice = type(ring.quickAction) == "number" and ring.slices[ring.quickAction]
-    if type(ring.quickAction) == "number" and (not quickSlice or quickSlice.kind == "ring") then
+    if type(ring.quickAction) == "number" and not (quickSlice and Ring_Data.CanBeQuickAction(quickSlice)) then
         ring.quickAction = Ring_Data.QuickAction.None
     end
     -- The tap-only slice only exists while it's the quick action.
@@ -185,11 +185,21 @@ function Ring_Data.GetRings()
     return rings
 end
 
+--- Whether `slice` can be a quick action: not a submenu or an action bar, which hold several
+--- actions (a tap has no single one to fire).
+function Ring_Data.CanBeQuickAction(slice)
+    if slice.kind == "ring" then return false end
+    local definition = Ring_Kinds.Get(slice.kind)
+    return not (definition and definition.spread)
+end
+
 --- Identity of a slice (the same item / command / slot across refills and moves): Last Used and
 --- the built-in menus' remembered order use it.
 function Ring_Data.GetSliceKey(slice)
     local value = slice.id or slice.command or slice.slot or slice.guid or slice.ring
         or slice.token or slice.home or slice.name
+    -- An action bar ("actionbar:2"), or one of its buttons ("actionslot:2-5").
+    if slice.bar then value = slice.button and (slice.bar .. "-" .. slice.button) or slice.bar end
     -- A highest-rank spell isn't the same action as the rank its id names.
     return slice.kind .. ":" .. tostring(value) .. (slice.anyRank and ":any" or "")
 end

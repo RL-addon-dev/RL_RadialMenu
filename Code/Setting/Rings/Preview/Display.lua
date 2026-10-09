@@ -79,9 +79,9 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
     else
         -- Center: sets the quick action (nothing to do when dragging the quick action itself).
         self:SetSelected(nil)
-        -- Nested rings can't be the quick action: say so, and what to do instead.
+        -- Nested rings and action bars can't be the quick action: say so, and what to do instead.
         local fromSlice = type(from) == "number" and self.ring and self:GetSlice(from)
-        if fromSlice and fromSlice.kind == "ring" then
+        if fromSlice and not Ring_Data.CanBeQuickAction(fromSlice) then
             label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickRing - Hint"]
         elseif from ~= "quick" then
             label = L["Config - Rings - Drag - Quick"]
