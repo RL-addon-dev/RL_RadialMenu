@@ -30,6 +30,7 @@
             cursor    = { item = function(info1, info2, info3) return slice end }, -- drag & drop, by cursor type
             attributesChangeWith = function() return value end,   -- apply() depends on game state:
                                                                   -- rings rebuild when this changes
+            noIconBorder = true,                                  -- icon without the action button border
             spread    = function(slice) return slices end,        -- in game it's these actions instead,
                                                                   -- each hidden by its own rule (an
                                                                   -- action bar: its buttons, Ring_Live)

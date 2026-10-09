@@ -373,7 +373,7 @@ function WheelMixin:SetSlices(slices, iconOffset, hasTapOnly)
         wedge:SetPoint("CENTER", self, "CENTER", cos(angle) * WEDGE_SPACING, sin(angle) * WEDGE_SPACING)
         SetupWedgeSelectedTexture(wedge, count, angle)
 
-        Ring_Layout.SetIcon(wedge.Button.Icon, Ring_Actions.GetIcon(slices[i]))
+        Ring_Layout.SetSliceIcon(wedge.Button, slices[i])
         SetWedgeLabel(self, wedge, slices[i])
         self:SetWedgeSelected(wedge, false)
         wedge.Button:Show() -- SetCenter may have hidden it while this was a single-slice ring
@@ -482,7 +482,7 @@ function WheelMixin:SetSliceSlice(index, slice)
     local wedge = self.Wedges[index]
     if not (wedge and slice) then return end
     self.slices[index] = slice
-    Ring_Layout.SetIcon(wedge.Button.Icon, Ring_Actions.GetIcon(slice))
+    Ring_Layout.SetSliceIcon(wedge.Button, slice)
     SetWedgeLabel(self, wedge, slice)
     Ring_Layout.UpdateIconCooldown(wedge.Button, slice)
     if self.showStates then Ring_Layout.UpdateIconState(wedge.Button, slice, true) end
@@ -504,6 +504,7 @@ end
 --- @param slice table|nil the slice the icon stands for, for its cooldown (nil for none)
 function WheelMixin:SetQuickIcon(icon, slice)
     Ring_Layout.SetIcon(self.Quick.Icon, icon)
+    self.Quick.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
     self.quickSlice = slice
     Ring_Layout.UpdateIconCooldown(self.Quick, slice)
     if self.showStates then Ring_Layout.UpdateIconState(self.Quick, slice, true) end

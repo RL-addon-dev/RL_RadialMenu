@@ -16,6 +16,7 @@ local MARKERS = { 8, 7, 6, 5, 4, 3, 2, 1, 0 }
 
 Ring_Kinds.Register({
     kind = "targetmarker",
+    noIconBorder = true, -- the marker art on its own, not a spell
     MARKERS = MARKERS,
 
     validate = function(slice)
