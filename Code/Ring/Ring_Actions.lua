@@ -50,6 +50,12 @@ function Ring_Actions.GetIcon(slice, depth)
     return definition and definition.icon and definition.icon(slice, depth or 0) or Ring_Kinds.QUESTION_MARK_ICON
 end
 
+--- Whether `slice`'s icon is shown without the action button border (its kind's noIconBorder).
+function Ring_Actions.HasNoIconBorder(slice)
+    local definition = Get(slice.kind)
+    return definition ~= nil and definition.noIconBorder == true
+end
+
 function Ring_Actions.GetLabel(slice)
     if slice.label then return slice.label end
     local definition = Get(slice.kind)

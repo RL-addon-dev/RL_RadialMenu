@@ -40,6 +40,13 @@ function Ring_Layout.SetIcon(texture, icon)
     end
 end
 
+--- Shows `slice` on an action icon (CreateActionIcon): its icon, and the action button border
+--- unless its kind has none (noIconBorder: target and world markers show their art on its own).
+function Ring_Layout.SetSliceIcon(iconFrame, slice)
+    Ring_Layout.SetIcon(iconFrame.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
+    iconFrame.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
+end
+
 --- Icon with the retail action bar mask and border, in its own frame so both scale together.
 --- `.Icon` is the texture to set.
 function Ring_Layout.CreateActionIcon(parent, size)

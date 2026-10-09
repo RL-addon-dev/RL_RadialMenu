@@ -177,11 +177,11 @@ function PreviewMixin:UpdateDrag()
         drag.active = true
         self:SetTooltipIndex(nil)
         if drag.from == "quick" then
-            Ring_Layout.SetIcon(self.DragIcon.Icon, Ring_Actions.GetIcon(self.ring.quickSlice))
+            Ring_Layout.SetSliceIcon(self.DragIcon, self.ring.quickSlice)
             self.wheel.Quick:SetAlpha(DRAG_SOURCE_ALPHA)
         else
             local slice = self.ring and self:GetShownSlice(drag.from)
-            Ring_Layout.SetIcon(self.DragIcon.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
+            Ring_Layout.SetSliceIcon(self.DragIcon, slice)
             self.wheel.Wedges[drag.from].Button:SetAlpha(DRAG_SOURCE_ALPHA)
         end
         self.DragIcon:Show()

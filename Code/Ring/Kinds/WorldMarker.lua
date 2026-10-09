@@ -30,6 +30,7 @@ local MARKERS = { 8, 4, 1, 7, 2, 3, 6, 5, 0 }
 
 Ring_Kinds.Register({
     kind = "worldmarker",
+    noIconBorder = true, -- the marker art on its own, not a spell
     MARKERS = MARKERS,
 
     validate = function(slice)
