@@ -26,8 +26,8 @@
     slices as "*type-sN_C". While the ring is held, the mouse wheel is bound to the helper button,
     which steps "ring-scroll-N" for the slice under the cursor. Release fires "sN_<current>".
 
-    Right click while held dismisses the ring (Right-Click to Cancel setting, "ring-rightclick"): the
-    helper closes it (OPEN_RING cleared), so the key's release fires nothing.
+    Escape while held dismisses the ring, and so does right click (Right-Click to Cancel setting,
+    "ring-rightclick"): the helper closes it (OPEN_RING cleared), so the key's release fires nothing.
 
     Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
     (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
@@ -102,22 +102,20 @@ local PRE_CLICK = [[
         probe:Show()
         probe:RegisterAutoHide(0)
 
-        -- While open: right click dismisses the ring, and the mouse wheel scrolls its scroll
-        -- slices. Relaxed: also left click picks and Escape dismisses. A keybind with modifiers
-        -- (CTRL-SPACE) may keep them held, and the mouse then arrives as CTRL-BUTTON2 /
-        -- CTRL-MOUSEWHEELUP: bind those too.
+        -- While open: Escape (and right click, with Right-Click to Cancel) dismisses the ring,
+        -- and the mouse wheel scrolls its scroll slices. Relaxed: also left click picks. A keybind
+        -- with modifiers (CTRL-SPACE) may keep them held, and the keys then arrive as CTRL-ESCAPE /
+        -- CTRL-BUTTON2 / CTRL-MOUSEWHEELUP: bind those too.
         local keyMods = self:GetAttribute("ring-keymods")
+        helper:SetBindingClick(true, "ESCAPE", helper, "Dismiss")
+        if keyMods then helper:SetBindingClick(true, keyMods .. "ESCAPE", helper, "Dismiss") end
         if self:GetAttribute("ring-rightclick") then -- Right-Click to Cancel setting
             helper:SetBindingClick(true, "BUTTON2", helper, "Dismiss")
             if keyMods then helper:SetBindingClick(true, keyMods .. "BUTTON2", helper, "Dismiss") end
         end
         if relaxed then
             helper:SetBindingClick(true, "BUTTON1", self, "RelaxedSelect")
-            helper:SetBindingClick(true, "ESCAPE", helper, "Dismiss")
-            if keyMods then
-                helper:SetBindingClick(true, keyMods .. "BUTTON1", self, "RelaxedSelect")
-                helper:SetBindingClick(true, keyMods .. "ESCAPE", helper, "Dismiss")
-            end
+            if keyMods then helper:SetBindingClick(true, keyMods .. "BUTTON1", self, "RelaxedSelect") end
         end
         if self:GetAttribute("ring-hasscroll") then
             helper:SetBindingClick(true, "MOUSEWHEELUP", helper, "WheelUp")
@@ -201,8 +199,8 @@ local PRE_CLICK = [[
     return suffix
 ]]
 
--- Helper button: target of the temporary bindings while a ring is open (right click, and Escape
--- in Relaxed, dismiss it; the wheel scrolls).
+-- Helper button: target of the temporary bindings while a ring is open (Escape and right click
+-- dismiss it; the wheel scrolls).
 local HELPER_CLICK = [[
     local ring = OPEN_BUTTON
     if not ring then return false end

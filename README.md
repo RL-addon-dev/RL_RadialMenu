@@ -27,8 +27,8 @@ Then hold your key in the game, move the mouse toward an action and let go.
 ## Using a menu
 
 - **Pick an action:** hold the keybind, move the mouse toward the action, release.
-- **Cancel:** right-click (Right-Click to Cancel, on by default), or move back to the center (the X)
-  and release.
+- **Cancel:** press Escape, right-click (Right-Click to Cancel, on by default), or move back to the
+  center (the X) and release.
 - **Quick action:** tap the keybind without moving the mouse. Release before the **Reveal
   Delay** and the menu never even shows. The quick action can be the last action you used, a
   fixed one, or an action that's only on the tap and not in the menu.
