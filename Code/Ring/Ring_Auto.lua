@@ -39,24 +39,9 @@ local EVENTS = {
 
 -- Built-in menus
 
-local function SameSlices(a, b)
-    if #a ~= #b then return false end
-    for i = 1, #a do
-        if Ring_Data.GetSliceKey(a[i]) ~= Ring_Data.GetSliceKey(b[i]) then return false end
-    end
-    return true
-end
-
 local function RefillBuiltIns()
     for _, ring in ipairs(Ring_Data.GetRings()) do
-        local definition = ring.builtin and Ring_Data.GetBuiltIn(ring.builtin)
-        if definition then
-            -- In the order the user arranged them (new slices at the end).
-            local slices = Ring_Data.ApplyAutoOrder(ring, definition.scan())
-            if not SameSlices(ring.slices, slices) then
-                Ring_Data.SetAutoSlices(ring.id, slices)
-            end
-        end
+        if ring.builtin then Ring_Data.RefillBuiltIn(ring) end
     end
 end
 

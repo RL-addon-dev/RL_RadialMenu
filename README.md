@@ -79,6 +79,8 @@ shown. Double-click it in the settings to **spread** its actions into the menu i
 ## Built-in menus
 
 These fill themselves and stay up to date. Give them a keybind and rearrange them as you like.
+Remove what you don't need with the X: it stays out as the menu refills, and the menu's page lists
+what you removed, to restore it.
 
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
