@@ -1,7 +1,11 @@
 --[[
     Ring data: built-in menus. They always exist (created at load), are account-wide, and can't be
-    renamed, deleted or edited by hand: Ring_Auto fills their slices. The user can rearrange
+    renamed, deleted or added to by hand: Ring_Auto fills their slices. The user can rearrange
     them, and that order is remembered by slice identity (ring.order) across refills.
+
+    The user can remove actions too: they're remembered by identity in ring.removed
+    ({ key, label, icon }, name and icon saved for showing them while they aren't around) and
+    left out of every refill until restored. New actions still appear.
 
     Each built-in menu is one file in Code\Ring\BuiltIns\ (listed in BuiltIns.xml):
 
@@ -29,6 +33,7 @@ local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
+local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 
 local definitions, order = {}, {}
 
@@ -38,11 +43,6 @@ function Ring_Data.RegisterBuiltIn(definition)
     assert(not definitions[definition.key], "built-in menu registered twice: " .. definition.key)
     definitions[definition.key] = definition
     order[#order + 1] = definition
-end
-
---- @return table|nil definition of built-in menu `key`
-function Ring_Data.GetBuiltIn(key)
-    return definitions[key]
 end
 
 --- Every built-in menu definition, in registration order.
@@ -99,6 +99,72 @@ end
 --- Something the rings show changed outside the ring data (the zone ability): rebuild quietly.
 function Ring_Data.NotifyDynamicChange()
     CallbackRegistry.Trigger("Ring.DataChanged", "auto")
+end
+
+
+
+-- Refilling
+
+local function SameSlices(a, b)
+    if #a ~= #b then return false end
+    for i = 1, #a do
+        if Ring_Data.GetSliceKey(a[i]) ~= Ring_Data.GetSliceKey(b[i]) then return false end
+    end
+    return true
+end
+
+--- Fills built-in `ring` from its definition: what it holds now, minus the actions the user
+--- removed, in the order they arranged (new actions at the end). Ring_Auto calls it after the
+--- definition's events; restoring an action calls it at once.
+function Ring_Data.RefillBuiltIn(ring)
+    local definition = ring.builtin and definitions[ring.builtin]
+    if not definition then return end
+    local removed = {}
+    for _, entry in ipairs(ring.removed or {}) do removed[entry.key] = true end
+    local slices = {}
+    for _, slice in ipairs(definition.scan()) do
+        if not removed[Ring_Data.GetSliceKey(slice)] then slices[#slices + 1] = slice end
+    end
+    slices = Ring_Data.ApplyAutoOrder(ring, slices)
+    if not SameSlices(ring.slices, slices) then Ring_Data.SetAutoSlices(ring.id, slices) end
+end
+
+
+
+-- Removed actions
+
+--- The actions removed from built-in `ring`: { { key, label, icon }, ... }, oldest first.
+function Ring_Data.GetRemovedSlices(ring)
+    return ring and ring.removed or {}
+end
+
+--- Remembers `slice` as removed from built-in `ring` (Ring_Data.RemoveSlice), with its name and
+--- icon as they are now.
+function Private.RememberRemoved(ring, slice)
+    local key = Ring_Data.GetSliceKey(slice)
+    ring.removed = ring.removed or {}
+    for _, entry in ipairs(ring.removed) do
+        if entry.key == key then return end
+    end
+    ring.removed[#ring.removed + 1] = { key = key, label = Ring_Actions.GetLabel(slice), icon = Ring_Actions.GetIcon(slice) }
+end
+
+--- Puts removed action `key` back into built-in menu `id` (every removed action when `key` is
+--- nil). It shows again at the next refill, which happens now.
+function Ring_Data.RestoreRemoved(id, key)
+    local ring = Ring_Data.GetRing(id)
+    if not (Ring_Data.IsBuiltIn(ring) and ring.removed) then return false end
+    if key then
+        for index = #ring.removed, 1, -1 do
+            if ring.removed[index].key == key then table.remove(ring.removed, index) end
+        end
+    else
+        wipe(ring.removed)
+    end
+    if #ring.removed == 0 then ring.removed = nil end
+    Ring_Data.RefillBuiltIn(ring)
+    Private.Changed() -- the removed list changed, whether or not the menu did
+    return true
 end
 
 

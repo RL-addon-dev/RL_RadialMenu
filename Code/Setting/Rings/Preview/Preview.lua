@@ -30,8 +30,9 @@
     Center icon, like the real ring before the mouse moves: a fixed quick action slice shows its
     icon, "Last Used Slice" shows the question mark macro icon, "None" shows cancel. Badges and
     the X on the center follow the quick action's slice.
-    Read-only (built-in rings, which fill themselves): slices can be rearranged by dragging, but
-    there's no X, no "+" and nothing can be dropped in from the game.
+    Read-only (built-in rings, which fill themselves): slices can be rearranged by dragging and
+    removed with the X (remembered, see Ring_Data BuiltIn.lua), but there's no "+" and nothing
+    can be dropped in from the game.
 
     A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
     on it there, since they follow the icon).

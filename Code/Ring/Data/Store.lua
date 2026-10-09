@@ -433,11 +433,14 @@ end
 
 function Ring_Data.RemoveSlice(id, index)
     local ring = Ring_Data.GetRing(id)
-    if not ring or not ring.slices[index] or Ring_Data.IsBuiltIn(ring) then return false end
+    if not ring or not ring.slices[index] then return false end
 
-    -- Removing the quick action's slice from the wheel keeps it as the quick action, tap-only
-    -- (not for a nested ring, which has nothing of its own to fire).
-    if ring.quickAction == index and ring.slices[index].kind ~= "ring" then
+    if Ring_Data.IsBuiltIn(ring) then
+        -- Left out of its refills until restored (BuiltIn.lua).
+        Private.RememberRemoved(ring, ring.slices[index])
+    elseif ring.quickAction == index and ring.slices[index].kind ~= "ring" then
+        -- Removing the quick action's slice from the wheel keeps it as the quick action, tap-only
+        -- (not for a nested ring, which has nothing of its own to fire).
         ring.quickAction = Ring_Data.QuickAction.Custom
         ring.quickSlice = ring.slices[index]
     end

@@ -173,7 +173,6 @@ end
 --- @param showRemove boolean|nil show the X on the selected slice (default true)
 function PreviewMixin:SetSelected(index, showRemove)
     local wheel = self.wheel
-    if self.readOnly then showRemove = false end
     if index ~= self.selectedIndex then
         local previous = self.selectedIndex and wheel.Wedges[self.selectedIndex]
         if previous and previous.RemoveButton then previous.RemoveButton:Hide() end
@@ -223,7 +222,7 @@ function PreviewMixin:SetTooltipIndex(index)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(text, r, g, b, true)
     end
-    local control = self.readOnly and L["Config - Rings - Preview - Control - Reorder"] or L["Config - Rings - Preview - Control"]
+    local control = L["Config - Rings - Preview - Control"]
     if slice.kind == "ring" then
         control = control .. " " .. (slice.expand and L["Config - Rings - Preview - Control - ToScroll"] or L["Config - Rings - Preview - Control - ToExpand"])
     end
