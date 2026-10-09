@@ -3,8 +3,8 @@
 
     Two parts:
         Sidebar       a list nav (AX_Settings Setting.AttachListNav) with two sections:
-                      built-in rings (room for two, then it scrolls) and the user's rings with
-                      "+ New" and Import side by side above them. Cards show name, keybind and
+                      built-in rings (room for four) and the user's rings (five), each scrolling,
+                      with "+ New" and Import side by side above the user's. Cards show name, keybind and
                       scope; clicking one opens this tab on that ring. Import shows its page
                       (Share\Rings_Import.lua) in the ring's place (page.isImporting).
         Tab page      single column (the content area is too narrow for two): the wheel preview
@@ -42,7 +42,9 @@ local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
 
 local format = string.format
 
-local BUILT_IN_VISIBLE = 2 -- built-in cards shown before that list scrolls
+-- Cards each sidebar list shows before it scrolls.
+local BUILT_IN_VISIBLE = 4
+local CUSTOM_VISIBLE = 5
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
@@ -375,6 +377,7 @@ function Rings_Tab.Build(parent, tab)
                     { text = L["Config - Rings - NewRing"], onClick = function() page:CreateNewRing() end },
                     { text = L["Config - Rings - Nav - Import"], onClick = function() page:ShowImport() end },
                 },
+                visible   = CUSTOM_VISIBLE,
                 getItems  = function() return page:GetNavItems(false) end,
             },
         },
