@@ -50,6 +50,13 @@ function Ring_Data.GetBuiltInDefinitions()
     return order
 end
 
+--- This character's built-in menu with key `key` (ring.builtin), or nil.
+function Ring_Data.GetBuiltInRing(key)
+    for _, ring in ipairs(Ring_Data.GetRings()) do
+        if ring.builtin == key then return ring end
+    end
+end
+
 --- Built-in menus always exist and fill themselves: they can't be deleted, made per character,
 --- renamed, or have slices added / removed by hand.
 function Ring_Data.IsBuiltIn(ring)
@@ -59,7 +66,8 @@ end
 --- Ring_Auto's refill of a built-in ring. Fires "Ring.DataChanged" with reason "auto", so the
 --- secure rebuild it causes (after combat, if needed) doesn't announce itself.
 --- Whatever refers to a slice by position (a quick action dragged onto the center) follows that
---- slice to its new position, or is dropped if the slice is gone.
+--- slice to its new position, or is dropped if the slice is gone. A submenu slice keeps its
+--- spread / scroll setting (slice.expand), which the user can change on built-in menus too.
 function Ring_Data.SetAutoSlices(id, slices)
     local ring = Ring_Data.GetRing(id)
     if not Ring_Data.IsBuiltIn(ring) then return false end
@@ -70,6 +78,13 @@ function Ring_Data.SetAutoSlices(id, slices)
         newIndex[key] = newIndex[key] or index
     end
     local oldSlices = ring.slices
+    local expandByKey = {}
+    for _, slice in ipairs(oldSlices) do
+        if slice.expand then expandByKey[Ring_Data.GetSliceKey(slice)] = true end
+    end
+    for _, slice in ipairs(slices) do
+        if expandByKey[Ring_Data.GetSliceKey(slice)] then slice.expand = true end
+    end
     Private.RemapSliceIndices(ring, function(index)
         local slice = oldSlices[index]
         return slice and newIndex[Ring_Data.GetSliceKey(slice)]

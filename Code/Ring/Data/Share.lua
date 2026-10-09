@@ -62,13 +62,6 @@ local function CountSkip(skipped, reason)
     skipped[reason] = (skipped[reason] or 0) + 1
 end
 
---- This character's built-in menu with key `key` (ring.builtin), or nil.
-local function GetBuiltInRing(key)
-    for _, ring in ipairs(Ring_Data.GetRings()) do
-        if ring.builtin == key then return ring end
-    end
-end
-
 --- Drops the menus with nothing in them (no actions, no tap-only quick action) and the
 --- submenu links to them, again while that empties a menu, then renumbers the links. Works on
 --- shared menus and on a plan's (both link a submenu as { kind = "ring", ring = <index> }).
@@ -332,7 +325,7 @@ function Ring_Data.ReadShare(text)
             local unpacked, reason
             if type(slice) == "table" and slice.kind == "ring" then
                 local child = slice.ring
-                local builtIn = type(slice.builtin) == "string" and GetBuiltInRing(slice.builtin)
+                local builtIn = type(slice.builtin) == "string" and Ring_Data.GetBuiltInRing(slice.builtin)
                 if type(child) == "number" and menus[child] and child ~= menuIndex then
                     unpacked = { kind = "ring", ring = child }
                 elseif builtIn then
