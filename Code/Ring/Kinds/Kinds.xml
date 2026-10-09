@@ -15,6 +15,7 @@
     <Script file="EquipSlot.lua"/>
     <Script file="Extra.lua"/>
     <Script file="Zone.lua"/>
+    <Script file="House.lua"/>
     <Script file="Spec.lua"/>
     <Script file="Loadout.lua"/>
     <Script file="Profession.lua"/>

@@ -54,6 +54,7 @@ right-click (Right-Click to Cancel) also close it.
 | World Markers | placed under the mouse, or with a targeting circle; and Clear | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Zone Ability, Extra Action | follow the game's buttons; hidden while there's none | ✓ | — |
+| Housing | Teleport Home to Founder's Point or Razorwind Shores (hidden while you don't own a house there), and Return | ✓ | — |
 | Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |
 | Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
@@ -80,7 +81,7 @@ These fill themselves and stay up to date. Give them a keybind and rearrange the
 
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
-| Hearthstones | your Hearthstone and the hearthstone toys you own | ✓ | — |
+| Hearthstones | your Hearthstone, the hearthstone toys you own, Teleport Home to your houses, and Return | ✓ | — |
 | Professions | your professions (opens their window) and their extra spells: Disenchant, Prospecting, Survey, Fishing… | ✓ | ✓ |
 | Quest Items | usable quest items from your quest log and bags (Forever: from your bags) | ✓ | ✓ |
 | Season Teleports | the current Mythic+ season's dungeon teleports you've earned | ✓ | — |
