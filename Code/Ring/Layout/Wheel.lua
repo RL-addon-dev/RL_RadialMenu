@@ -62,6 +62,12 @@ local DIVIDER_INNER_OVERLAP = 3
 -- circle just past its ring (a little margin so the ring's outer edge isn't clipped).
 local CIRCLE_MASK_TEXTURE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local CENTER_RING_MASK_MARGIN = 2
+-- A lone slice sits in the center: the wheel's background (as dark as usual) is masked to just
+-- past the center circle. Mask_SoftCircle.png is opaque out to 80% of its radius, then fades out;
+-- this is its diameter as a share of the center circle's.
+local SINGLE_BACKGROUND_MASK_PATH = "%s\\Art\\Ring\\Mask_SoftCircle.png"
+local SINGLE_BACKGROUND_MASK_SCALE = 1.35
+local SINGLE_BACKGROUND_ALPHA = 0.6 -- lighter than the full wheel's shade
 
 Ring_Layout.ATLAS_CANCEL_ICON = ATLAS_CANCEL_ICON -- the preview's X buttons
 
@@ -345,6 +351,16 @@ function WheelMixin:SetSlices(slices, iconOffset, hasTapOnly)
     -- icon. Not when a tap-only quick action owns the center (Ring_Secure fires that on a tap).
     self.isSingleCentered = count == 1 and not hasTapOnly
     self.selectedIndex = nil
+    -- With the lone slice in the center the background only shades around the center circle.
+    if self.isSingleCentered ~= self.backgroundMasked then
+        if self.isSingleCentered then
+            self.Background:AddMaskTexture(self.BackgroundMask)
+        else
+            self.Background:RemoveMaskTexture(self.BackgroundMask)
+        end
+        self.backgroundMasked = self.isSingleCentered
+    end
+    self.Background:SetAlpha(self.isSingleCentered and SINGLE_BACKGROUND_ALPHA or 1)
 
     self:SetupFrameTexture(count)
 
@@ -500,6 +516,14 @@ function Ring_Layout.CreateWheel(parent, name)
     wheel.Background = wheel:CreateTexture(nil, "BACKGROUND", nil, 1)
     wheel.Background:SetPoint("CENTER")
     wheel.Background:SetAtlas(ATLAS_BACKGROUND, true)
+    -- Added while a lone slice sits in the center (SetSlices).
+    wheel.BackgroundMask = wheel:CreateMaskTexture()
+    wheel.BackgroundMask:SetTexture(SINGLE_BACKGROUND_MASK_PATH:format(Path.Root), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    wheel.BackgroundMask:SetPoint("CENTER")
+    local centerInfo = GetAtlasInfo(ATLAS_CANCEL_SELECTED)
+    local maskSize = (centerInfo and centerInfo.width or 2 * DIVIDER_INNER_RADIUS) * SINGLE_BACKGROUND_MASK_SCALE
+    wheel.BackgroundMask:SetSize(maskSize, maskSize)
+    wheel.backgroundMasked = false
 
     wheel.Frame = wheel:CreateTexture(nil, "OVERLAY", nil, 1)
     wheel.Frame:SetPoint("CENTER")
