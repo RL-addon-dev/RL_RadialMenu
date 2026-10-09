@@ -28,7 +28,8 @@ local EVENTS = {
     "UPDATE_EXTRA_ACTIONBAR",   -- Extra Action Button
     "PET_UI_UPDATE", "PET_BAR_UPDATE", -- pet spells and commands
     "SPELLS_CHANGED",           -- pet, zone ability
-    "ZONE_CHANGED_NEW_AREA",    -- zone ability
+    "ZONE_CHANGED_NEW_AREA",    -- zone ability, housing Return
+    "PLAYER_HOUSE_LIST_UPDATED", "HOUSE_PLOT_ENTERED", "HOUSE_PLOT_EXITED", -- housing (retail)
 }
 
 

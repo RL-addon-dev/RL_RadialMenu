@@ -189,7 +189,7 @@ end
 --- the built-in menus' remembered order use it.
 function Ring_Data.GetSliceKey(slice)
     local value = slice.id or slice.command or slice.slot or slice.guid or slice.ring
-        or slice.token or slice.name
+        or slice.token or slice.home or slice.name
     -- A highest-rank spell isn't the same action as the rank its id names.
     return slice.kind .. ":" .. tostring(value) .. (slice.anyRank and ":any" or "")
 end

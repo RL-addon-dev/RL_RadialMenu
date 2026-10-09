@@ -1,9 +1,11 @@
 --[[
-    Hearthstones: the Hearthstone (while it's in your bags) and every hearthstone toy you own.
+    Hearthstones: the Hearthstone (while it's in your bags), every hearthstone toy you own, then
+    housing: Teleport Home to each neighborhood you have a house in, and Return.
 ]]
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local HEARTHSTONE_ITEM = 6948
 
@@ -63,7 +65,7 @@ Ring_Data.RegisterBuiltIn({
     name   = "Config - Rings - HearthRing - Name",
     versions = { env.GameVersion.Retail },
     -- Toys load after login (TOYS_UPDATED).
-    events = { "BAG_UPDATE_DELAYED", "TOYS_UPDATED", "NEW_TOY_ADDED" },
+    events = { "BAG_UPDATE_DELAYED", "TOYS_UPDATED", "NEW_TOY_ADDED", "PLAYER_HOUSE_LIST_UPDATED" },
     scan   = function()
         local slices = {}
         if C_Item.GetItemCount(HEARTHSTONE_ITEM) > 0 then
@@ -72,6 +74,10 @@ Ring_Data.RegisterBuiltIn({
         for _, toyID in ipairs(HEARTHSTONE_TOYS) do
             if PlayerHasToy(toyID) then slices[#slices + 1] = { kind = "toy", id = toyID } end
         end
+        for _, home in ipairs({ "alliance", "horde" }) do
+            if Ring_Kinds.HasHouse(home) then slices[#slices + 1] = { kind = "house", home = home } end
+        end
+        slices[#slices + 1] = { kind = "house", home = "return" } -- hidden while it can't be used
         return slices
     end,
 })
