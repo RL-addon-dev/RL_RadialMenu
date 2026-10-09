@@ -11,4 +11,5 @@
     <Script file="Specs.lua"/>
     <Script file="Loadouts.lua"/>
     <Script file="Professions.lua"/>
+    <Script file="Consumables.lua"/>
 </Ui>
