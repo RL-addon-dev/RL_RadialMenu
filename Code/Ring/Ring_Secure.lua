@@ -13,7 +13,9 @@
                   inside, probe still shown  -> quick action (cursor never left center)
                   inside, probe hidden       -> cancel
                 The chosen slice fires by redirecting the click to button "sN", whose
-                "*type-sN" attributes were set out of combat by Ring_Actions.
+                "*type-sN" attributes were set out of combat by Ring_Actions. An Action Bar 1
+                button ("*pagedbutton-sN") first gets its slot on the bar's current page, from
+                the action bar kind's page state driver (frame ref "actionbarpage").
 
     Live rings: the in-game ring works on a "live" copy of each ring, built out of combat by
     Ring_Live (hidden actions left out, spread submenus opened out). Indices in the secure
@@ -50,6 +52,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Live = env.AX_Modules:Import("@\\Ring\\Live")
 local Ring_Display = env.AX_Modules:Import("@\\Ring\\Display")
 local Ring_View = env.AX_Modules:Import("@\\Ring\\View")
@@ -184,10 +187,18 @@ local PRE_CLICK = [[
 
     owner:CallMethod("OnRingClose", ringId, result, index)
     if not index then return false end
+    local suffix = "s" .. index
     if self:GetAttribute("ring-scrollcount-" .. index) then
-        return "s" .. index .. "_" .. (self:GetAttribute("ring-scroll-" .. index) or 1)
+        suffix = suffix .. "_" .. (self:GetAttribute("ring-scroll-" .. index) or 1)
     end
-    return "s" .. index
+    -- An Action Bar 1 button: fire its slot on the bar's page right now (Kinds\ActionBar.lua).
+    local pagedButton = self:GetAttribute("*pagedbutton-" .. suffix)
+    local pager = pagedButton and owner:GetFrameRef("actionbarpage")
+    if pager then
+        local page = tonumber(pager:GetAttribute("state-page")) or 1
+        self:SetAttribute("*action-" .. suffix, (page - 1) * 12 + pagedButton)
+    end
+    return suffix
 ]]
 
 -- Helper button: target of the temporary bindings while a ring is open (right click, and Escape
@@ -486,6 +497,9 @@ local function Rebuild()
         SecureHandlerSetFrameRef(Controller, "screen", Screen)
         SecureHandlerSetFrameRef(Controller, "probe", Probe)
         SecureHandlerSetFrameRef(Controller, "helper", Helper)
+        if Ring_Kinds.ActionBarPageFrame then
+            SecureHandlerSetFrameRef(Controller, "actionbarpage", Ring_Kinds.ActionBarPageFrame)
+        end
         frameRefsSet = true
     end
     ClearOverrideBindings(Controller)

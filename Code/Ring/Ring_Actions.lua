@@ -16,7 +16,8 @@ local Get = Ring_Kinds.Get
 
 -- Every secure attribute a kind may set. Cleared before applying a slice, so nothing is left over
 -- from what this suffix held before a rebuild (another action, or another mode of the same one).
-local SLICE_ATTRIBUTES = { "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton" }
+local SLICE_ATTRIBUTES = { "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton",
+    "pagedbutton" } -- pagedbutton: Action Bar 1 buttons follow the bar's page (Kinds\ActionBar.lua)
 
 --- Sets the attributes for `slice` under button suffix `suffix` ("*type-<suffix>", ...).
 --- Must be called out of combat.
@@ -35,6 +36,12 @@ end
 --- Must be called out of combat.
 function Ring_Actions.ApplySlice(button, index, slice)
     Ring_Actions.ApplySliceSuffix(button, "s" .. index, slice)
+end
+
+--- The actions `slice` spreads into in game (an action bar's buttons), or nil.
+function Ring_Actions.GetSpreadSlices(slice)
+    local definition = Get(slice.kind)
+    return definition and definition.spread and definition.spread(slice) or nil
 end
 
 function Ring_Actions.GetIcon(slice, depth)

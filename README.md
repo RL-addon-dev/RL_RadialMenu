@@ -57,6 +57,7 @@ right-click (Right-Click to Cancel) also close it.
 | Housing | Teleport Home to Founder's Point or Razorwind Shores (hidden while you don't own a house there), and Return | ✓ | — |
 | Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |
 | Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
+| Action Bars | one of your action bars (1–8): in game it becomes the bar's buttons, firing whatever is on them. Action Bar 1 follows its page (stances, forms, stealth, Shift+1–6). Hidden while the bar is empty or turned off | ✓ | ✓ |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
 Actions that have nothing to fire right now are left out of the menu until they're usable again:
