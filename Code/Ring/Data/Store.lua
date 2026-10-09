@@ -61,8 +61,10 @@ Ring_Data.QuickAction = {
     Custom = "custom"
 }
 
+-- New menus start without a quick action: releasing in the center then cancels, so an action
+-- used last (a Hearthstone, a potion) doesn't fire again by accident.
 local RING_DEFAULTS = {
-    quickAction = Ring_Data.QuickAction.Last,
+    quickAction = Ring_Data.QuickAction.None,
 }
 
 Private.AUTO_ERROR = "this menu fills itself automatically"
