@@ -249,6 +249,9 @@ function PreviewMixin:SetTooltipIndex(index)
         Group(nest)
     end
     AddVisibilityGroup(slice)
+    -- A character menu says whose it is, last, in orange like the other notes.
+    local owner = slice.kind == "ring" and Ring_Data.GetCharacterName(slice.ring)
+    if owner then GameTooltip:AddLine(format(L["Config - Rings - CharacterMenu"], owner), 1, 0.5, 0.25, true) end
     GameTooltip:Show()
 end
 

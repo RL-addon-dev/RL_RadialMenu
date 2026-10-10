@@ -99,6 +99,10 @@ function PageMixin:RefreshKeybindRow(ring)
     if conflict then
         description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Conflict"], conflict) .. "|r"
     end
+    local override = Ring_Data.GetBindingOverride(ring.id)
+    if override then
+        description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Overridden"], override.name) .. "|r"
+    end
     self.KeybindRow:SetInfo(L["Config - Rings - Keybind"], description)
 end
 
@@ -141,14 +145,23 @@ function PageMixin:OnKeyCaptured(key)
     self.capturingRingId = nil
     if not ringId then return end
 
-    -- A key belongs to one ring: say so when it moves.
+    -- Say where the key came from: menus that lose it (same scope), or a menu of the other scope
+    -- that keeps it (the character menu wins on this character, the account menu elsewhere).
+    local others = {}
     for _, other in ipairs(Ring_Data.GetRings()) do
-        if other.id ~= ringId and Ring_Data.GetBinding(other.id) == key then
-            env.Print(format(L["Config - Rings - Keybind - Moved"], Rings_Keybind.GetDisplayText(key), other.name))
-        end
+        if other.id ~= ringId and Ring_Data.GetBinding(other.id) == key then others[#others + 1] = other end
     end
 
     Ring_Data.SetBinding(ringId, key)
+    local keyText, ring = Rings_Keybind.GetDisplayText(key), Ring_Data.GetRing(ringId)
+    local _, isAccount = Ring_Data.GetBinding(ringId)
+    for _, other in ipairs(others) do
+        local message = "Config - Rings - Keybind - Moved"
+        if Ring_Data.GetBinding(other.id) == key then
+            message = isAccount and "Config - Rings - Keybind - OverriddenBy" or "Config - Rings - Keybind - Overrides"
+        end
+        env.Print(format(L[message], keyText, ring.name, other.name))
+    end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 end
 

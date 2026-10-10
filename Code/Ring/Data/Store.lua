@@ -182,6 +182,19 @@ function Ring_Data.GetRings()
     return rings
 end
 
+--- The character a menu belongs to, or nil for an account menu. A character menu only exists on
+--- its own character, so that's always the one playing.
+function Ring_Data.GetCharacterName(id)
+    local _, scope = Ring_Data.GetRing(id)
+    return scope == Ring_Data.Scope.Character and UnitName("player") or nil
+end
+
+--- Whether `slice` is a submenu this character doesn't have: another character's menu inside an
+--- account menu. It only exists on that character, so everywhere else it's left out.
+function Ring_Data.IsOtherCharacters(slice)
+    return slice.kind == "ring" and Ring_Data.GetRing(slice.ring) == nil
+end
+
 --- Whether `slice` can be a quick action: not a submenu or an action bar, which hold several
 --- actions (a tap has no single one to fire).
 function Ring_Data.CanBeQuickAction(slice)

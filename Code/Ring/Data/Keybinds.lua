@@ -1,7 +1,9 @@
 --[[
     Ring data: keybinds. They follow the menu's scope: account menus' keybinds are saved
     account-wide (Global_Persistent.Bindings), character menus' keybinds on the character
-    (Local_Persistent.Bindings). A key belongs to one menu.
+    (Local_Persistent.Bindings). A key belongs to one account menu, and to one character menu on
+    each character. When both use it, the character menu wins on its character (Ring_Secure binds
+    character keys last) and the account menu opens everywhere else.
 ]]
 
 local env = select(2, ...)
@@ -25,15 +27,12 @@ function Private.GetBindingTable(scope)
 end
 local GetBindingTable = Private.GetBindingTable
 
---- Takes `key` away from every other menu this character can see that uses it (an account menu
---- loses it on all characters).
-local function ReleaseKey(key, exceptId)
-    for _, other in ipairs(Ring_Data.GetRings()) do
-        if other.id ~= exceptId then
-            local _, scope = Ring_Data.GetRing(other.id)
-            local bindings = GetBindingTable(scope)
-            if bindings[other.id] == key then bindings[other.id] = nil end
-        end
+--- Takes `key` away from the other menus in `scope` (an account menu loses it on all characters).
+--- Menus in the other scope keep it: a character menu's key wins on its character either way.
+local function ReleaseKey(key, exceptId, scope)
+    local bindings = GetBindingTable(scope)
+    for id, bound in pairs(bindings) do
+        if id ~= exceptId and bound == key then bindings[id] = nil end
     end
 end
 
@@ -42,7 +41,7 @@ function Private.MoveBinding(id, fromScope, toScope)
     local key = GetBindingTable(fromScope)[id]
     GetBindingTable(fromScope)[id] = nil
     if key then
-        ReleaseKey(key, id)
+        ReleaseKey(key, id, toScope)
         GetBindingTable(toScope)[id] = key
     end
 end
@@ -53,6 +52,17 @@ function Ring_Data.GetBinding(id)
     id = tostring(id)
     local _, scope = Ring_Data.GetRing(id)
     return GetBindingTable(scope)[id], scope == Ring_Data.Scope.Account
+end
+
+--- The character menu that uses account menu `id`'s key on this character (it opens instead of
+--- `id` here), or nil.
+function Ring_Data.GetBindingOverride(id)
+    local key, isAccount = Ring_Data.GetBinding(id)
+    if not (key and isAccount) then return nil end
+    for otherId, otherKey in pairs(Private.GetCharacterBindingTable()) do
+        local other = otherKey == key and Ring_Data.GetRing(otherId)
+        if other then return other end
+    end
 end
 
 --- Menus that can be opened in game: those with a keybind, and the submenus they use (at any
@@ -82,11 +92,11 @@ function Ring_Data.GetOpenableRings()
 end
 
 --- Sets (or clears, key = nil) a menu's keybind: account-wide for account menus, on this
---- character for character menus. A key belongs to one menu: other menus using it lose it.
+--- character for character menus. Other menus using it lose it (see ReleaseKey).
 function Ring_Data.SetBinding(id, key)
     local ring, scope = Ring_Data.GetRing(id)
     if not ring then return false end
-    if key then ReleaseKey(key, ring.id) end
+    if key then ReleaseKey(key, ring.id, scope) end
     GetBindingTable(scope)[ring.id] = key
     Changed()
     return true
