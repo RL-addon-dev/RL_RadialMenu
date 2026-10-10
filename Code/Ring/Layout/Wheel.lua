@@ -62,9 +62,9 @@ local DIVIDER_INNER_OVERLAP = 3
 -- circle just past its ring (a little margin so the ring's outer edge isn't clipped).
 local CIRCLE_MASK_TEXTURE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local CENTER_RING_MASK_MARGIN = 2
--- A lone slice sits in the center: the wheel's background (as dark as usual) is masked to just
--- past the center circle. Mask_SoftCircle.png is opaque out to 80% of its radius, then fades out;
--- this is its diameter as a share of the center circle's.
+-- Nothing around the center (a lone slice sits in it, or there are no slices): the wheel's
+-- background is masked to just past the center circle. Mask_SoftCircle.png is opaque out to 80%
+-- of its radius, then fades out; this is its diameter as a share of the center circle's.
 local SINGLE_BACKGROUND_MASK_PATH = "%s\\Art\\Ring\\Mask_SoftCircle.png"
 local SINGLE_BACKGROUND_MASK_SCALE = 1.35
 local SINGLE_BACKGROUND_ALPHA = 0.6 -- lighter than the full wheel's shade
@@ -351,16 +351,18 @@ function WheelMixin:SetSlices(slices, iconOffset, hasTapOnly)
     -- icon. Not when a tap-only quick action owns the center (Ring_Secure fires that on a tap).
     self.isSingleCentered = count == 1 and not hasTapOnly
     self.selectedIndex = nil
-    -- With the lone slice in the center the background only shades around the center circle.
-    if self.isSingleCentered ~= self.backgroundMasked then
-        if self.isSingleCentered then
+    -- Nothing around the center (a lone slice in it, or no slices): the background only shades
+    -- around the center circle.
+    local centerOnly = self.isSingleCentered or count == 0
+    if centerOnly ~= self.backgroundMasked then
+        if centerOnly then
             self.Background:AddMaskTexture(self.BackgroundMask)
         else
             self.Background:RemoveMaskTexture(self.BackgroundMask)
         end
-        self.backgroundMasked = self.isSingleCentered
+        self.backgroundMasked = centerOnly
     end
-    self.Background:SetAlpha(self.isSingleCentered and SINGLE_BACKGROUND_ALPHA or 1)
+    self.Background:SetAlpha(centerOnly and SINGLE_BACKGROUND_ALPHA or 1)
 
     self:SetupFrameTexture(count)
 
