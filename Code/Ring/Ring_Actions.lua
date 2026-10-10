@@ -17,7 +17,8 @@ local Get = Ring_Kinds.Get
 -- Every secure attribute a kind may set. Cleared before applying a slice, so nothing is left over
 -- from what this suffix held before a rebuild (another action, or another mode of the same one).
 local SLICE_ATTRIBUTES = { "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton",
-    "pagedbutton" } -- pagedbutton: Action Bar 1 buttons follow the bar's page (Kinds\ActionBar.lua)
+    "pagedbutton", -- Action Bar 1 buttons follow the bar's page (Kinds\ActionBar.lua)
+    "close" }      -- a Close action: picking it is a cancel (Kinds\Close.lua)
 
 --- Sets the attributes for `slice` under button suffix `suffix` ("*type-<suffix>", ...).
 --- Must be called out of combat.

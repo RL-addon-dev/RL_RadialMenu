@@ -178,6 +178,8 @@ local PRE_CLICK = [[
     probe:UnregisterAutoHide()
     probe:Hide()
     result = result or "cancel"
+    -- A Close action: picking it is a cancel, firing nothing (Kinds\Close.lua).
+    if index and self:GetAttribute("*close-s" .. index) then index, result = nil, "cancel" end
 
     if index and self:GetAttribute("ring-quickmode") == "last" then
         self:SetAttribute("ring-quick", index)
