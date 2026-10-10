@@ -23,7 +23,7 @@
 
     Ring:
         id, name
-        quickAction:  "none" | "last" | slice index | "custom" (tap-only: quickSlice, not on the wheel)
+        quickAction:  "none" | "custom" (quickSlice: the action in the center, fired by a tap)
         slices:       array of slices ({ kind = ..., ... }; each kind's fields: Kinds\*.lua)
         builtin:      built-in ring key (Code\Ring\BuiltIns\*.lua); order: its remembered slice
                       order (slice keys)
@@ -53,11 +53,10 @@ Ring_Data.Scope = {
     Character = "character"
 }
 
--- quickAction: "none", "last", a slice index (one of the ring's slices), or "custom": a tap-only
--- slice kept in ring.quickSlice, not on the wheel.
+-- quickAction: "none", or "custom": the action in the center (ring.quickSlice), fired by a tap and
+-- not on the wheel. Last Used there is a Last Used action (Kinds\LastUsed.lua).
 Ring_Data.QuickAction = {
     None   = "none",
-    Last   = "last",
     Custom = "custom"
 }
 
@@ -135,14 +134,10 @@ function Private.NormalizeRing(ring)
     for _, slice in ipairs(ring.slices) do
         if slice.kind == "ring" then slice.nest = nil end
     end
-    -- A fixed quick action is one of the ring's own slices, never a nested ring or an action bar
-    -- (a tap has no single thing to fire there; its spells can be the quick action directly).
-    local quickSlice = type(ring.quickAction) == "number" and ring.slices[ring.quickAction]
-    if type(ring.quickAction) == "number" and not (quickSlice and Ring_Data.CanBeQuickAction(quickSlice)) then
-        ring.quickAction = Ring_Data.QuickAction.None
-    end
-    -- The tap-only slice only exists while it's the quick action.
-    if ring.quickAction == Ring_Data.QuickAction.Custom and type(ring.quickSlice) ~= "table" then
+    -- quickSlice only exists while quickAction is Custom. Close in the center is stored as an
+    -- empty center: both cancel, and an empty one toggles with Last Used and has no X.
+    if ring.quickAction == Ring_Data.QuickAction.Custom
+        and (type(ring.quickSlice) ~= "table" or ring.quickSlice.kind == "close") then
         ring.quickAction = Ring_Data.QuickAction.None
     end
     if ring.quickAction ~= Ring_Data.QuickAction.Custom then ring.quickSlice = nil end
@@ -317,18 +312,9 @@ end
 
 -- Slice edits
 
---- After slices move, keep everything that refers to a slice by index pointing at the same slice:
---- a fixed quick action, this character's last used slice and remembered scroll positions.
+--- After slices move, keep remembered scroll positions (stored by slice index) on the same slice.
 --- @param map function(oldIndex) -> newIndex, or nil if that slice is gone
 function Private.RemapSliceIndices(ring, map)
-    if type(ring.quickAction) == "number" then
-        ring.quickAction = map(ring.quickAction) or Ring_Data.QuickAction.None
-    end
-
-    -- Last Used is stored by slice identity; only older saves hold an index.
-    local lastUsed = GetStoredTable(Config.DBLocalPersistent, "LastUsedSlice")
-    if type(lastUsed[ring.id]) == "number" then lastUsed[ring.id] = map(lastUsed[ring.id]) end
-
     local scroll = GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
     local prefix = ring.id .. ":"
     local remembered = {}
@@ -440,11 +426,6 @@ function Ring_Data.RemoveSlice(id, index)
     if Ring_Data.IsBuiltIn(ring) then
         -- Left out of its refills until restored (BuiltIn.lua).
         Private.RememberRemoved(ring, ring.slices[index])
-    elseif ring.quickAction == index and ring.slices[index].kind ~= "ring" then
-        -- Removing the quick action's slice from the wheel keeps it as the quick action, tap-only
-        -- (not for a nested ring, which has nothing of its own to fire).
-        ring.quickAction = Ring_Data.QuickAction.Custom
-        ring.quickSlice = ring.slices[index]
     end
 
     table.remove(ring.slices, index)

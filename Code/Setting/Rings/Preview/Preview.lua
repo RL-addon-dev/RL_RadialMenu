@@ -18,18 +18,22 @@
                       anywhere outside the center adds it. Works with drag-release or
                       pick-up-then-click.
       reorder         press on a slice icon and drag (the icon follows the cursor): over another
-                      slice swaps the two, between two slices moves it there, the center makes it
-                      the quick action. Releasing off the wheel cancels.
-      quick action    press on the center and drag a tap-only quick action onto the wheel: over a
-                      slice replaces it, between two slices inserts it there. Nested rings can't
-                      be the quick action (the drag label says so).
+                      slice swaps the two, between two slices moves it there, the center copies it
+                      there (it stays on the wheel; it replaces what the center had). Releasing
+                      off the wheel cancels.
+      quick action    the center is a slot: press on it and drag its action onto the wheel: over a
+                      slice swaps the two (not with a submenu or action bar, which can't be in
+                      the center), between two slices inserts it there. An empty center drags out as a Close
+                      action (it cancels, like Close). Nested rings and action bars can't be in
+                      the center (the drag label says so).
 
-    Double-click: the center switches None <-> Last Used Slice (a slice quick action is only
-    cleared with the center's X); a nested ring slice switches between scroll and spread.
+    Double-click: the center switches between empty (Close Menu) and a Last Used action (another
+    quick action is only cleared with the center's X); a nested ring slice switches between scroll
+    and spread.
 
-    Center icon, like the real ring before the mouse moves: a fixed quick action slice shows its
-    icon, "Last Used Slice" shows the question mark macro icon, "None" shows cancel. Badges and
-    the X on the center follow the quick action's slice.
+    Center icon, like the real ring before the mouse moves: the quick action's icon (a Last Used
+    action shows the question mark here, the last action's icon in game); empty shows cancel.
+    Badges and the X on the center follow the quick action.
     Read-only (built-in rings, which fill themselves): slices can be rearranged by dragging and
     removed with the X (remembered, see Ring_Data BuiltIn.lua), but there's no "+" and nothing
     can be dropped in from the game.
@@ -71,7 +75,6 @@ local PREVIEW_SCALE = 1 -- same size as the in-game ring at the default Ring Siz
 local REMOVE_SIZE = 20
 local REMOVE_OFFSET = 12 -- X center sits this far in from the corner, minus half its size (2px inside the icon)
 local QUICK_REMOVE_SCALE = 0.8 -- the center icon is smaller than a slice icon
-local LAST_USED_ICON = 134400 -- INV_Misc_QuestionMark, the default macro icon
 local DRAG_ICON_SIZE = 36
 local INSERT_LINE_COLOR = { 1, 0.82, 0, 0.95 }
 -- "+" on the gap between two slices (hovered), to add a slice at that spot.
@@ -196,7 +199,7 @@ function PreviewMixin:SetRing(ring)
     for index = 1, #slices do
         displaySlices[index] = self:GetShownSlice(index)
     end
-    local hasTapOnly = ring ~= nil and ring.quickAction == Ring_Data.QuickAction.Custom and ring.quickSlice ~= nil
+    local hasTapOnly = ring ~= nil and Ring_Data.GetQuickActionSlice(ring) ~= nil
     wheel:SetSlices(displaySlices, nil, hasTapOnly)
     wheel:SetScrollBadges(slices)
     wheel:SetConditionBadges(slices)
@@ -210,14 +213,10 @@ function PreviewMixin:SetRing(ring)
     local quickIcon, quickSlice
     if #slices == 0 then
         quickIcon = nil -- nothing to fire yet: show cancel
-    elseif ring and ring.quickAction == Ring_Data.QuickAction.Last then
-        quickIcon = LAST_USED_ICON
     elseif ring then
-        -- A nested (scroll) ring as the quick action shows its current child, like its wedge.
-        local quickIndex, stored = Ring_Data.GetQuickActionIndex(ring), Ring_Data.GetQuickActionSlice(ring)
-        quickSlice = quickIndex and Ring_Live.GetStoredShownSlice(ring, quickIndex) or stored
+        quickSlice = Ring_Data.GetQuickActionSlice(ring)
         -- Hide Hidden Actions: a hidden quick action leaves the center to cancel, like in game.
-        if hideHidden and stored and not Ring_Actions.IsSliceAvailable(stored) then quickSlice = nil end
+        if hideHidden and quickSlice and not Ring_Actions.IsSliceAvailable(quickSlice) then quickSlice = nil end
         quickIcon = quickSlice and Ring_Actions.GetIcon(quickSlice)
     end
     wheel:SetQuickIcon(quickIcon, quickSlice)

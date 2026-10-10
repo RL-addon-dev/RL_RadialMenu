@@ -44,6 +44,11 @@ Rings_Preview.SetTooltipOutward = SetTooltipOutward
 
 -- Drop / drag target
 
+--- Why `slice` can't be in the center (Ring_Data.CanBeQuickAction): a submenu, or an action bar.
+local function CantBeQuickLabel(slice)
+    return slice.kind == "ring" and L["Config - Rings - Drag - QuickRing"] or L["Config - Rings - Drag - QuickActionBar"]
+end
+
 --- Shows what releasing now would do: gold wedge over a slice, a gold divider line between two,
 --- the center highlight for the center, plus a label at the cursor.
 --- @param from number|nil the slice being reordered (nil for a drop from the game)
@@ -59,6 +64,14 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
         self:SetSelected(target.index, false)
         if from and from ~= "quick" then
             label = target.index ~= from and L["Config - Rings - Drag - Swap"] or nil
+        elseif from == "quick" then
+            -- The center's action and this one swap; a submenu or action bar can't go to the center.
+            local over = self.ring and self:GetSlice(target.index)
+            if over and not Ring_Data.CanBeQuickAction(over) then
+                label, detail = CantBeQuickLabel(over), L["Config - Rings - Drag - QuickSwapRing - Hint"]
+            else
+                label = L["Config - Rings - Drag - Swap"]
+            end
         else
             label = L["Config - Rings - Drag - Replace"]
         end
@@ -82,7 +95,7 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
         -- Nested rings and action bars can't be the quick action: say so, and what to do instead.
         local fromSlice = type(from) == "number" and self.ring and self:GetSlice(from)
         if fromSlice and not Ring_Data.CanBeQuickAction(fromSlice) then
-            label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickRing - Hint"]
+            label, detail = CantBeQuickLabel(fromSlice), L["Config - Rings - Drag - QuickRing - Hint"]
         elseif from ~= "quick" then
             label = L["Config - Rings - Drag - Quick"]
         end
@@ -239,12 +252,9 @@ function PreviewMixin:SetTooltipIndex(index)
     GameTooltip:Show()
 end
 
---- The quick action's stored slice: the tap-only slice or one of the ring's slices (nil for None
---- or Last Used Slice).
+--- The action in the center (the quick action), or nil.
 function PreviewMixin:GetQuickStoredSlice()
-    local ring = self.ring
-    if not ring or ring.quickAction == Ring_Data.QuickAction.Last then return nil end
-    return Ring_Data.GetQuickActionSlice(ring)
+    return self.ring and Ring_Data.GetQuickActionSlice(self.ring) or nil
 end
 
 --- Tooltip for the center: the current quick action and how to change it from the wheel.
@@ -255,35 +265,33 @@ function PreviewMixin:ShowCenterTooltip()
     self.tooltipOwner = owner
     SetTooltipOutward(owner, -pi / 2)
 
-    local title
-    if ring.quickAction == Ring_Data.QuickAction.Last then
-        title = L["Config - Rings - QuickAction - Last"]
-    else
-        local slice = Ring_Data.GetQuickActionSlice(ring)
-        title = slice and Ring_Actions.GetLabel(slice) or L["Config - Rings - QuickAction - None"]
-    end
+    local slice = Ring_Data.GetQuickActionSlice(ring)
+    -- An empty center closes the menu, like a Close action: named the same.
+    local title = Ring_Actions.GetLabel(slice or { kind = "close" })
     GameTooltip:SetText(format(L["Config - Rings - Tooltip - QuickTitle"], title), 1, 1, 1)
 
-    local tapOnly = ring.quickAction == Ring_Data.QuickAction.Custom and ring.quickSlice
-    if tapOnly then
+    if slice then
         GameTooltip:AddLine(L["Config - Rings - Tooltip - TapOnly"], nil, nil, nil, true)
     end
     GameTooltip:AddLine(" ")
-    local control = self.readOnly and L["Config - Rings - Preview - Control - QuickReadOnly"] or L["Config - Rings - Preview - Control - Quick"]
-    -- With a slice as the quick action, a double-click does nothing (the X clears it).
-    if self:GetQuickStoredSlice() then
+    local control
+    if slice and slice.kind ~= "lastused" then
+        -- A double-click only switches between empty and Last Used; this one goes with the X.
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickSetReadOnly"] or L["Config - Rings - Preview - Control - QuickSet"]
+    else
+        control = self.readOnly and L["Config - Rings - Preview - Control - QuickReadOnly"] or L["Config - Rings - Preview - Control - Quick"]
     end
-    if tapOnly and not self.readOnly then
-        control = control .. " " .. L["Config - Rings - Preview - Control - QuickToWheel"]
+    if not self.readOnly then
+        -- An empty center drags out as a Close action.
+        control = control .. " " .. L[slice and "Config - Rings - Preview - Control - QuickToWheel" or "Config - Rings - Preview - Control - CloseToWheel"]
     end
-    if self:GetQuickStoredSlice() then
+    if slice then
         control = control .. " " .. L["Config - Rings - Preview - Control - QuickClear"]
     end
     GameTooltip:AddLine(L["Config - Rings - Tooltip - Control"] .. " " .. control, nil, nil, nil, true)
 
     -- Same group as a slice's tooltip, for the quick action's slice.
-    AddVisibilityGroup(self:GetQuickStoredSlice())
+    AddVisibilityGroup(slice)
     GameTooltip:Show()
 end
 

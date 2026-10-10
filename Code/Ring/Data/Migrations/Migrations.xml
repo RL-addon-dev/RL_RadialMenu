@@ -20,7 +20,7 @@
         flag  remembered in that saved variables table once the migration has run
         db    "account", or "character" (then it runs once on every character)
         run   gets that saved variables table
-
-        None yet.
     -->
+    <Script file="001_CenterQuickSlot.lua"/>
+    <Script file="002_LastUsedByKey.lua"/>
 </Ui>

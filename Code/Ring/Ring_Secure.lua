@@ -192,10 +192,6 @@ local PRE_CLICK = [[
     end
     if type(index) == "number" then self:SetAttribute("ring-last", index) end
 
-    if index and self:GetAttribute("ring-quickmode") == "last" then
-        self:SetAttribute("ring-quick", index)
-    end
-
     owner:CallMethod("OnRingClose", ringId, result, index)
     if not index then return false end
     local suffix = "s" .. index
@@ -380,7 +376,7 @@ function Controller:OnRingClose(ringId, result, index)
 
     local live = ringsById[ringId]
     local button = buttonsById[ringId]
-    -- Remembered for every menu: the Last Used quick action and Last Used actions both use it.
+    -- Remembered for every menu, for Last Used actions (on a wedge or in the center).
     local slice = live and index and live.slices[index]
     if slice then Ring_Data.SetLastUsedKey(ringId, live.entries[index].key) end
 
@@ -459,7 +455,7 @@ local function SetupRing(ring)
     button:SetAttribute("ring-centerx", centerX)
     button:SetAttribute("ring-centery", centerY)
     -- The last used action -> live index (nil before any, or while it's hidden), found by slice
-    -- identity: for the Last Used quick action and Last Used actions (PRE_CLICK keeps it current).
+    -- identity, for Last Used actions (PRE_CLICK keeps it current).
     local lastIndex
     local lastKey = Ring_Data.GetLastUsedKey(ring.id)
     for index, entry in ipairs(live.entries) do
@@ -470,23 +466,10 @@ local function SetupRing(ring)
     if live.quickSlice then
         -- Tap-only quick action: its attributes live under "sQ"; the snippet redirects a tap there.
         Ring_Actions.ApplySliceSuffix(button, "s" .. QUICK_SUFFIX, live.quickSlice)
-        button:SetAttribute("ring-quickmode", "fixed")
         button:SetAttribute("ring-quick", QUICK_SUFFIX)
-    elseif count == 1 then
-        -- A single slice sits in the center (Ring_View), so a tap fires it too.
-        button:SetAttribute("ring-quickmode", "fixed")
-        button:SetAttribute("ring-quick", 1)
     else
-        -- Quick action -> live index (nil while that slice is hidden). A fixed quick action on an
-        -- expanded nested ring fires its first slice; Last Used is found by slice identity.
-        local quick
-        if ring.quickAction == Ring_Data.QuickAction.Last then
-            quick = lastIndex
-        elseif type(ring.quickAction) == "number" then
-            quick = live.firstOfTop[ring.quickAction]
-        end
-        button:SetAttribute("ring-quickmode", ring.quickAction == Ring_Data.QuickAction.Last and "last" or "fixed")
-        button:SetAttribute("ring-quick", quick)
+        -- A single slice sits in the center (Ring_View), so a tap fires it; else a tap fires nothing.
+        button:SetAttribute("ring-quick", count == 1 and 1 or nil)
     end
 
     local hasScroll = false

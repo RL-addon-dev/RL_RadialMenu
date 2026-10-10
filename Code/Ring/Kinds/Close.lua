@@ -1,8 +1,9 @@
 --[[
     close   (no fields) closes the menu without using anything, like Escape or right click: for
             setups without those at hand (a controller, Relaxed style). Picking it is a cancel
-            (Ring_Secure, "*close-<suffix>"): it fires nothing and never becomes Last Used. As the
-            quick action it does nothing, like None.
+            (Ring_Secure, "*close-<suffix>"): it fires nothing and never becomes Last Used. Put in
+            the center, it's kept as an empty center, which does the same (Data\Store.lua,
+            NormalizeRing).
 ]]
 
 local env = select(2, ...)

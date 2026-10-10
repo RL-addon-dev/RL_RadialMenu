@@ -18,6 +18,7 @@ local PreviewMixin = Private.PreviewMixin
 
 local HOVER_PADDING = 14 -- px around an icon that still counts as being on it (covers its X)
 local DRAG_THRESHOLD = 6 -- px the mouse must move before a press on an icon becomes a drag
+local CLOSE_SLICE = { kind = "close" } -- what an empty center drags out as (its drag icon)
 local DOUBLE_CLICK_TIME = 0.35 -- s between presses on a nested ring to switch scroll / expand
 local DRAG_SOURCE_ALPHA = 0.35
 -- Share of a slice's angle, either side of its center, that counts as "over" it (the rest of
@@ -123,13 +124,18 @@ function PreviewMixin:BeginDrag(index)
     self.drag = { from = index, startX = x, startY = y, active = false }
 end
 
+--- What the center shows: its action, or (empty) the cancel X.
+function PreviewMixin:GetCenterIcon()
+    return Ring_Data.GetQuickActionSlice(self.ring) and self.wheel.Quick or self.wheel.CancelIcon
+end
+
 --- @param apply boolean carry out the move / swap / quick action change (false: just cancel)
 function PreviewMixin:EndDrag(apply)
     local drag = self.drag
     if not drag then return end
     self.drag = nil
 
-    local source = drag.from == "quick" and self.wheel.Quick or self.wheel.Wedges[drag.from]
+    local source = drag.from == "quick" and self:GetCenterIcon() or self.wheel.Wedges[drag.from]
     if source then (source.Button or source):SetAlpha(1) end
     self.DragIcon:Hide()
     self:HideTarget()
@@ -138,9 +144,12 @@ function PreviewMixin:EndDrag(apply)
     if not (apply and drag.active and target) then return end
 
     if drag.from == "quick" then
-        -- The tap-only quick action onto the wheel.
-        if target.mode == "over" or target.mode == "between" or target.mode == "add" then
-            local replace = target.mode == "over"
+        -- The center's action onto the wheel (a Close action when it's empty).
+        local replace = target.mode == "over"
+        -- A submenu or action bar can't swap into the center (the drag label says so).
+        local over = replace and self.ring and self:GetSlice(target.index)
+        if over and not Ring_Data.CanBeQuickAction(over) then return end
+        if replace or target.mode == "between" or target.mode == "add" then
             if self.callbacks.onQuickToWheel then self.callbacks.onQuickToWheel(target.index, replace) end
         end
         return
@@ -148,7 +157,7 @@ function PreviewMixin:EndDrag(apply)
 
     if target.mode == "center" then
         local slice = self.ring and self:GetSlice(drag.from)
-        if slice and slice.kind ~= "ring" and self.callbacks.onQuickFromSlice then self.callbacks.onQuickFromSlice(drag.from) end
+        if slice and Ring_Data.CanBeQuickAction(slice) and self.callbacks.onQuickFromSlice then self.callbacks.onQuickFromSlice(drag.from) end
     elseif target.mode == "over" and target.index ~= drag.from then
         if self.callbacks.onSwap then self.callbacks.onSwap(drag.from, target.index) end
     elseif target.mode == "between" then
@@ -177,8 +186,8 @@ function PreviewMixin:UpdateDrag()
         drag.active = true
         self:SetTooltipIndex(nil)
         if drag.from == "quick" then
-            Ring_Layout.SetSliceIcon(self.DragIcon, self.ring.quickSlice)
-            self.wheel.Quick:SetAlpha(DRAG_SOURCE_ALPHA)
+            Ring_Layout.SetSliceIcon(self.DragIcon, Ring_Data.GetQuickActionSlice(self.ring) or CLOSE_SLICE)
+            self:GetCenterIcon():SetAlpha(DRAG_SOURCE_ALPHA)
         else
             local slice = self.ring and self:GetShownSlice(drag.from)
             Ring_Layout.SetSliceIcon(self.DragIcon, slice)
@@ -281,10 +290,8 @@ function Private.OnMouseDown(wheel, button)
             return
         end
         preview.lastPressIndex, preview.lastPressTime = "center", now
-        local ring = preview.ring
-        if ring and ring.quickAction == Ring_Data.QuickAction.Custom and ring.quickSlice and not preview.readOnly then
-            preview:BeginDrag("quick")
-        end
+        -- Its action, or (empty) a Close action: an empty center cancels, like Close.
+        if preview.ring and not preview.readOnly then preview:BeginDrag("quick") end
         return
     end
     if not index then return end

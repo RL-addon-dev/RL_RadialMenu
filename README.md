@@ -30,8 +30,9 @@ Then hold your key in the game, move the mouse toward an action and let go.
 - **Cancel:** press Escape, right-click (Right-Click to Cancel, on by default), or move back to the
   center (the X) and release.
 - **Quick action:** tap the keybind without moving the mouse. Release before the **Reveal
-  Delay** and the menu never even shows. The quick action can be the last action you used, a
-  fixed one, or an action that's only on the tap and not in the menu.
+  Delay** and the menu never even shows. The quick action is the action in the menu's center:
+  drag any action there (an action from the wheel is copied, so it stays there too), drag it out
+  onto the wheel, or double-click the center to use the last action you used.
 
 ![A tap fires the quick action without the menu appearing](Media/quick-action.gif)
 

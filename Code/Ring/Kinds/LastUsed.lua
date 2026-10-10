@@ -1,10 +1,10 @@
 --[[
-    lastused    (no fields) fires whatever this menu fired last, like the Last Used quick action,
-                but from any wedge. Ring_Secure redirects its release to that action's slot
-                ("*lastused-<suffix>", "ring-last"), so it's that action, not this one, that
-                becomes the last used; before anything was used it does nothing. In game it
-                shows the last action's icon while the menu is open (Ring_Secure); elsewhere it
-                shows the question mark.
+    lastused    (no fields) fires whatever this menu fired last, from any wedge or the center
+                (as the quick action: double-click the center). Ring_Secure redirects its release
+                to that action's slot ("*lastused-<suffix>", "ring-last"), so it's that action,
+                not this one, that becomes the last used; before anything was used it does
+                nothing. In game it shows the last action's icon while the menu is open
+                (Ring_Secure); elsewhere it shows the question mark.
 ]]
 
 local env = select(2, ...)

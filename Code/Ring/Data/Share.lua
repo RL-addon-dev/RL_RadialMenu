@@ -12,7 +12,9 @@
     game import.
 
     Payload (FORMAT_VERSION 1):
-        menus   array of { name, slices, quickAction = index | "last" | "custom", quickSlice }
+        menus   array of { name, slices, quickAction = "custom", quickSlice }
+                (older strings' quickAction, an index into slices or "last", is ignored: the menu
+                imports without one)
                 a submenu slice is { kind = "ring", ring = <index in menus> }, or for a
                 built-in one { kind = "ring", builtin = <key> }
         macros  [name] = { icon, body }, for the macro actions
@@ -83,11 +85,6 @@ local function DropEmptyMenus(menus)
                     if slice.kind == "ring" and not slice.builtin and dropped[slice.ring] then
                         table.remove(menu.slices, i)
                         if menu.skipped then CountSkip(menu.skipped, Skip.Empty) end -- an import's menu
-                        if menu.quickAction == i then
-                            menu.quickAction = nil
-                        elseif type(menu.quickAction) == "number" and menu.quickAction > i then
-                            menu.quickAction = menu.quickAction - 1
-                        end
                     end
                 end
             end
@@ -173,16 +170,13 @@ function Ring_Data.BuildShare(ringIds)
             end
         end
 
-        if type(ring.quickAction) == "number" then
-            menu.quickAction = newIndex[ring.quickAction] -- left out with its slice
-        elseif ring.quickAction == Ring_Data.QuickAction.Last then
-            menu.quickAction = "last"
-        elseif ring.quickAction == Ring_Data.QuickAction.Custom and ring.quickSlice then
-            local packed, reason = PackSlice(ring.quickSlice, macros)
+        local center = Ring_Data.GetQuickActionSlice(ring)
+        if center then
+            local packed, reason = PackSlice(center, macros)
             if packed then
                 menu.quickAction, menu.quickSlice = "custom", packed
             else
-                AddSkip(reason, Ring_Actions.GetLabel(ring.quickSlice))
+                AddSkip(reason, Ring_Actions.GetLabel(center))
             end
         end
         menus[menuIndex] = menu
@@ -320,8 +314,7 @@ function Ring_Data.ReadShare(text)
         if sourceName == "" then sourceName = "Menu" end
 
         local entry = { sourceName = sourceName, slices = {}, skipped = {} }
-        local newIndex = {}
-        for index, slice in ipairs(menu.slices) do
+        for _, slice in ipairs(menu.slices) do
             local unpacked, reason
             if type(slice) == "table" and slice.kind == "ring" then
                 local child = slice.ring
@@ -339,17 +332,12 @@ function Ring_Data.ReadShare(text)
             end
             if unpacked then
                 entry.slices[#entry.slices + 1] = unpacked
-                newIndex[index] = #entry.slices
             else
                 CountSkip(entry.skipped, reason)
             end
         end
 
-        if type(menu.quickAction) == "number" then
-            entry.quickAction = newIndex[menu.quickAction]
-        elseif menu.quickAction == "last" then
-            entry.quickAction = Ring_Data.QuickAction.Last
-        elseif menu.quickAction == "custom" then
+        if menu.quickAction == "custom" then
             local quickSlice, reason = plan:UnpackSlice(menu.quickSlice)
             if quickSlice then
                 entry.quickAction, entry.quickSlice = Ring_Data.QuickAction.Custom, quickSlice

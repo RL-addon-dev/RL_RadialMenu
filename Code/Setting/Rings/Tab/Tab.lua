@@ -217,7 +217,6 @@ end
 
 --- What the preview's wheel does to the selected menu (see Rings_Preview.Create).
 local function PreviewCallbacks(page)
-    local QuickAction = Ring_Data.QuickAction
     -- fn(ring, ...) for the selected menu; false without one.
     local function Edit(fn)
         return function(...)
@@ -236,28 +235,29 @@ local function PreviewCallbacks(page)
         onReplace = Edit(function(ring, index, slice) return Report(Ring_Data.ReplaceSlice(ring.id, index, slice)) end),
         onDrop = Edit(function(ring, slice, index) return Report(Ring_Data.AddSlice(ring.id, slice, index)) end),
         onSetQuick = Edit(function(ring, slice) return Report(Ring_Data.SetQuickSlice(ring.id, slice)) end),
-        -- A wheel slice dragged onto the center, and the tap-only quick action dragged onto the wheel.
+        -- A wheel slice copied into the center, and the center's action dragged onto the wheel.
         onQuickFromSlice = Edit(function(ring, index)
-            if ring.quickAction ~= index then Report(Ring_Data.SetQuickAction(ring.id, index)) end
+            Report(Ring_Data.CopySliceToQuick(ring.id, index))
         end),
         onQuickToWheel = Edit(function(ring, index, replace)
             Report(Ring_Data.MoveQuickSliceToWheel(ring.id, index, replace))
         end),
         -- The center's X.
         onClearQuick = Edit(function(ring)
-            if ring.quickAction == QuickAction.None then return end
-            local cleared = ring.quickAction ~= QuickAction.Last and Ring_Data.GetQuickActionSlice(ring)
-            if cleared then
-                env.Print(format(L["Config - Rings - QuickAction - Cleared"], Ring_Actions.GetLabel(cleared)))
-            end
-            Ring_Data.SetQuickAction(ring.id, QuickAction.None)
+            local cleared = Ring_Data.GetQuickActionSlice(ring)
+            if not cleared then return end
+            env.Print(format(L["Config - Rings - QuickAction - Cleared"], Ring_Actions.GetLabel(cleared)))
+            Ring_Data.ClearQuickAction(ring.id)
         end),
-        -- Double-click on the center: None <-> Last Used Slice. A slice as the quick action is
-        -- only cleared with the X, never by a double-click.
+        -- Double-click on the center: None <-> a Last Used action. Another quick action is only
+        -- cleared with the X, never by a double-click.
         onToggleQuick = Edit(function(ring)
-            if ring.quickAction ~= QuickAction.None and ring.quickAction ~= QuickAction.Last then return end
-            local value = ring.quickAction == QuickAction.None and QuickAction.Last or QuickAction.None
-            Report(Ring_Data.SetQuickAction(ring.id, value))
+            local quick = Ring_Data.GetQuickActionSlice(ring)
+            if not quick then
+                Report(Ring_Data.SetQuickSlice(ring.id, { kind = "lastused" }))
+            elseif quick.kind == "lastused" then
+                Report(Ring_Data.ClearQuickAction(ring.id))
+            end
         end),
         -- Double-click on a submenu: scroll <-> spread.
         onToggleExpand = Edit(function(ring, index)
