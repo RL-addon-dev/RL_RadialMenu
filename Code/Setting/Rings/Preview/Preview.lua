@@ -41,8 +41,11 @@
     A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
     on it there, since they follow the icon).
 
+    Another character's submenu (inside an account menu) is always left out: it doesn't exist on
+    this character.
+
     Hide Hidden Actions (the eye in the top corner, PreviewHideHidden): slices hidden in game right
-    now are left out. The wheel's indices are then positions among the shown slices
+    now are left out too. The wheel's indices are then positions among the shown slices
     (self.shown[index] = stored index); callbacks translate them back (StoredCallbacks), so edits
     still work. A slice placed between two shown slices lands right before the second one, after
     any hidden slices in between.
@@ -184,16 +187,21 @@ function PreviewMixin:SetRing(ring)
 
     local wheel = self.wheel
     -- The slices on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
+    -- Another character's submenu is never on it (it doesn't exist here).
     local hideHidden = IsHidingHidden()
     self.shown = {}
-    local slices = {}
+    local slices, hiddenCount = {}, 0
     for index, slice in ipairs(ring and ring.slices or {}) do
-        if not hideHidden or Ring_Actions.IsSliceAvailable(slice) then
+        if Ring_Data.IsOtherCharacters(slice) then
+            -- left out
+        elseif hideHidden and not Ring_Actions.IsSliceAvailable(slice) then
+            hiddenCount = hiddenCount + 1
+        else
             self.shown[#self.shown + 1] = index
             slices[#slices + 1] = slice
         end
     end
-    self:UpdateEyeButton(ring and #ring.slices - #slices or 0)
+    self:UpdateEyeButton(hiddenCount)
     -- Scroll slices show the child's current slice, like the in-game ring.
     local displaySlices = {}
     for index = 1, #slices do
@@ -227,7 +235,7 @@ function PreviewMixin:SetRing(ring)
     wheel:SetCenterHighlight(false)
 
     -- Nothing on the wheel: an empty menu, or (Hide Hidden Actions) all of it hidden right now.
-    local allHidden = #slices == 0 and ring ~= nil and #ring.slices > 0
+    local allHidden = #slices == 0 and hiddenCount > 0
     self.Empty:SetText(allHidden and L["Config - Rings - Preview - AllHidden"] or self.emptyText)
     self.Empty:SetShown(#slices == 0)
     self:SetGapTarget(nil) -- places the "+" on an empty ring, hides it otherwise
