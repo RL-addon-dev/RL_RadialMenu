@@ -54,6 +54,7 @@ right-click (Right-Click to Cancel) also close it.
 | World Markers | placed under the mouse, or with a targeting circle; and Clear | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Close Menu | closes the menu without using anything | ✓ | ✓ |
+| Last Used Action | uses whatever the menu used last, from any wedge (the quick action can be Last Used too) | ✓ | ✓ |
 | Zone Ability, Extra Action | follow the game's buttons; hidden while there's none | ✓ | — |
 | Housing | Teleport Home to Founder's Point or Razorwind Shores (hidden while you don't own a house there), and Return | ✓ | — |
 | Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |

@@ -29,6 +29,10 @@
     Escape while held dismisses the ring, and so does right click (Right-Click to Cancel setting,
     "ring-rightclick"): the helper closes it (OPEN_RING cleared), so the key's release fires nothing.
 
+    Special actions: picking a Close slot ("*close-sN") is a cancel; picking a Last Used slot
+    ("*lastused-sN") fires the slot in "ring-last" instead, the menu's last real pick (set out of
+    combat from the saved Last Used, kept current by every release; nothing before any).
+
     Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
     (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
     secure code can't time the press in combat, so it couldn't tell a tap from a still hold. Left
@@ -180,6 +184,13 @@ local PRE_CLICK = [[
     result = result or "cancel"
     -- A Close action: picking it is a cancel, firing nothing (Kinds\Close.lua).
     if index and self:GetAttribute("*close-s" .. index) then index, result = nil, "cancel" end
+    -- A Last Used action: fire what this menu fired last instead (nothing before anything was),
+    -- so that action, not this one, stays the last used (Kinds\LastUsed.lua).
+    if index and self:GetAttribute("*lastused-s" .. index) then
+        index = self:GetAttribute("ring-last")
+        if not index then result = "cancel" end
+    end
+    if type(index) == "number" then self:SetAttribute("ring-last", index) end
 
     if index and self:GetAttribute("ring-quickmode") == "last" then
         self:SetAttribute("ring-quick", index)
@@ -309,10 +320,19 @@ local function GetLiveShownSlice(live, index, scrollIndex)
 end
 
 --- What each wedge shows, at the scroll positions the button holds.
+--- What a Last Used action would fire now (`slice` itself before anything was used, or for any
+--- other action): it shows that action, on a wedge or in the center.
+local function ShowLastUsed(live, button, slice)
+    if not (slice and slice.kind == "lastused") then return slice end
+    local last = button:GetAttribute("ring-last")
+    return last and GetLiveShownSlice(live, last, button:GetAttribute("ring-scroll-" .. last)) or slice
+end
+
 local function GetDisplaySlices(live, button)
     local slices = {}
     for index = 1, #live.slices do
-        slices[index] = GetLiveShownSlice(live, index, button:GetAttribute("ring-scroll-" .. index))
+        local shown = GetLiveShownSlice(live, index, button:GetAttribute("ring-scroll-" .. index))
+        slices[index] = ShowLastUsed(live, button, shown)
     end
     return slices
 end
@@ -328,7 +348,8 @@ function Controller:OnRingOpen(ringId, startX, startY)
     local button = buttonsById[ringId]
     local displaySlices = GetDisplaySlices(ring, button)
     local quickIndex = button:GetAttribute("ring-quick")
-    local quickSlice = quickIndex == QUICK_SUFFIX and ring.quickSlice or (quickIndex and displaySlices[quickIndex])
+    local quickSlice = quickIndex == QUICK_SUFFIX and ShowLastUsed(ring, button, ring.quickSlice)
+        or (quickIndex and displaySlices[quickIndex])
     Ring_View:Open(ring, startX, startY, Probe, quickSlice, displaySlices, button:GetAttribute("ring-relaxed") and true or false)
 end
 
@@ -359,10 +380,9 @@ function Controller:OnRingClose(ringId, result, index)
 
     local live = ringsById[ringId]
     local button = buttonsById[ringId]
+    -- Remembered for every menu: the Last Used quick action and Last Used actions both use it.
     local slice = live and index and live.slices[index]
-    if slice and live.quickAction == Ring_Data.QuickAction.Last then
-        Ring_Data.SetLastUsedKey(ringId, live.entries[index].key)
-    end
+    if slice then Ring_Data.SetLastUsedKey(ringId, live.entries[index].key) end
 
     if env.DEBUG_MODE and index then
         -- What fired, and the attributes the click used (same suffix as the PRE_CLICK snippet).
@@ -438,6 +458,15 @@ local function SetupRing(ring)
     button:SetAttribute("ring-origin", centerX and "menu" or nil)
     button:SetAttribute("ring-centerx", centerX)
     button:SetAttribute("ring-centery", centerY)
+    -- The last used action -> live index (nil before any, or while it's hidden), found by slice
+    -- identity: for the Last Used quick action and Last Used actions (PRE_CLICK keeps it current).
+    local lastIndex
+    local lastKey = Ring_Data.GetLastUsedKey(ring.id)
+    for index, entry in ipairs(live.entries) do
+        if entry.key == lastKey then lastIndex = index break end
+    end
+    button:SetAttribute("ring-last", lastIndex)
+
     if live.quickSlice then
         -- Tap-only quick action: its attributes live under "sQ"; the snippet redirects a tap there.
         Ring_Actions.ApplySliceSuffix(button, "s" .. QUICK_SUFFIX, live.quickSlice)
@@ -452,10 +481,7 @@ local function SetupRing(ring)
         -- expanded nested ring fires its first slice; Last Used is found by slice identity.
         local quick
         if ring.quickAction == Ring_Data.QuickAction.Last then
-            local key = Ring_Data.GetLastUsedKey(ring.id)
-            for index, entry in ipairs(live.entries) do
-                if entry.key == key then quick = index break end
-            end
+            quick = lastIndex
         elseif type(ring.quickAction) == "number" then
             quick = live.firstOfTop[ring.quickAction]
         end

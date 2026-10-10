@@ -18,7 +18,8 @@ local Get = Ring_Kinds.Get
 -- from what this suffix held before a rebuild (another action, or another mode of the same one).
 local SLICE_ATTRIBUTES = { "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton",
     "pagedbutton", -- Action Bar 1 buttons follow the bar's page (Kinds\ActionBar.lua)
-    "close" }      -- a Close action: picking it is a cancel (Kinds\Close.lua)
+    "close",       -- a Close action: picking it is a cancel (Kinds\Close.lua)
+    "lastused" }   -- a Last Used action: fires the menu's last used action (Kinds\LastUsed.lua)
 
 --- Sets the attributes for `slice` under button suffix `suffix` ("*type-<suffix>", ...).
 --- Must be called out of combat.
