@@ -1,6 +1,6 @@
 --[[
     Ring data: startup. Runs once the saved variables are ready ("Preload.DatabaseReady"):
-    normalizes every ring, runs the migrations that haven't run yet, creates the first-run menus,
+    runs the migrations that haven't run yet, normalizes every ring, creates the first-run menus,
     makes sure the built-in menus exist, then fires "Ring.DataReady" (Ring_Secure, Ring_Auto).
 
     Migrations: one file per change to the saved data, in Migrations\ (listed in order in
@@ -51,11 +51,11 @@ local isReady = false
 
 --- Runs once the saved variables are loaded (not tied to combat: only the secure rebuild is).
 local function Initialize()
+    -- Migrations first: they convert old data, which normalizing then checks like any other.
+    RunMigrations()
     for _, ring in ipairs(Ring_Data.GetRings()) do
         Private.NormalizeRing(ring)
     end
-
-    RunMigrations()
 
     local persistent = _G[Config.DBGlobalPersistent.databaseName]
     if not persistent.Seeded then
