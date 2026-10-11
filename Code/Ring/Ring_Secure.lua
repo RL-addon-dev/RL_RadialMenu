@@ -35,6 +35,13 @@
     a First Action ("*first-sN") fires the slot in "ring-first", the first wedge that fires
     something (set at every rebuild; nothing when there's none).
 
+    Mark Target Markers On = Mouse Cursor: a tap (the mouse is still on the unit) fires a target
+    marker slot's copy ("<suffix>M", TAP_SUFFIX) that marks the mouseover as it fires, also
+    through Last Used and First Action. For picks on the wheel, when a menu opens out of combat
+    its target marker slots' /tm ("*macrotext-<suffix>") is pointed at the unit under the mouse (a
+    token that still names it once the mouse moves: Ring_Kinds.GetUnitUnderMouse), like a ping;
+    set back just after the release and when combat starts, so in combat they mark your target.
+
     Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
     (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
     secure code can't time the press in combat, so it couldn't tell a tap from a still hold. Left
@@ -205,6 +212,11 @@ local PRE_CLICK = [[
     if self:GetAttribute("ring-scrollcount-" .. index) then
         suffix = suffix .. "_" .. (self:GetAttribute("ring-scroll-" .. index) or 1)
     end
+    -- A tap (the mouse never left the unit): a target marker's copy that marks the mouseover
+    -- (Mouse Cursor; also through Last Used and First Action).
+    if result == "quick" and self:GetAttribute("*macrotext-" .. suffix .. "M") then
+        suffix = suffix .. "M"
+    end
     -- An Action Bar 1 button: fire its slot on the bar's page right now (Kinds\ActionBar.lua).
     local pagedButton = self:GetAttribute("*pagedbutton-" .. suffix)
     local pager = pagedButton and owner:GetFrameRef("actionbarpage")
@@ -297,6 +309,7 @@ local QueueRebuild -- defined with the rebuild queue below
 
 -- Button suffix of the tap-only quick action ("*type-sQ" ...), and its "ring-quick" value.
 local QUICK_SUFFIX = "Q"
+local TAP_SUFFIX = "M" -- a target marker's tap copy ("<suffix>M"; PRE_CLICK spells it out)
 
 -- Modifiers a binding string can start with, in WoW's order (ALT-CTRL-SHIFT-KEY).
 local MODIFIERS = { "ALT-", "CTRL-", "SHIFT-", "META-" }
@@ -332,6 +345,28 @@ local function ShowRedirect(live, button, slice)
     return GetLiveShownSlice(live, target, button:GetAttribute("ring-scroll-" .. target)) or slice
 end
 
+-- Target markers on the unit under the mouse when the menu opened: the button and live ring whose
+-- marker slots point at it (nil while none do).
+local aimedButton, aimedLive
+
+--- Points live ring `live`'s target marker slots at `unit` (nil: your target). Out of combat.
+local function AimMarkers(button, live, unit)
+    for _, marker in ipairs(live.markerSuffixes) do
+        button:SetAttribute("*macrotext-" .. marker.suffix, Ring_Kinds.GetTargetMarkerText(marker.id, unit))
+    end
+end
+
+local function ResetAimedMarkers()
+    if not aimedButton or InCombatLockdown() then return end
+    AimMarkers(aimedButton, aimedLive, nil)
+    aimedButton, aimedLive = nil, nil
+end
+
+-- Combat starting: markers go back to your target while slots can still be changed.
+local aimWatcher = CreateFrame("Frame")
+aimWatcher:RegisterEvent("PLAYER_REGEN_DISABLED")
+aimWatcher:SetScript("OnEvent", ResetAimedMarkers)
+
 --- What each wedge shows, at the scroll positions the button holds.
 local function GetDisplaySlices(live, button)
     local slices = {}
@@ -351,6 +386,15 @@ function Controller:OnRingOpen(ringId, startX, startY)
 
     openRingId, openSince, openRelaxed = ringId, GetTime(), false
     local button = buttonsById[ringId]
+    -- Mark Target Markers On = Mouse Cursor: the unit hovered now, like a ping.
+    if #ring.markerSuffixes > 0 and not InCombatLockdown()
+        and Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor then
+        local unit = Ring_Kinds.GetUnitUnderMouse()
+        if unit then
+            AimMarkers(button, ring, unit)
+            aimedButton, aimedLive = button, ring
+        end
+    end
     local displaySlices = GetDisplaySlices(ring, button)
     local quickIndex = button:GetAttribute("ring-quick")
     local quickSlice = quickIndex == QUICK_SUFFIX and ShowRedirect(ring, button, ring.quickSlice)
@@ -391,6 +435,8 @@ end
 function Controller:OnRingClose(ringId, result, index)
     Ring_View:Close()
     openRingId, openRelaxed = nil, false
+    -- The pick fires after this returns: clear the aimed markers just after it.
+    if aimedButton then C_Timer.After(0, ResetAimedMarkers) end
 
     local live = ringsById[ringId]
     local button = buttonsById[ringId]
@@ -434,6 +480,18 @@ local function GetRingButton(ringId)
     return button
 end
 
+--- Mouse Cursor, for slot `suffix` just applied with `slice`. A target marker slot gets a tap copy
+--- ("<suffix>M") that marks the mouseover as it fires (a tap leaves the mouse on the unit, so any
+--- unit, in combat too; else your target), and is listed for aiming (live.markerSuffixes,
+--- AimMarkers). Any other slot's copy is cleared, so a copy never outlives its marker. Out of combat.
+local function SetupMarkerSlot(button, live, suffix, slice)
+    local isMarker = Ring_Kinds.IsUnitMarker(slice)
+    if isMarker then table.insert(live.markerSuffixes, { suffix = suffix, id = slice.id }) end
+    local tap = isMarker and Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor
+    button:SetAttribute("*type-" .. suffix .. TAP_SUFFIX, tap and "macro" or nil)
+    button:SetAttribute("*macrotext-" .. suffix .. TAP_SUFFIX, tap and Ring_Kinds.GetTargetMarkerText(slice.id, "mouseover") or nil)
+end
+
 --- Nested ring (scroll) slice attributes. Returns true if the slice is a nested ring.
 --- Must be called out of combat.
 local function SetupNestedSlice(live, button, index, slice)
@@ -451,7 +509,9 @@ local function SetupNestedSlice(live, button, index, slice)
     button:SetAttribute("ring-scrollcount-" .. index, count)
     button:SetAttribute("ring-scroll-" .. index, count > 0 and current or nil)
     for childIndex, childSlice in ipairs(children) do
-        Ring_Actions.ApplySliceSuffix(button, "s" .. index .. "_" .. childIndex, childSlice)
+        local suffix = "s" .. index .. "_" .. childIndex
+        Ring_Actions.ApplySliceSuffix(button, suffix, childSlice)
+        SetupMarkerSlot(button, live, suffix, childSlice)
     end
     return true
 end
@@ -461,6 +521,10 @@ local function SetupRing(ring)
     local button = GetRingButton(ring.id)
     local live = Ring_Live.Build(ring)
     local count = #live.slices
+    live.markerSuffixes = {} -- target marker slots { suffix, id } (SetupMarkerSlot), for AimMarkers
+    -- Rebuilt: its /tm lines are fresh, so a pending reset (ResetAimedMarkers) has nothing to undo,
+    -- and its old slot list may not match the new slots.
+    if aimedButton == button then aimedButton, aimedLive = nil, nil end
 
     button:SetAttribute("ring-id", ring.id)
     button:SetAttribute("ring-count", count)
@@ -490,6 +554,7 @@ local function SetupRing(ring)
     if live.quickSlice then
         -- Tap-only quick action: its attributes live under "sQ"; the snippet redirects a tap there.
         Ring_Actions.ApplySliceSuffix(button, "s" .. QUICK_SUFFIX, live.quickSlice)
+        SetupMarkerSlot(button, live, "s" .. QUICK_SUFFIX, live.quickSlice)
         button:SetAttribute("ring-quick", QUICK_SUFFIX)
     else
         -- A single slice sits in the center (Ring_View), so a tap fires it; else a tap fires nothing.
@@ -499,6 +564,7 @@ local function SetupRing(ring)
     local hasScroll = false
     for index, slice in ipairs(live.slices) do
         Ring_Actions.ApplySlice(button, index, slice)
+        SetupMarkerSlot(button, live, "s" .. index, slice)
         if SetupNestedSlice(live, button, index, slice) then hasScroll = true end
     end
     button:SetAttribute("ring-hasscroll", hasScroll or nil)
@@ -603,6 +669,8 @@ SavedVariables.OnChange("RL_RadialMenuDB_Global", "Deadzone", RequestRebuild)
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "ProbeSize", RequestRebuild)
 -- World marker actions' macro depends on Place World Markers.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "WorldMarkerPlacement", RequestRebuild)
+-- Target markers' tap copies depend on Mark Target Markers On.
+SavedVariables.OnChange("RL_RadialMenuDB_Global", "TargetMarkerUnit", RequestRebuild)
 -- Right-Click to Cancel decides whether held menus bind right click.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", RequestRebuild)
 -- Menu Style decides what the release and the mouse do.

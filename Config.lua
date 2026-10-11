@@ -52,6 +52,13 @@ Enum.WorldMarkerPlacement = {
     Click = 2
 }
 
+-- Mark Target Markers On (TargetMarkerUnit): your target, or the unit under the mouse when the
+-- keybind was pressed (out of combat; Ring_Secure).
+Enum.TargetMarkerUnit = {
+    Target = 1,
+    Cursor = 2
+}
+
 
 
 -- Defaults
@@ -75,6 +82,7 @@ local DB_GLOBAL_DEFAULTS = {
     ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)
     RightClickDismiss = true, -- right click closes a held menu (Ring_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
+    TargetMarkerUnit = Enum.TargetMarkerUnit.Cursor, -- like the ping menu
     PreviewHideHidden = false, -- settings preview: leave out actions hidden in game right now (eye toggle)
 }
 local DB_GLOBAL_PERSISTENT_DEFAULTS = {}

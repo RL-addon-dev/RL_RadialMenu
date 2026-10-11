@@ -52,7 +52,7 @@ right-click (Right-Click to Cancel) also close it.
 | Macros | your account and character macros | ✓ | ✓ |
 | Emotes | | ✓ | ✓ |
 | Pet Commands | Attack, Follow, Stay, stances, ...; hidden while you have no pet | ✓ | ✓ |
-| Target Markers | Skull, Cross, ... on your target, and Clear; in a raid, hidden unless you're leader or assistant | ✓ | ✓ |
+| Target Markers | Skull, Cross, ... on your target, and Clear. With Mark Target Markers On: a tap marks the unit under the mouse; on the wheel, the unit you pressed the key over (out of combat; enemies need nameplates); in a raid, hidden unless you're leader or assistant | ✓ | ✓ |
 | World Markers | placed under the mouse, or with a targeting circle; and Clear. Hidden while you're not in a group, and in a raid unless you're leader or assistant | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Close Menu | closes the menu without using anything | ✓ | ✓ |
@@ -141,7 +141,8 @@ Everything is in `/radial` (also under Options → AddOns).
   see the directions while the menu is elsewhere.
 - **Menu Size** and **Show Action Names**.
 - **Menu Behavior:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), Distance to Select,
-  Distance to Cancel Quick Action, Right-Click to Cancel, and how world markers are placed.
+  Distance to Cancel Quick Action, Right-Click to Cancel, how world markers are placed, and what
+  target markers go on.
 - **Per menu:** name, keybind, quick action, whether it's on all your characters, the
   characters of your class or just this one, and its share string.
 
