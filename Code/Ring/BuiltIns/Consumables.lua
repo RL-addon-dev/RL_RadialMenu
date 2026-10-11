@@ -1,14 +1,14 @@
 --[[
     Consumables: four built-in menus filled from your bags, and a fifth holding them as submenus.
 
-        Potions             potions
+        Potions             potions, and Healthstones
         Flasks & Elixirs    flasks, phials, elixirs
         Food & Drink        food and drink
         Other Consumables   bandages, scrolls, explosives & devices, item enhancements, Vantus runes
         Consumables         the four above (scroll submenus: one wedge each, hidden while empty)
 
     Only items with a use (an item spell): curios go into a slot, and "Other" is mostly things you
-    can't use, so neither is listed. Each item once, sorted by type then item id, so a refill
+    can't use, so neither is listed, except the Other items placed by id (Healthstones). Each item once, sorted by type then item id, so a refill
     doesn't reshuffle them as items move around the bags (the menus remember a custom order too).
 ]]
 
@@ -34,6 +34,15 @@ local MENU_BY_SUBCLASS = {
     [7] = "utility",   -- Bandage
     [9] = "utility",   -- Vantus Rune
 }
+-- Items placed by id, whatever their subclass: Healthstones are Consumable - Other (8).
+local MENU_BY_ITEM = {
+    [5512]   = "potions", -- Healthstone (WoW Forever: Minor Healthstone)
+    [224464] = "potions", -- Demonic Healthstone
+}
+-- WoW Forever's other ranks: Lesser, Healthstone, Greater, Major, and the Improved Healthstone
+-- talent's two versions of each rank (19004-19013).
+for _, itemID in ipairs({ 5511, 5509, 5510, 9421 }) do MENU_BY_ITEM[itemID] = "potions" end
+for itemID = 19004, 19013 do MENU_BY_ITEM[itemID] = "potions" end
 local CATEGORIES = { "potions", "flasks", "food", "utility" } -- the Consumables menu's order
 
 local scanned, scannedAt -- the last scan, and when (GetTime: one value per frame)
@@ -51,7 +60,7 @@ local function ScanBags()
             if itemID and not seen[itemID] then
                 seen[itemID] = true
                 local classID, subclassID = select(6, GetItemInfoInstant(itemID))
-                local key = classID == CONSUMABLE_CLASS and MENU_BY_SUBCLASS[subclassID]
+                local key = MENU_BY_ITEM[itemID] or (classID == CONSUMABLE_CLASS and MENU_BY_SUBCLASS[subclassID])
                 if key and GetItemSpell(itemID) then
                     subclassOf[itemID] = subclassID
                     table.insert(byMenu[key], itemID)
