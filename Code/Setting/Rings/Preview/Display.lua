@@ -44,10 +44,6 @@ Rings_Preview.SetTooltipOutward = SetTooltipOutward
 
 -- Drop / drag target
 
---- Why `slice` can't be in the center (Ring_Data.CanBeQuickAction): a submenu, or an action bar.
-local function CantBeQuickLabel(slice)
-    return slice.kind == "ring" and L["Config - Rings - Drag - QuickRing"] or L["Config - Rings - Drag - QuickActionBar"]
-end
 
 --- Shows what releasing now would do: gold wedge over a slice, a gold divider line between two,
 --- the center highlight for the center, plus a label at the cursor.
@@ -68,7 +64,7 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
             -- The center's action and this one swap; a submenu or action bar can't go to the center.
             local over = self.ring and self:GetSlice(target.index)
             if over and not Ring_Data.CanBeQuickAction(over) then
-                label, detail = CantBeQuickLabel(over), L["Config - Rings - Drag - QuickSwapRing - Hint"]
+                label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickSwapRing - Hint"]
             else
                 label = L["Config - Rings - Drag - Swap"]
             end
@@ -95,7 +91,7 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
         -- Nested rings and action bars can't be the quick action: say so, and what to do instead.
         local fromSlice = type(from) == "number" and self.ring and self:GetSlice(from)
         if fromSlice and not Ring_Data.CanBeQuickAction(fromSlice) then
-            label, detail = CantBeQuickLabel(fromSlice), L["Config - Rings - Drag - QuickRing - Hint"]
+            label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickRing - Hint"]
         elseif from ~= "quick" then
             label = L["Config - Rings - Drag - Quick"]
         end

@@ -64,8 +64,7 @@ local function HasSliceOfKinds(kinds)
     end
 end
 
---- One character per action with a visibility rule: whether it's shown right now. Actions that
---- spread (an action bar) add their own actions' (its buttons, filled or empty).
+--- One character per action with a visibility rule: whether it's shown right now.
 local function GetAvailabilitySignature()
     local parts = {}
     local function Add(slice)
@@ -76,7 +75,6 @@ local function GetAvailabilitySignature()
     for _, ring in ipairs((Ring_Data.GetOpenableRings())) do
         for _, slice in ipairs(ring.slices) do
             Add(slice)
-            for _, child in ipairs(Ring_Actions.GetSpreadSlices(slice) or {}) do Add(child) end
         end
     end
     return table.concat(parts)

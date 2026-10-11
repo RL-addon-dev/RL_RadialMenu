@@ -41,12 +41,6 @@ function Ring_Actions.ApplySlice(button, index, slice)
     Ring_Actions.ApplySliceSuffix(button, "s" .. index, slice)
 end
 
---- The actions `slice` spreads into in game (an action bar's buttons), or nil.
-function Ring_Actions.GetSpreadSlices(slice)
-    local definition = Get(slice.kind)
-    return definition and definition.spread and definition.spread(slice) or nil
-end
-
 function Ring_Actions.GetIcon(slice, depth)
     if slice.icon then return slice.icon end
     local definition = Get(slice.kind)
