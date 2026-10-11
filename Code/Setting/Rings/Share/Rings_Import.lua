@@ -25,7 +25,6 @@ local Rings_Import = env.AX_Modules:New("@\\Setting\\Rings\\Import")
 
 local format = string.format
 
-local SCOPE_BY_INDEX = { "account", "character" }
 local GOLD = "|cffffd100"
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
@@ -170,7 +169,7 @@ function PanelMixin:DoImport()
     -- page isn't told), and creating a macro with no slot left is an error.
     local plan = Ring_Data.ReadShare(strtrim(self.PasteRow:GetInput():GetText() or ""))
     if not plan then return end
-    local scope = SCOPE_BY_INDEX[self.ScopeRow:GetButtonSelectionMenu():GetValue() or 1] or "account"
+    local scope = Ring_Data.ScopeOrder[self.ScopeRow:GetButtonSelectionMenu():GetValue() or 1] or Ring_Data.Scope.Account
     local ok, result = Ring_Data.ApplyShare(plan, scope)
     if not ok then
         env.Print(L["Config - Rings - Import - Combat"])
@@ -234,7 +233,9 @@ function PanelMixin:Setup(render, onImported)
     self.ScopeRow:SetInfo(L["Config - Rings - Scope"], L["Config - Rings - Scope - Description"])
     local scopeMenu = self.ScopeRow:GetButtonSelectionMenu()
     scopeMenu:SetSelectionMenu(SettingFrame.SelectionMenu)
-    scopeMenu:SetData({ L["Config - Rings - Scope - Account"], L["Config - Rings - Scope - Character"] })
+    local scopeNames = {}
+    for index, scope in ipairs(Ring_Data.ScopeOrder) do scopeNames[index] = Ring_Data.GetScopeName(scope) end
+    scopeMenu:SetData(scopeNames)
     scopeMenu:SetValue(1)
 
     self.ImportRow:SetInfo(L["Config - Rings - Import - Confirm"], L["Config - Rings - Import - Confirm - Description"])

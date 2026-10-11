@@ -40,11 +40,11 @@ Ring_Kinds.Register({
         return ring and ring.name or ("ring:" .. tostring(slice.ring))
     end,
 
-    -- A character menu says whose it is, in orange like the settings' other notes.
+    -- A class or character menu says whose it is, in orange like the settings' other notes.
     tooltip = function(tooltip, slice)
         tooltip:SetText(Ring_Actions.GetLabel(slice), 1, 1, 1)
-        local owner = Ring_Data.GetCharacterName(slice.ring)
-        if owner then tooltip:AddLine(format(L["Config - Rings - CharacterMenu"], owner), 1, 0.5, 0.25, true) end
+        local owner = Ring_Data.GetOwnerLabel(slice.ring)
+        if owner then tooltip:AddLine(owner, 1, 0.5, 0.25, true) end
         return true
     end,
 

@@ -13,8 +13,12 @@ local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Tab\\Private")
 local format = string.format
 local PageMixin = Private.PageMixin
 
-local SCOPE_INDEX = { account = 1, character = 2 }
-local SCOPE_BY_INDEX = { "account", "character" }
+-- Keybind row: where the keybind is saved, by scope.
+local KEYBIND_SAVED = {
+    account   = "Config - Rings - Keybind - Account",
+    class     = "Config - Rings - Keybind - Class",
+    character = "Config - Rings - Keybind - Character",
+}
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
@@ -38,7 +42,7 @@ function PageMixin:RefreshSettingRows(ring)
 
     local _, scope = Ring_Data.GetRing(ring.id)
     local scopeMenu = self.ScopeRow:GetButtonSelectionMenu()
-    scopeMenu:SetValue(SCOPE_INDEX[scope] or 1)
+    scopeMenu:SetValue(tIndexOf(Ring_Data.ScopeOrder, scope) or 1)
     scopeMenu:SetEnabled(not builtIn)
 
     self.DeleteRow:GetButton():SetEnabled(not builtIn)
@@ -73,7 +77,7 @@ function PageMixin:OnScopeChanged(index)
         self:RefreshSettings()
         return
     end
-    Ring_Data.SetScope(ring.id, SCOPE_BY_INDEX[index])
+    Ring_Data.SetScope(ring.id, Ring_Data.ScopeOrder[index])
 end
 
 
@@ -92,16 +96,15 @@ function PageMixin:RefreshKeybindRow(ring)
 
     -- Where the keybind is saved follows Available On. Warn when the key also has a Blizzard
     -- keybinding (the menu's override wins while bound).
-    local _, isAccount = Ring_Data.GetBinding(ring.id)
-    local description = (isAccount and L["Config - Rings - Keybind - Account"] or L["Config - Rings - Keybind - Character"])
+    local _, scope = Ring_Data.GetRing(ring.id)
+    local description = format(L[KEYBIND_SAVED[scope] or KEYBIND_SAVED.account], Ring_Data.GetScopeWhere(scope))
         .. " " .. L["Config - Rings - Keybind - Description"]
     local conflict = key and Rings_Keybind.GetBlizzardConflict(key)
     if conflict then
         description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Conflict"], conflict) .. "|r"
     end
-    local override = Ring_Data.GetBindingOverride(ring.id)
-    if override then
-        description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Overridden"], override.name) .. "|r"
+    for _, override in ipairs(Ring_Data.GetBindingOverrides(ring.id)) do
+        description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Overridden"], Ring_Data.GetScopeWhere(override.scope), override.ring.name) .. "|r"
     end
     self.KeybindRow:SetInfo(L["Config - Rings - Keybind"], description)
 end
@@ -145,22 +148,25 @@ function PageMixin:OnKeyCaptured(key)
     self.capturingRingId = nil
     if not ringId then return end
 
-    -- Say where the key came from: menus that lose it (same scope), or a menu of the other scope
-    -- that keeps it (the character menu wins on this character, the account menu elsewhere).
+    -- Say where the key came from: menus that lose it (same scope), or a menu of another scope
+    -- that keeps it (the narrower scope's menu opens where it applies, the other one elsewhere).
     local others = {}
     for _, other in ipairs(Ring_Data.GetRings()) do
         if other.id ~= ringId and Ring_Data.GetBinding(other.id) == key then others[#others + 1] = other end
     end
 
     Ring_Data.SetBinding(ringId, key)
-    local keyText, ring = Rings_Keybind.GetDisplayText(key), Ring_Data.GetRing(ringId)
-    local _, isAccount = Ring_Data.GetBinding(ringId)
+    local keyText = Rings_Keybind.GetDisplayText(key)
+    local ring, scope = Ring_Data.GetRing(ringId)
     for _, other in ipairs(others) do
-        local message = "Config - Rings - Keybind - Moved"
-        if Ring_Data.GetBinding(other.id) == key then
-            message = isAccount and "Config - Rings - Keybind - OverriddenBy" or "Config - Rings - Keybind - Overrides"
+        local otherKey, otherScope = Ring_Data.GetBinding(other.id)
+        if otherKey ~= key then
+            env.Print(format(L["Config - Rings - Keybind - Moved"], keyText, ring.name, other.name))
+        elseif Ring_Data.IsNarrowerScope(scope, otherScope) then
+            env.Print(format(L["Config - Rings - Keybind - Overrides"], keyText, ring.name, Ring_Data.GetScopeWhere(scope), other.name))
+        else
+            env.Print(format(L["Config - Rings - Keybind - OverriddenBy"], keyText, ring.name, Ring_Data.GetScopeWhere(otherScope), other.name))
         end
-        env.Print(format(L[message], keyText, ring.name, other.name))
     end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 end
@@ -209,7 +215,9 @@ function Private.SetupSettingRows(page)
     page.ScopeRow:SetInfo(L["Config - Rings - Scope"], L["Config - Rings - Scope - Description"])
     local scopeMenu = page.ScopeRow:GetButtonSelectionMenu()
     scopeMenu:SetSelectionMenu(selectionMenu)
-    scopeMenu:SetData({ L["Config - Rings - Scope - Account"], L["Config - Rings - Scope - Character"] })
+    local scopeNames = {}
+    for index, scope in ipairs(Ring_Data.ScopeOrder) do scopeNames[index] = Ring_Data.GetScopeName(scope) end
+    scopeMenu:SetData(scopeNames)
     scopeMenu:HookValueChanged(function(_, index) page:OnScopeChanged(index) end)
 
     page.DeleteRow:SetInfo(L["Config - Rings - Delete"], L["Config - Rings - Delete - Description"])

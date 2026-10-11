@@ -12,14 +12,17 @@
 
     Storage (persistent DBs, so the settings "Reset" doesn't delete rings):
         RL_RadialMenuDB_Global_Persistent.Rings      [id] = ring   account-wide rings
+        RL_RadialMenuDB_Global_Persistent.ClassRings [class][id] = ring   class rings (class file name)
         RL_RadialMenuDB_Local_Persistent.Rings       [id] = ring   character rings
         RL_RadialMenuDB_Global_Persistent.Bindings   [id] = key    keybinds of account rings
+        RL_RadialMenuDB_Global_Persistent.ClassBindings [class][id] = key   keybinds of class rings
         RL_RadialMenuDB_Local_Persistent.Bindings    [id] = key    keybinds of character rings
         RL_RadialMenuDB_Global_Persistent.NextRingId               id counter (unique across scopes)
         RL_RadialMenuDB_Local_Persistent.LastUsedSlice [id] = key  slice identity (GetSliceKey)
         RL_RadialMenuDB_Local_Persistent.ScrollIndex ["id:N"]      a scroll slice's shown child
 
-    A ring's scope is where it is stored, not a field on the ring.
+    A ring's scope is where it is stored, not a field on the ring: all characters (account), the
+    characters of one class (class), or one character.
 
     Ring:
         id, name
@@ -50,8 +53,12 @@ local max = math.max
 
 Ring_Data.Scope = {
     Account   = "account",
+    Class     = "class",
     Character = "character"
 }
+-- Widest to narrowest. Where menus of several scopes use one key, the narrowest one's opens
+-- (Ring_Secure binds them in this order).
+Ring_Data.ScopeOrder = { Ring_Data.Scope.Account, Ring_Data.Scope.Class, Ring_Data.Scope.Character }
 
 -- quickAction: "none", or "custom": the action in the center (ring.quickSlice), fired by a tap and
 -- not on the wheel. Last Used there is a Last Used action (Kinds\LastUsed.lua).
@@ -107,9 +114,19 @@ function Private.GetStoredTable(db, key)
 end
 local GetStoredTable = Private.GetStoredTable
 
+--- This character's class's table in account-wide `stored[key]` ([class file name] = table).
+function Private.GetClassStoredTable(key)
+    local byClass = GetStoredTable(Config.DBGlobalPersistent, key)
+    local class = select(2, UnitClass("player"))
+    if type(byClass[class]) ~= "table" then byClass[class] = {} end
+    return byClass[class]
+end
+
 function Private.GetScopeTable(scope)
     if scope == Ring_Data.Scope.Character then
         return GetStoredTable(Config.DBLocalPersistent, "Rings")
+    elseif scope == Ring_Data.Scope.Class then
+        return Private.GetClassStoredTable("ClassRings")
     end
     return GetStoredTable(Config.DBGlobalPersistent, "Rings")
 end
@@ -160,10 +177,10 @@ end
 function Ring_Data.GetRing(id)
     if id == nil then return nil end
     id = tostring(id)
-    local ring = GetScopeTable(Ring_Data.Scope.Account)[id]
-    if ring then return ring, Ring_Data.Scope.Account end
-    ring = GetScopeTable(Ring_Data.Scope.Character)[id]
-    if ring then return ring, Ring_Data.Scope.Character end
+    for _, scope in ipairs(Ring_Data.ScopeOrder) do
+        local ring = GetScopeTable(scope)[id]
+        if ring then return ring, scope end
+    end
 end
 
 --- All rings visible to this character, sorted by name then id.
@@ -182,16 +199,46 @@ function Ring_Data.GetRings()
     return rings
 end
 
---- The character a menu belongs to, or nil for an account menu. A character menu only exists on
---- its own character, so that's always the one playing.
-function Ring_Data.GetCharacterName(id)
-    local _, scope = Ring_Data.GetRing(id)
-    return scope == Ring_Data.Scope.Character and UnitName("player") or nil
+--- Scope names for the settings. A class or character menu only exists for its own class or
+--- character, so that's always the one playing.
+--- The class name in locale string `key` ("%ss" -> "Mages"), in the class color when `colored`.
+local function ClassText(key, colored)
+    local name, class = UnitClass("player")
+    local text = format(env.L[key], name)
+    local color = colored and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    return color and color.WrapTextInColorCode and color:WrapTextInColorCode(text) or text
 end
 
---- Whether `slice` is a submenu this character doesn't have: another character's menu inside an
---- account menu. It only exists on that character, so everywhere else it's left out.
-function Ring_Data.IsOtherCharacters(slice)
+--- "All Characters", "Mages" or "This Character": the Available On choice.
+function Ring_Data.GetScopeName(scope)
+    if scope == Ring_Data.Scope.Class then return ClassText("Config - Rings - Scope - Class") end
+    return env.L[scope == Ring_Data.Scope.Character and "Config - Rings - Scope - Character" or "Config - Rings - Scope - Account"]
+end
+
+--- "your Mages" or "this character": where a class or character menu applies (nil for
+--- an account menu: everywhere).
+function Ring_Data.GetScopeWhere(scope)
+    if scope == Ring_Data.Scope.Class then
+        return format(env.L["Config - Rings - Scope - Where - Class"], ClassText("Config - Rings - Scope - Class", true))
+    elseif scope == Ring_Data.Scope.Character then
+        return env.L["Config - Rings - Scope - Where - Character"]
+    end
+end
+
+--- "Nevergryn's menu" or "Mage menu" for a character or class menu (its tooltip), nil for an
+--- account menu.
+function Ring_Data.GetOwnerLabel(id)
+    local _, scope = Ring_Data.GetRing(id)
+    if scope == Ring_Data.Scope.Character then
+        return format(env.L["Config - Rings - CharacterMenu"], UnitName("player"))
+    elseif scope == Ring_Data.Scope.Class then
+        return format(env.L["Config - Rings - ClassMenu"], (UnitClass("player")))
+    end
+end
+
+--- Whether `slice` is a submenu this character doesn't have: another class's or another
+--- character's menu inside an account menu. It only exists for them, so here it's left out.
+function Ring_Data.IsElsewhere(slice)
     return slice.kind == "ring" and Ring_Data.GetRing(slice.ring) == nil
 end
 
@@ -281,8 +328,8 @@ function Ring_Data.DeleteRing(id)
     GetScopeTable(scope)[ring.id] = nil
     Private.GetBindingTable(scope)[ring.id] = nil
 
-    -- Remove nested references visible to this character. References from other
-    -- characters' rings stay dangling and are ignored at runtime.
+    -- Remove nested references visible to this character. References from other characters' or
+    -- classes' rings stay dangling and are ignored (Ring_Data.IsElsewhere).
     for _, other in ipairs(Ring_Data.GetRings()) do
         for i = #other.slices, 1, -1 do
             local slice = other.slices[i]

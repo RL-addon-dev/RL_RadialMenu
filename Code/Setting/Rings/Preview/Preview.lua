@@ -41,8 +41,8 @@
     A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
     on it there, since they follow the icon).
 
-    Another character's submenu (inside an account menu) is always left out: it doesn't exist on
-    this character.
+    Another class's or character's submenu (inside an account menu) is always left out: it
+    doesn't exist on this character.
 
     Hide Hidden Actions (the eye in the top corner, PreviewHideHidden): slices hidden in game right
     now are left out too. The wheel's indices are then positions among the shown slices
@@ -187,12 +187,12 @@ function PreviewMixin:SetRing(ring)
 
     local wheel = self.wheel
     -- The slices on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
-    -- Another character's submenu is never on it (it doesn't exist here).
+    -- Another class's or character's submenu is never on it (it doesn't exist here).
     local hideHidden = IsHidingHidden()
     self.shown = {}
     local slices, hiddenCount = {}, 0
     for index, slice in ipairs(ring and ring.slices or {}) do
-        if Ring_Data.IsOtherCharacters(slice) then
+        if Ring_Data.IsElsewhere(slice) then
             -- left out
         elseif hideHidden and not Ring_Actions.IsSliceAvailable(slice) then
             hiddenCount = hiddenCount + 1

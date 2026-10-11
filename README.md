@@ -140,8 +140,8 @@ Everything is in `/radial` (also under Options → AddOns).
 - **Menu Size** and **Show Action Names**.
 - **Menu Behavior:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), Distance to Select,
   Distance to Cancel Quick Action, Right-Click to Cancel, and how world markers are placed.
-- **Per menu:** name, keybind, quick action, whether it's on all your characters or just
-  this one, and its share string.
+- **Per menu:** name, keybind, quick action, whether it's on all your characters, the
+  characters of your class or just this one, and its share string.
 
 ## Game versions
 

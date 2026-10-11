@@ -91,11 +91,18 @@ function PageMixin:ShowImport()
     end)
 end
 
+-- A menu card's scope label.
+local CARD_SCOPE = {
+    account   = "Config - Rings - Card - Account",
+    class     = "Config - Rings - Card - Class",
+    character = "Config - Rings - Card - Character",
+}
+
 local function FormatRingMeta(ring)
     local _, scope = Ring_Data.GetRing(ring.id)
     local key = Ring_Data.GetBinding(ring.id)
     local keyText = key and Rings_Keybind.GetDisplayText(key) or L["Config - Rings - Card - NoKey"]
-    local scopeText = scope == Ring_Data.Scope.Character and L["Config - Rings - Card - Character"] or L["Config - Rings - Card - Account"]
+    local scopeText = L[CARD_SCOPE[scope] or CARD_SCOPE.account]
     return keyText, scopeText
 end
 
