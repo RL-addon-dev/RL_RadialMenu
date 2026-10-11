@@ -19,6 +19,7 @@
     <Script file="ActionBar.lua"/>
     <Script file="Close.lua"/>
     <Script file="LastUsed.lua"/>
+    <Script file="First.lua"/>
     <Script file="Spec.lua"/>
     <Script file="Loadout.lua"/>
     <Script file="Profession.lua"/>

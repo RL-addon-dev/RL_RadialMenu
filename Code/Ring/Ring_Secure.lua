@@ -31,7 +31,9 @@
 
     Special actions: picking a Close slot ("*close-sN") is a cancel; picking a Last Used slot
     ("*lastused-sN") fires the slot in "ring-last" instead, the menu's last real pick (set out of
-    combat from the saved Last Used, kept current by every release; nothing before any).
+    combat from the saved Last Used, kept current by every release; nothing before any); picking
+    a First Action ("*first-sN") fires the slot in "ring-first", the first wedge that fires
+    something (set at every rebuild; nothing when there's none).
 
     Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
     (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
@@ -184,6 +186,11 @@ local PRE_CLICK = [[
     result = result or "cancel"
     -- A Close action: picking it is a cancel, firing nothing (Kinds\Close.lua).
     if index and self:GetAttribute("*close-s" .. index) then index, result = nil, "cancel" end
+    -- A First Action: fire the first wedge that fires something instead (Kinds\First.lua).
+    if index and self:GetAttribute("*first-s" .. index) then
+        index = self:GetAttribute("ring-first")
+        if not index then result = "cancel" end
+    end
     -- A Last Used action: fire what this menu fired last instead (nothing before anything was),
     -- so that action, not this one, stays the last used (Kinds\LastUsed.lua).
     if index and self:GetAttribute("*lastused-s" .. index) then
@@ -315,20 +322,22 @@ local function GetLiveShownSlice(live, index, scrollIndex)
     return slice and Ring_Live.GetShownSlice(slice, scrollIndex)
 end
 
---- What each wedge shows, at the scroll positions the button holds.
---- What a Last Used action would fire now (`slice` itself before anything was used, or for any
---- other action): it shows that action, on a wedge or in the center.
-local function ShowLastUsed(live, button, slice)
-    if not (slice and slice.kind == "lastused") then return slice end
-    local last = button:GetAttribute("ring-last")
-    return last and GetLiveShownSlice(live, last, button:GetAttribute("ring-scroll-" .. last)) or slice
+--- What a Last Used or First Action would fire now (`slice` itself when there's nothing to fire,
+--- or for any other action): it shows that action, on a wedge or in the center.
+local REDIRECT_ATTRIBUTE = { lastused = "ring-last", first = "ring-first" }
+local function ShowRedirect(live, button, slice)
+    local attribute = slice and REDIRECT_ATTRIBUTE[slice.kind]
+    local target = attribute and button:GetAttribute(attribute)
+    if not target then return slice end
+    return GetLiveShownSlice(live, target, button:GetAttribute("ring-scroll-" .. target)) or slice
 end
 
+--- What each wedge shows, at the scroll positions the button holds.
 local function GetDisplaySlices(live, button)
     local slices = {}
     for index = 1, #live.slices do
         local shown = GetLiveShownSlice(live, index, button:GetAttribute("ring-scroll-" .. index))
-        slices[index] = ShowLastUsed(live, button, shown)
+        slices[index] = ShowRedirect(live, button, shown)
     end
     return slices
 end
@@ -344,7 +353,7 @@ function Controller:OnRingOpen(ringId, startX, startY)
     local button = buttonsById[ringId]
     local displaySlices = GetDisplaySlices(ring, button)
     local quickIndex = button:GetAttribute("ring-quick")
-    local quickSlice = quickIndex == QUICK_SUFFIX and ShowLastUsed(ring, button, ring.quickSlice)
+    local quickSlice = quickIndex == QUICK_SUFFIX and ShowRedirect(ring, button, ring.quickSlice)
         or (quickIndex and displaySlices[quickIndex])
     Ring_View:Open(ring, startX, startY, Probe, quickSlice, displaySlices, button:GetAttribute("ring-relaxed") and true or false)
 end
@@ -359,7 +368,16 @@ function Controller:OnRingScroll(ringId, index, current)
     local shown = GetLiveShownSlice(live, index, current)
     Ring_View:SetSliceIcon(index, shown)
     -- The quick action is this scroll slice: a tap fires the child shown, so the center follows.
-    if buttonsById[ringId]:GetAttribute("ring-quick") == index then Ring_View:SetQuickSlice(shown) end
+    local button = buttonsById[ringId]
+    if button:GetAttribute("ring-quick") == index then Ring_View:SetQuickSlice(shown) end
+    -- This is the first wedge: First Actions fire (and show) the child shown now, on a wedge or
+    -- in the center.
+    if button:GetAttribute("ring-first") == index then
+        for other, slice in ipairs(live.slices) do
+            if slice.kind == "first" then Ring_View:SetSliceIcon(other, shown) end
+        end
+        if live.quickSlice and live.quickSlice.kind == "first" then Ring_View:SetQuickSlice(shown) end
+    end
 end
 
 --- Relaxed: the keybind was released and the menu stays open until a click or dismiss.
@@ -462,6 +480,12 @@ local function SetupRing(ring)
         if entry.key == lastKey then lastIndex = index break end
     end
     button:SetAttribute("ring-last", lastIndex)
+    -- The first wedge that fires something -> live index, for First Actions (nil when none).
+    local firstIndex
+    for index, slice in ipairs(live.slices) do
+        if Ring_Kinds.CanBeFirst(slice) then firstIndex = index break end
+    end
+    button:SetAttribute("ring-first", firstIndex)
 
     if live.quickSlice then
         -- Tap-only quick action: its attributes live under "sQ"; the snippet redirects a tap there.

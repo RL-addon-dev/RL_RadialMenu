@@ -27,8 +27,8 @@
                       action (it cancels, like Close). Nested rings and action bars can't be in
                       the center (the drag label says so).
 
-    Double-click: the center switches between empty (Close Menu) and a Last Used action (another
-    quick action is only cleared with the center's X); a nested ring slice switches between scroll
+    Double-click: the center cycles empty (Close Menu), a Last Used action and a First Action
+    (another quick action is only cleared with the center's X); a nested ring slice switches between scroll
     and spread.
 
     Center icon, like the real ring before the mouse moves: the quick action's icon (a Last Used

@@ -3,6 +3,7 @@ PLAN.md
 REFACTOR_PLAN.md
 
 # Art scripts (not committed)
+Art/Icon/make_slice_icon.py
 Art/Ring/generate_wedges.py
 Art/recolor_forever.py
 
