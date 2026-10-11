@@ -13,4 +13,5 @@
     <Script file="Professions.lua"/>
     <Script file="Consumables.lua"/>
     <Script file="EquipmentSets.lua"/>
+    <Script file="Equipment.lua"/>
 </Ui>
