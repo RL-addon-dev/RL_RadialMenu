@@ -256,13 +256,15 @@ local function PreviewCallbacks(page)
             env.Print(format(L["Config - Rings - QuickAction - Cleared"], Ring_Actions.GetLabel(cleared)))
             Ring_Data.ClearQuickAction(ring.id)
         end),
-        -- Double-click on the center: None <-> a Last Used action. Another quick action is only
-        -- cleared with the X, never by a double-click.
+        -- Double-click on the center: empty (Close Menu) -> Last Used -> First Action -> empty.
+        -- Another quick action is only cleared with the X, never by a double-click.
         onToggleQuick = Edit(function(ring)
             local quick = Ring_Data.GetQuickActionSlice(ring)
             if not quick then
                 Report(Ring_Data.SetQuickSlice(ring.id, { kind = "lastused" }))
             elseif quick.kind == "lastused" then
+                Report(Ring_Data.SetQuickSlice(ring.id, { kind = "first" }))
+            elseif quick.kind == "first" then
                 Report(Ring_Data.ClearQuickAction(ring.id))
             end
         end),

@@ -32,7 +32,8 @@ Then hold your key in the game, move the mouse toward an action and let go.
 - **Quick action:** tap the keybind without moving the mouse. Release before the **Reveal
   Delay** and the menu never even shows. The quick action is the action in the menu's center:
   drag any action there (an action from the wheel is copied, so it stays there too), drag it out
-  onto the wheel, or double-click the center to use the last action you used.
+  onto the wheel, or double-click the center to cycle Close Menu, Last Used Action and First
+  Action.
 
 ![A tap fires the quick action without the menu appearing](Media/quick-action.gif)
 
@@ -56,6 +57,7 @@ right-click (Right-Click to Cancel) also close it.
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Close Menu | closes the menu without using anything | ✓ | ✓ |
 | Last Used Action | uses whatever the menu used last, from any wedge (the quick action can be Last Used too) | ✓ | ✓ |
+| First Action | uses whatever the menu's first action is on this character (a submenu for each character or class first: a different action on each) | ✓ | ✓ |
 | Zone Ability, Extra Action | follow the game's buttons; hidden while there's none | ✓ | — |
 | Housing | Teleport Home to Founder's Point or Razorwind Shores (hidden while you don't own a house there), and Return | ✓ | — |
 | Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |

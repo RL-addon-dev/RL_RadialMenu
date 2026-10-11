@@ -278,8 +278,8 @@ function PreviewMixin:ShowCenterTooltip()
     end
     GameTooltip:AddLine(" ")
     local control
-    if slice and slice.kind ~= "lastused" then
-        -- A double-click only switches between empty and Last Used; this one goes with the X.
+    if slice and slice.kind ~= "lastused" and slice.kind ~= "first" then
+        -- A double-click only cycles empty, Last Used and First Action; this one goes with the X.
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickSetReadOnly"] or L["Config - Rings - Preview - Control - QuickSet"]
     else
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickReadOnly"] or L["Config - Rings - Preview - Control - Quick"]
