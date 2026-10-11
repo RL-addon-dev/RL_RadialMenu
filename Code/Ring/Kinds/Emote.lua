@@ -33,6 +33,12 @@ local ICONS = {
     YES     = 461267,  -- thumbsup
 }
 
+-- Slash commands that aren't emote tokens of their own: /yes is the NOD emote. Saved as the
+-- command (its label and icon), fired as the token.
+local ALIASES = {
+    YES = "NOD",
+}
+
 -- Offered in the Add Action search (any token works in a saved menu).
 local EMOTES = {
     "WAVE", "HELLO", "BYE", "BOW", "CHEER", "DANCE", "LAUGH", "THANK", "SALUTE", "APPLAUD",
@@ -47,7 +53,8 @@ Ring_Kinds.Register({
     end,
 
     apply = function(button, suffix, slice)
-        Ring_Kinds.SetMacroText(button, suffix, ("/run DoEmote(%q)"):format(slice.token:upper()))
+        local token = slice.token:upper()
+        Ring_Kinds.SetMacroText(button, suffix, ("/run DoEmote(%q)"):format(ALIASES[token] or token))
     end,
 
     icon  = function(slice) return ICONS[slice.token:upper()] or ICON end,
