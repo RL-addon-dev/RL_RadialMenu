@@ -13,6 +13,7 @@ local L = env.L
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
+local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Search = env.AX_Modules:New("@\\Ring\\Search")
 
 local lower, find, sub, format = string.lower, string.find, string.sub, string.format
@@ -155,13 +156,22 @@ function Ring_Search.Search(query, filter, ringId, limit)
     -- An empty "All" search would list everything; wait for a query instead.
     if query == "" and filter == "all" then return results, false end
 
-    local matches = {}
+    -- Each action once: a menu is listed by Menus and by its own filter (Equipment, Misc), both
+    -- searched under All. The copy with a note wins (an action bar's slots).
+    local matches, byKey = {}, {}
     for _, definition in ipairs(Ring_Kinds.All()) do
         local search = definition.search
         if search and search.scan and (filter == "all" or search.filter == filter) then
             for _, candidate in ipairs(GetCandidates(definition, ringId)) do
                 if query == "" or find(candidate.lname, query, 1, true) then
-                    tinsert(matches, candidate)
+                    local key = Ring_Data.GetSliceKey(candidate.slice)
+                    local seen = byKey[key]
+                    if not seen then
+                        tinsert(matches, candidate)
+                        byKey[key] = #matches
+                    elseif candidate.note and not matches[seen].note then
+                        matches[seen] = candidate
+                    end
                 end
             end
         end
