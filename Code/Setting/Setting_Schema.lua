@@ -213,13 +213,31 @@ do -- Schema
                         },
                         {
                             widgetName               = L["Config - Behavior - WorldMarkerPlacement"],
-                            widgetDescription        = Setting_Define.Descriptor{ description = L["Config - Behavior - WorldMarkerPlacement - Description"] },
+                            widgetDescription        = Setting_Define.Descriptor{ description = function()
+                                -- The chosen option's own description.
+                                local click = Config.DBGlobal:GetVariable("WorldMarkerPlacement") == env.Enum.WorldMarkerPlacement.Click
+                                return L["Config - Behavior - WorldMarkerPlacement - Description - " .. (click and "Click" or "Mouse")]
+                            end },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
                             widgetSelectionMenu_data = { -- in env.Enum.WorldMarkerPlacement's order (Config.lua)
                                 L["Config - Behavior - WorldMarkerPlacement - Mouse"],
                                 L["Config - Behavior - WorldMarkerPlacement - Click"]
                             },
                             key                      = "WorldMarkerPlacement"
+                        },
+                        {
+                            widgetName               = L["Config - Behavior - TargetMarkerUnit"],
+                            widgetDescription        = Setting_Define.Descriptor{ description = function()
+                                -- The chosen option's own description (Mouse Cursor: its limits, in yellow).
+                                local cursor = Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor
+                                return L["Config - Behavior - TargetMarkerUnit - Description - " .. (cursor and "Cursor" or "Target")]
+                            end },
+                            widgetType               = Setting_Enum.WidgetType.SelectionMenu,
+                            widgetSelectionMenu_data = { -- in env.Enum.TargetMarkerUnit's order (Config.lua)
+                                L["Config - Behavior - TargetMarkerUnit - Target"],
+                                L["Config - Behavior - TargetMarkerUnit - Cursor"]
+                            },
+                            key                      = "TargetMarkerUnit"
                         }
                     }
                 },

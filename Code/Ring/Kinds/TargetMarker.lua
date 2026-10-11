@@ -3,6 +3,11 @@
                   target marker. Like the game's target marker wheel and /tm: using the marker your
                   target already has removes it. In a raid, only the leader and assistants can mark,
                   so it's hidden there for everyone else (Ring_Kinds.CanSetMarkers).
+                  Mark Target Markers On = Mouse Cursor: on a tap (the quick action, also through
+                  Last Used or First Action), the unit under the mouse as it fires; picked on the
+                  wheel, the unit under the mouse when the keybind was pressed, like a ping
+                  (Ring_Secure rewrites the slot's /tm for it, out of combat, for units with a
+                  lasting token: nameplate, target, focus, group). Otherwise your target.
 ]]
 
 local env = select(2, ...)
@@ -24,6 +29,47 @@ function Ring_Kinds.CanSetMarkers()
         or (IsEveryoneAssistant and IsEveryoneAssistant()) or false
 end
 
+--- The /tm line for marker `id` on `unit`: nil for your target, "mouseover" for the unit under
+--- the mouse as it fires (your target with nothing there).
+function Ring_Kinds.GetTargetMarkerText(id, unit)
+    if unit == "mouseover" then return format("/tm [@mouseover,exists][] %d", id) end
+    return unit and format("/tm [@%s] %d", unit, id) or ("/tm " .. id)
+end
+
+--- Whether `slice` puts a marker on a unit (not Clear).
+function Ring_Kinds.IsUnitMarker(slice)
+    return slice.kind == "targetmarker" and slice.id ~= 0
+end
+
+--- Whether `unit` is the unit under the mouse. UnitIsUnit, not GUIDs: Midnight can hide a unit's
+--- GUID (a secret value) even out of combat. A secret answer counts as no.
+local function IsMouseover(unit)
+    local same = UnitIsUnit(unit, "mouseover")
+    if issecretvalue and issecretvalue(same) then return false end
+    return same and true or false
+end
+
+--- A unit token for the unit under the mouse that still names it once the mouse moves away (its
+--- nameplate, target, focus, a group member, you), or nil: nothing under the mouse, or no such
+--- token. Out of combat (Ring_Secure, when a menu opens).
+function Ring_Kinds.GetUnitUnderMouse()
+    local candidates = { "target", "focus", "player" }
+    -- Nameplate tokens directly (nameplate1..40), not through the plate frames: those can carry no
+    -- token (nameplate addons, or Midnight).
+    for index = 1, 40 do
+        local unit = "nameplate" .. index
+        local exists = UnitExists(unit)
+        if exists and not (issecretvalue and issecretvalue(exists)) then candidates[#candidates + 1] = unit end
+    end
+    local prefix, count = "party", GetNumSubgroupMembers()
+    if IsInRaid() then prefix, count = "raid", GetNumGroupMembers() end
+    for index = 1, count do candidates[#candidates + 1] = prefix .. index end
+
+    for _, unit in ipairs(candidates) do
+        if IsMouseover(unit) then return unit end
+    end
+end
+
 Ring_Kinds.Register({
     kind = "targetmarker",
     noIconBorder = true, -- the marker art on its own, not a spell
@@ -33,14 +79,15 @@ Ring_Kinds.Register({
         return type(slice.id) == "number" and slice.id >= 0 and slice.id <= 8, "target marker needs a number from 0 to 8"
     end,
 
-    -- /tm is a secure command: works in combat. Clearing uses the secure button's own raid target
-    -- action, which removes every target marker at once.
+    -- /tm is a secure command: works in combat, and takes a unit ([@nameplate3]) for Mouse Cursor.
+    -- Clearing uses the secure button's own raid target action, which removes every target marker
+    -- at once.
     apply = function(button, suffix, slice)
         if slice.id == 0 then
             Ring_Kinds.SetAttribute(button, "type", suffix, "raidtarget")
             Ring_Kinds.SetAttribute(button, "action", suffix, "clear-all")
         else
-            Ring_Kinds.SetMacroText(button, suffix, "/tm " .. slice.id)
+            Ring_Kinds.SetMacroText(button, suffix, Ring_Kinds.GetTargetMarkerText(slice.id))
         end
     end,
 
