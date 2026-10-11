@@ -92,7 +92,7 @@ what you removed, to restore it.
 | Food & Drink | food and drink in your bags | ✓ | ✓ |
 | Hearthstones | your Hearthstone, the hearthstone toys you own, Teleport Home to your houses, and Return | ✓ | — |
 | Other Consumables | bandages, scrolls, explosives & devices, item enhancements and Vantus runes in your bags | ✓ | ✓ |
-| Potions | potions in your bags | ✓ | ✓ |
+| Potions | potions and Healthstones in your bags | ✓ | ✓ |
 | Professions | your professions (opens their window) and their extra spells: Disenchant, Prospecting, Survey, Fishing… | ✓ | ✓ |
 | Quest Items | usable quest items from your quest log and bags (Forever: from your bags) | ✓ | ✓ |
 | Season Teleports | the current Mythic+ season's dungeon teleports you've earned | ✓ | — |
