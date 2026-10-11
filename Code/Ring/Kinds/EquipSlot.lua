@@ -10,13 +10,24 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 -- Every gear slot except the shirt, in paper doll order. Also the Gear built-in menu (Ring_Auto).
 local SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 }
 
--- GetInventorySlotInfo tokens, for an empty slot's icon.
+-- GetInventorySlotInfo tokens, for an empty slot's icon (every slot: also the equip actions,
+-- EquipItem.lua).
 local SLOT_TOKENS = {
-    [1] = "HEADSLOT", [2] = "NECKSLOT", [3] = "SHOULDERSLOT", [5] = "CHESTSLOT", [6] = "WAISTSLOT",
-    [7] = "LEGSSLOT", [8] = "FEETSLOT", [9] = "WRISTSLOT", [10] = "HANDSSLOT", [11] = "FINGER0SLOT",
-    [12] = "FINGER1SLOT", [13] = "TRINKET0SLOT", [14] = "TRINKET1SLOT", [15] = "BACKSLOT",
-    [16] = "MAINHANDSLOT", [17] = "SECONDARYHANDSLOT"
+    [1] = "HEADSLOT", [2] = "NECKSLOT", [3] = "SHOULDERSLOT", [4] = "SHIRTSLOT", [5] = "CHESTSLOT",
+    [6] = "WAISTSLOT", [7] = "LEGSSLOT", [8] = "FEETSLOT", [9] = "WRISTSLOT", [10] = "HANDSSLOT",
+    [11] = "FINGER0SLOT", [12] = "FINGER1SLOT", [13] = "TRINKET0SLOT", [14] = "TRINKET1SLOT",
+    [15] = "BACKSLOT", [16] = "MAINHANDSLOT", [17] = "SECONDARYHANDSLOT", [18] = "RANGEDSLOT",
+    [19] = "TABARDSLOT"
 }
+
+--- An equipment slot's name ("Trinket 1"), and its empty-slot icon.
+function Ring_Kinds.GetSlotName(slot)
+    return L["Config - Rings - Slot - " .. slot] or format(L["Config - Rings - Slot - Other"], slot)
+end
+function Ring_Kinds.GetSlotIcon(slot)
+    local token = SLOT_TOKENS[slot]
+    return token and select(2, GetInventorySlotInfo(token)) or Ring_Kinds.QUESTION_MARK_ICON
+end
 
 local function HasUse(slot)
     local itemID = GetInventoryItemID("player", slot)
@@ -36,13 +47,10 @@ Ring_Kinds.Register({
     end,
 
     icon = function(slice)
-        local icon = GetInventoryItemTexture("player", slice.slot)
-        if icon then return icon end
-        local token = SLOT_TOKENS[slice.slot]
-        return token and select(2, GetInventorySlotInfo(token)) or Ring_Kinds.QUESTION_MARK_ICON
+        return GetInventoryItemTexture("player", slice.slot) or Ring_Kinds.GetSlotIcon(slice.slot)
     end,
     label = function(slice)
-        local slotName = L["Config - Rings - Slot - " .. slice.slot] or format(L["Config - Rings - Slot - Other"], slice.slot)
+        local slotName = Ring_Kinds.GetSlotName(slice.slot)
         local itemID = GetInventoryItemID("player", slice.slot)
         local itemName = itemID and C_Item.GetItemNameByID(itemID)
         return itemName and (slotName .. ": " .. itemName) or slotName

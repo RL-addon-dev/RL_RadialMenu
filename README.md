@@ -91,6 +91,8 @@ what you removed, to restore it.
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
 | Consumables | the four menus below as submenus: one wedge each, scroll with the mouse wheel | ✓ | ✓ |
+| Equip Head, ..., Equip Main Hand, Equip Off Hand | one per equipment slot: the items in your bags you can use there, to equip (in combat the game only swaps weapons). Add Action lists them under Equipment, to add as submenus | ✓ | ✓ |
+| Equip Ranged & Relics | ranged weapons and relics (librams, idols, totems) in your bags, to equip | — | ✓ |
 | Equipment Sets | your Equipment Manager sets, except the one you're wearing | ✓ | ✓ |
 | Flasks & Elixirs | flasks, phials and elixirs in your bags | ✓ | ✓ |
 | Food & Drink | food and drink in your bags | ✓ | ✓ |
