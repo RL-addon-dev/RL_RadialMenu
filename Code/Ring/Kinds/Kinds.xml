@@ -13,6 +13,7 @@
     <Script file="TargetMarker.lua"/>
     <Script file="WorldMarker.lua"/>
     <Script file="EquipSlot.lua"/>
+    <Script file="EquipSet.lua"/>
     <Script file="Extra.lua"/>
     <Script file="Zone.lua"/>
     <Script file="House.lua"/>

@@ -55,6 +55,7 @@ right-click (Right-Click to Cancel) also close it.
 | Target Markers | Skull, Cross, ... on your target, and Clear. With Mark Target Markers On: a tap marks the unit under the mouse; on the wheel, the unit you pressed the key over (out of combat; enemies need nameplates); in a raid, hidden unless you're leader or assistant | ✓ | ✓ |
 | World Markers | placed under the mouse, or with a targeting circle; and Clear. Hidden while you're not in a group, and in a raid unless you're leader or assistant | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
+| Equipment Set | puts on one of your Equipment Manager sets; hidden while you're wearing it | ✓ | ✓ |
 | Close Menu | closes the menu without using anything | ✓ | ✓ |
 | Last Used Action | uses whatever the menu used last, from any wedge (the quick action can be Last Used too) | ✓ | ✓ |
 | First Action | uses whatever the menu's first action is on this character (a submenu for each character or class first: a different action on each) | ✓ | ✓ |
@@ -90,6 +91,7 @@ what you removed, to restore it.
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
 | Consumables | the four menus below as submenus: one wedge each, scroll with the mouse wheel | ✓ | ✓ |
+| Equipment Sets | your Equipment Manager sets, except the one you're wearing | ✓ | ✓ |
 | Flasks & Elixirs | flasks, phials and elixirs in your bags | ✓ | ✓ |
 | Food & Drink | food and drink in your bags | ✓ | ✓ |
 | Hearthstones | your Hearthstone, the hearthstone toys you own, Teleport Home to your houses, and Return | ✓ | — |
