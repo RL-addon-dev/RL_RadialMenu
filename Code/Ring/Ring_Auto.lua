@@ -31,6 +31,7 @@ local EVENTS = {
     "ZONE_CHANGED_NEW_AREA",    -- zone ability, housing Return
     "PLAYER_HOUSE_LIST_UPDATED", "HOUSE_PLOT_ENTERED", "HOUSE_PLOT_EXITED", -- housing (retail)
     "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", -- markers: group, leader and assistants
+    "EQUIPMENT_SETS_CHANGED",   -- equipment sets
     -- Action bars: buttons filled / emptied, Action Bar 1's page
     "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
     "UPDATE_OVERRIDE_ACTIONBAR", "UPDATE_VEHICLE_ACTIONBAR", "UPDATE_SHAPESHIFT_FORM",
