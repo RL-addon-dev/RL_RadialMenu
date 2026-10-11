@@ -148,9 +148,10 @@ function Ring_Data.BuildShare(ringIds)
         local menu, newIndex = { name = ring.name, slices = {} }, {}
         for index, slice in ipairs(ring.slices) do
             local packed, reason
-            -- Another character's submenu doesn't exist here: left out, and not listed as skipped.
-            local otherCharacters = Ring_Data.IsOtherCharacters(slice)
-            if otherCharacters then
+            -- Another class's or character's submenu doesn't exist here: left out, and not listed
+            -- as skipped.
+            local elsewhere = Ring_Data.IsElsewhere(slice)
+            if elsewhere then
                 packed = nil
             elseif slice.kind == "ring" then
                 local child = indexOf[tostring(slice.ring)]
@@ -169,7 +170,7 @@ function Ring_Data.BuildShare(ringIds)
                 packed.expand = nil
                 menu.slices[#menu.slices + 1] = packed
                 newIndex[index] = #menu.slices
-            elseif not otherCharacters then
+            elseif not elsewhere then
                 AddSkip(reason, Ring_Actions.GetLabel(slice))
             end
         end

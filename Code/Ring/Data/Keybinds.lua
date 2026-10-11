@@ -1,9 +1,10 @@
 --[[
     Ring data: keybinds. They follow the menu's scope: account menus' keybinds are saved
-    account-wide (Global_Persistent.Bindings), character menus' keybinds on the character
-    (Local_Persistent.Bindings). A key belongs to one account menu, and to one character menu on
-    each character. When both use it, the character menu wins on its character (Ring_Secure binds
-    character keys last) and the account menu opens everywhere else.
+    account-wide (Global_Persistent.Bindings), class menus' per class (Global_Persistent.
+    ClassBindings), character menus' on the character (Local_Persistent.Bindings). A key belongs
+    to one menu of each scope. Where menus of several scopes use it, the narrowest one's opens
+    (Ring_Data.ScopeOrder; Ring_Secure binds them in that order): a character menu on its
+    character, a class menu on that class's other characters, the account menu everywhere else.
 ]]
 
 local env = select(2, ...)
@@ -13,22 +14,19 @@ local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 
 local GetStoredTable, Changed = Private.GetStoredTable, Private.Changed
 
-function Private.GetCharacterBindingTable()
-    return GetStoredTable(Config.DBLocalPersistent, "Bindings")
-end
-
-function Private.GetAccountBindingTable()
-    return GetStoredTable(Config.DBGlobalPersistent, "Bindings")
-end
-
 --- The table holding the keybind of a menu in `scope`.
 function Private.GetBindingTable(scope)
-    return scope == Ring_Data.Scope.Account and Private.GetAccountBindingTable() or Private.GetCharacterBindingTable()
+    if scope == Ring_Data.Scope.Account then
+        return GetStoredTable(Config.DBGlobalPersistent, "Bindings")
+    elseif scope == Ring_Data.Scope.Class then
+        return Private.GetClassStoredTable("ClassBindings")
+    end
+    return GetStoredTable(Config.DBLocalPersistent, "Bindings")
 end
 local GetBindingTable = Private.GetBindingTable
 
 --- Takes `key` away from the other menus in `scope` (an account menu loses it on all characters).
---- Menus in the other scope keep it: a character menu's key wins on its character either way.
+--- Menus of other scopes keep it: the narrowest scope's menu opens either way.
 local function ReleaseKey(key, exceptId, scope)
     local bindings = GetBindingTable(scope)
     for id, bound in pairs(bindings) do
@@ -36,7 +34,7 @@ local function ReleaseKey(key, exceptId, scope)
     end
 end
 
---- A menu changed scope: its keybind moves with it (account-wide <-> this character).
+--- A menu changed scope: its keybind moves with it.
 function Private.MoveBinding(id, fromScope, toScope)
     local key = GetBindingTable(fromScope)[id]
     GetBindingTable(fromScope)[id] = nil
@@ -47,22 +45,35 @@ function Private.MoveBinding(id, fromScope, toScope)
 end
 
 --- @return string|nil key the menu's keybind
---- @return boolean isAccount saved account-wide (an account menu)
+--- @return string|nil scope the menu's scope (Ring_Data.Scope), where its keybind is saved
 function Ring_Data.GetBinding(id)
     id = tostring(id)
-    local _, scope = Ring_Data.GetRing(id)
-    return GetBindingTable(scope)[id], scope == Ring_Data.Scope.Account
+    local ring, scope = Ring_Data.GetRing(id)
+    if not ring then return nil end
+    return GetBindingTable(scope)[id], scope
 end
 
---- The character menu that uses account menu `id`'s key on this character (it opens instead of
---- `id` here), or nil.
-function Ring_Data.GetBindingOverride(id)
-    local key, isAccount = Ring_Data.GetBinding(id)
-    if not (key and isAccount) then return nil end
-    for otherId, otherKey in pairs(Private.GetCharacterBindingTable()) do
-        local other = otherKey == key and Ring_Data.GetRing(otherId)
-        if other then return other end
+--- Whether `scope` is narrower than `other` (its menu wins a key they share).
+function Ring_Data.IsNarrowerScope(scope, other)
+    return tIndexOf(Ring_Data.ScopeOrder, scope) > tIndexOf(Ring_Data.ScopeOrder, other)
+end
+
+--- The menus of narrower scopes that use menu `id`'s key here (each opens instead of `id` where
+--- its scope applies), widest first.
+--- @return table { { ring = ring, scope = scope }, ... } (empty when none does)
+function Ring_Data.GetBindingOverrides(id)
+    local overrides = {}
+    local key, scope = Ring_Data.GetBinding(id)
+    if not key then return overrides end
+    for _, narrower in ipairs(Ring_Data.ScopeOrder) do
+        if Ring_Data.IsNarrowerScope(narrower, scope) then
+            for otherId, otherKey in pairs(GetBindingTable(narrower)) do
+                local other = otherKey == key and Ring_Data.GetRing(otherId)
+                if other then overrides[#overrides + 1] = { ring = other, scope = narrower } end
+            end
+        end
     end
+    return overrides
 end
 
 --- Menus that can be opened in game: those with a keybind, and the submenus they use (at any
@@ -91,8 +102,8 @@ function Ring_Data.GetOpenableRings()
     return rings, set
 end
 
---- Sets (or clears, key = nil) a menu's keybind: account-wide for account menus, on this
---- character for character menus. Other menus using it lose it (see ReleaseKey).
+--- Sets (or clears, key = nil) a menu's keybind, saved for its scope. Other menus of that scope
+--- using it lose it (see ReleaseKey).
 function Ring_Data.SetBinding(id, key)
     local ring, scope = Ring_Data.GetRing(id)
     if not ring then return false end

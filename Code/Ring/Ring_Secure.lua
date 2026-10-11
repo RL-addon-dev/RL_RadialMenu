@@ -480,12 +480,12 @@ local function SetupRing(ring)
     button:SetAttribute("ring-hasscroll", hasScroll or nil)
 
     ringsById[ring.id] = live
-    local binding, isAccount = Ring_Data.GetBinding(ring.id)
+    local binding, scope = Ring_Data.GetBinding(ring.id)
     button:SetAttribute("ring-keymods", GetModifierPrefix(binding))
     button:SetAttribute("ring-rightclick", Config.DBGlobal:GetVariable("RightClickDismiss") and true or nil)
     button:SetAttribute("ring-relaxed", Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed or nil)
     if binding and (count > 0 or live.quickSlice) then
-        pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), account = isAccount }
+        pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), scope = scope }
     end
 end
 
@@ -528,10 +528,10 @@ local function Rebuild()
     for _, ring in ipairs(Ring_Data.GetRings()) do
         if Ring_Data.GetBinding(ring.id) then SetupRing(ring) end
     end
-    -- Account keybinds first: if a character menu uses the same key, it replaces them here.
-    for pass = 1, 2 do
+    -- Widest scope first: where a class or character menu uses the same key, it replaces it here.
+    for _, scope in ipairs(Ring_Data.ScopeOrder) do
         for _, binding in ipairs(pendingBindings) do
-            if binding.account == (pass == 1) then
+            if binding.scope == scope then
                 SetOverrideBindingClick(Controller, true, binding.key, binding.button, "LeftButton")
             end
         end
