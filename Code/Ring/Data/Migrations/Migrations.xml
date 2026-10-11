@@ -23,4 +23,5 @@
     -->
     <Script file="001_CenterQuickSlot.lua"/>
     <Script file="002_LastUsedByKey.lua"/>
+    <Script file="003_ActionBarMenus.lua"/>
 </Ui>

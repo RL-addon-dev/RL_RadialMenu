@@ -245,9 +245,7 @@ end
 --- Whether `slice` can be a quick action: not a submenu or an action bar, which hold several
 --- actions (a tap has no single one to fire).
 function Ring_Data.CanBeQuickAction(slice)
-    if slice.kind == "ring" then return false end
-    local definition = Ring_Kinds.Get(slice.kind)
-    return not (definition and definition.spread)
+    return slice.kind ~= "ring"
 end
 
 --- Identity of a slice (the same item / command / slot across refills and moves): Last Used and

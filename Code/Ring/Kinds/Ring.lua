@@ -29,11 +29,14 @@ Ring_Kinds.Register({
     apply = Ring_Kinds.ClearAction,
 
     icon = function(slice, depth)
-        -- The submenu's first action, like a folder preview.
+        -- The submenu's first action shown right now (else its first), like a folder preview: an
+        -- action bar's first filled button.
         local ring = Ring_Data.GetRing(slice.ring)
-        local first = ring and ring.slices[1]
-        if first and depth < 3 then return Ring_Actions.GetIcon(first, depth + 1) end
-        return ICON
+        if not ring or depth >= 3 then return ICON end
+        for _, child in ipairs(ring.slices) do
+            if Ring_Actions.IsSliceAvailable(child, depth + 1) then return Ring_Actions.GetIcon(child, depth + 1) end
+        end
+        return ring.slices[1] and Ring_Actions.GetIcon(ring.slices[1], depth + 1) or ICON
     end,
     label = function(slice)
         local ring = Ring_Data.GetRing(slice.ring)

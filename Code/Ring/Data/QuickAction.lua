@@ -44,10 +44,7 @@ function Ring_Data.ClearQuickAction(id)
     return true
 end
 
---- Why `slice` can't be in the center (Ring_Data.CanBeQuickAction): a submenu, or an action bar.
-local function CantBeQuickError(slice)
-    return slice.kind == "ring" and "a submenu can't be the quick action" or "an action bar can't be the quick action"
-end
+local CANT_BE_QUICK = "a submenu can't be the quick action" -- Ring_Data.CanBeQuickAction
 
 --- Puts `slice` (or nothing) in the center; NormalizeRing keeps Close there as an empty center.
 local function SetCenter(ring, slice)
@@ -60,7 +57,7 @@ end
 function Ring_Data.SetQuickSlice(id, slice)
     local ring = Ring_Data.GetRing(id)
     if not ring then return false, "menu not found" end
-    if not Ring_Data.CanBeQuickAction(slice) then return false, CantBeQuickError(slice) end
+    if not Ring_Data.CanBeQuickAction(slice) then return false, CANT_BE_QUICK end
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end
     SetCenter(ring, slice)
@@ -74,7 +71,7 @@ function Ring_Data.CopySliceToQuick(id, index)
     local ring = Ring_Data.GetRing(id)
     local slice = ring and ring.slices[index]
     if not slice then return false, "action not found" end
-    if not Ring_Data.CanBeQuickAction(slice) then return false, CantBeQuickError(slice) end
+    if not Ring_Data.CanBeQuickAction(slice) then return false, CANT_BE_QUICK end
     -- A copy: the wedge keeps its own.
     SetCenter(ring, CopyTable(slice))
     Changed()
@@ -93,7 +90,7 @@ function Ring_Data.MoveQuickSliceToWheel(id, index, replace)
     local slice = Ring_Data.GetQuickActionSlice(ring) or { kind = "close" }
     local replaced = replace and ring.slices[index]
     if replace and not replaced then return false, "action not found" end
-    if replaced and not Ring_Data.CanBeQuickAction(replaced) then return false, CantBeQuickError(replaced) end
+    if replaced and not Ring_Data.CanBeQuickAction(replaced) then return false, CANT_BE_QUICK end
     -- Checked before the center changes, so a refused move leaves it as it was.
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end

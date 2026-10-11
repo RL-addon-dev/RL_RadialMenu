@@ -63,7 +63,7 @@ right-click (Right-Click to Cancel) also close it.
 | Housing | Teleport Home to Founder's Point or Razorwind Shores (hidden while you don't own a house there), and Return | ✓ | — |
 | Specializations | switch to another spec of your class; hidden while it's your current one | ✓ | — |
 | Talent Loadouts | load a saved build for your current spec; hidden while it's the active one | ✓ | — |
-| Action Bars | one of your action bars (1–8): in game it becomes the bar's buttons, firing whatever is on them. Action Bar 1 follows its page (stances, forms, stealth, Shift+1–6). Hidden while the bar is empty or turned off | ✓ | ✓ |
+| Action Bars | one of your action bars (1–8), as a submenu (Add Action, Misc): its buttons fire whatever is on them; scroll through them, or double-click to spread them like the bar. Action Bar 1 follows its page (stances, forms, stealth, Shift+1–6). Empty buttons and turned-off bars are hidden | ✓ | ✓ |
 | Submenus | another of your menus inside this one (below) | ✓ | ✓ |
 
 Actions that have nothing to fire right now are left out of the menu until they're usable again:
@@ -90,6 +90,7 @@ what you removed, to restore it.
 
 | Menu | What's in it | Retail | Forever |
 |---|---|:---:|:---:|
+| Action Bar 1–8 | the bar's 12 buttons (empty ones hidden), to add as a submenu: scrolled, or spread like the bar | ✓ | ✓ |
 | Consumables | the four menus below as submenus: one wedge each, scroll with the mouse wheel | ✓ | ✓ |
 | Equip Head, ..., Equip Main Hand, Equip Off Hand | one per equipment slot: the items in your bags you can use there, to equip (in combat the game only swaps weapons). Add Action lists them under Equipment, to add as submenus | ✓ | ✓ |
 | Equip Ranged & Relics | ranged weapons and relics (librams, idols, totems) in your bags, to equip | — | ✓ |

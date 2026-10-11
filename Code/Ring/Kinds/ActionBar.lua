@@ -1,15 +1,14 @@
 --[[
-    Two kinds: a whole action bar, and one of its buttons.
+    Action bars: the Action Bar 1-8 built-in menus (BuiltIns\ActionBars.lua) hold their 12
+    buttons, added to other menus as submenus (scroll, or spread like a bar); listed in Add Action
+    under Misc.
 
-    actionbar   bar: 1-8 (Edit Mode's Action Bar 1-8)
-                Spreads into the bar's 12 buttons in game (`spread`, like a spread submenu; the
-                settings preview shows it as one slice). Hidden while the bar has no actions, or
-                is turned off in Options > Action Bars (not checked with a bar addon loaded: they
-                turn Blizzard's bars off).
-    actionslot  bar, button: 1-12
-                One button of a spread bar (never saved in a menu, only made by the spread).
+    actionslot  bar: 1-8 (Edit Mode's Action Bar 1-8), button: 1-12
                 Fires the action slot itself (secure "action" type): whatever is on the bar,
-                with its icon, cooldown, state and tooltip. Hidden while the slot is empty.
+                with its icon, cooldown, state and tooltip. Hidden while the slot is empty, or
+                the bar is turned off in Options > Action Bars (not checked with a bar addon
+                loaded: they turn Blizzard's bars off). Older saves held a whole bar as one
+                action ("actionbar"; Data\Migrations\003).
 
     Action Bar 1 pages (stance / form, stealth, skyriding, vehicle / possess / override, Shift+1-6):
     a secure state driver keeps the page (`PageFrame`, its "state-page"), and Ring_Secure's release
@@ -23,10 +22,12 @@
 
 local env = select(2, ...)
 local L = env.L
+local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local NUM_BARS = 8
 local NUM_BUTTONS = 12
+Ring_Kinds.NUM_ACTION_BARS, Ring_Kinds.NUM_ACTION_BUTTONS = NUM_BARS, NUM_BUTTONS
 local FIRST_SLOT = { 1, 61, 49, 25, 37, 145, 157, 169 } -- bar 1: page 1 (it pages)
 local BAR_ADDONS = { "Bartender4", "Dominos", "ElvUI" }  -- they replace Blizzard's bars
 
@@ -77,13 +78,6 @@ local function IsBarEnabled(bar)
     local toggles = { GetActionBarToggles() }
     if bar - 1 > #toggles then return true end
     return toggles[bar - 1] and true or false
-end
-
-local function BarHasActions(bar)
-    for button = 1, NUM_BUTTONS do
-        if HasAction(GetSlot(bar, button)) then return true end
-    end
-    return false
 end
 
 --- What the slot's cooldown and state follow: its spell or item (a macro: the spell it casts).
@@ -138,7 +132,9 @@ Ring_Kinds.Register({
     state    = GetSlotSource,
 
     condition = "actionslot",
-    available = function(slice) return HasAction(GetSlot(slice.bar, slice.button)) and true or false end,
+    available = function(slice)
+        return IsBarEnabled(slice.bar) and HasAction(GetSlot(slice.bar, slice.button)) and true or false
+    end,
 
     tooltip = function(tooltip, slice)
         local slot = GetSlot(slice.bar, slice.button)
@@ -148,44 +144,19 @@ Ring_Kinds.Register({
     end,
 })
 
+-- Search only (Ring_Kinds.lua): the Action Bar built-in menus, as submenus, under Misc (they're
+-- in Menus too, among every other menu).
 Ring_Kinds.Register({
-    kind = "actionbar",
-
-    validate = function(slice)
-        return IsValidBar(slice.bar), "action bar needs a bar (1-8)"
-    end,
-
-    -- In game: the bar's buttons (each hidden while empty, see actionslot).
-    spread = function(slice)
-        local slices = {}
-        for button = 1, NUM_BUTTONS do
-            slices[button] = { kind = "actionslot", bar = slice.bar, button = button }
-        end
-        return slices
-    end,
-
-    -- The first action on the bar.
-    icon = function(slice)
-        for button = 1, NUM_BUTTONS do
-            local texture = GetActionTexture(GetSlot(slice.bar, button))
-            if texture then return texture end
-        end
-    end,
-    label = function(slice)
-        return format(L["Config - Rings - ActionBar - Name"], slice.bar)
-    end,
-
-    condition = "actionbar",
-    available = function(slice) return IsBarEnabled(slice.bar) and BarHasActions(slice.bar) end,
+    kind = "actionbarmenus",
 
     search = {
-        filter = "misc",
-        label  = "actionbar",
-        events = { "ACTIONBAR_SLOT_CHANGED" }, -- the icon (the bar's first action)
-        -- Every bar, with its slots (bar addons number their bars differently).
-        scan   = function(add)
+        filter  = "misc",
+        label   = "actionbar",
+        dynamic = true, -- the menus' ids
+        scan    = function(add)
             for bar = 1, NUM_BARS do
-                local candidate = add({ kind = "actionbar", bar = bar })
+                local ring = Ring_Data.GetBuiltInRing("actionbar" .. bar)
+                local candidate = ring and add({ kind = "ring", ring = ring.id }, ring.name)
                 if candidate then
                     candidate.note = bar == 1 and L["Config - Rings - ActionBar - Note - Paged"]
                         or format(L["Config - Rings - ActionBar - Note - Slots"], FIRST_SLOT[bar], FIRST_SLOT[bar] + NUM_BUTTONS - 1)

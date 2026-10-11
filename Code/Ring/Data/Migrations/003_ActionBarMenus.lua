@@ -1,0 +1,35 @@
+--[[
+    Action bars became built-in menus (Action Bar 1-8, BuiltIns\ActionBars.lua) added as submenus.
+    A saved "actionbar" action ({ kind = "actionbar", bar = N }, which spread the bar's buttons
+    into its menu) becomes that bar's built-in menu as a spread submenu: the same buttons in game.
+    Migrations run before startup creates the built-in menus, so this makes sure they exist first.
+]]
+
+local env = select(2, ...)
+local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
+
+local function ConvertRings(rings, barMenus)
+    if type(rings) ~= "table" then return end
+    for _, ring in pairs(rings) do
+        for index, slice in ipairs(type(ring) == "table" and type(ring.slices) == "table" and ring.slices or {}) do
+            local menu = type(slice) == "table" and slice.kind == "actionbar" and barMenus[slice.bar]
+            if menu then ring.slices[index] = { kind = "ring", ring = menu.id, expand = true } end
+        end
+    end
+end
+
+local function Run(stored)
+    Private.EnsureBuiltInRings()
+    local barMenus = {}
+    for bar = 1, 8 do barMenus[bar] = Ring_Data.GetBuiltInRing("actionbar" .. bar) end
+
+    ConvertRings(stored.Rings, barMenus)
+    -- Class menus (account-wide): every class's, not only this character's.
+    for _, rings in pairs(type(stored.ClassRings) == "table" and stored.ClassRings or {}) do
+        ConvertRings(rings, barMenus)
+    end
+end
+
+Private.RegisterMigration({ flag = "ActionBarMenusAccount", db = "account", run = Run })
+Private.RegisterMigration({ flag = "ActionBarMenusCharacter", db = "character", run = Run })
