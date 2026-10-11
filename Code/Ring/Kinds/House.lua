@@ -22,10 +22,9 @@ local HOMES = {
     alliance = { neighborhood = "elwynn", areaID = 16105, fallback = "Config - Rings - House - Alliance" },
     horde    = { neighborhood = "durotar", areaID = 15524, fallback = "Config - Rings - House - Horde" },
 }
--- Plumber's icons: its Teleport Home and Leave Home macros (the Return spell itself shows a
--- generic hearthstone).
-local HOME_ICON = 7252953
-local RETURN_ICON = 236350
+-- The Housing Dashboard's own teleport buttons (the spells themselves show a generic hearthstone).
+local HOME_ICON = "atlas:dashboard-panel-homestone-teleport-button"
+local RETURN_ICON = "atlas:dashboard-panel-homestone-teleport-out-button"
 
 if env.GAME_VERSION ~= env.GameVersion.Retail then return end
 
