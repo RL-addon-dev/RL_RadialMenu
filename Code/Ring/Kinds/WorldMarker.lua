@@ -1,7 +1,8 @@
 --[[
     worldmarker  id: world (ground) marker 1 .. 8, placed where the mouse is when you release, or
                  with the game's targeting circle (the Place World Markers setting); 0 clears all
-                 of them. Placing one that's already down moves it.
+                 of them. Placing one that's already down moves it. Only in a group (and in a
+                 raid, for the leader and assistants): hidden otherwise (Ring_Kinds.CanSetMarkers).
 ]]
 
 local env = select(2, ...)
@@ -54,6 +55,9 @@ Ring_Kinds.Register({
             end
         end
     end,
+
+    condition = "worldmarker",
+    available = function() return IsInGroup() and Ring_Kinds.CanSetMarkers() end,
 
     icon = function(slice)
         return slice.id == 0 and CLEAR_ICON or ICON:format(TARGET_ICON[slice.id] or slice.id)

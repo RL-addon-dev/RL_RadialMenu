@@ -1,7 +1,8 @@
 --[[
     targetmarker  id: raid target marker on your target (1 Star .. 8 Skull), or 0: clear every
                   target marker. Like the game's target marker wheel and /tm: using the marker your
-                  target already has removes it. In a raid, only the leader and assistants can mark.
+                  target already has removes it. In a raid, only the leader and assistants can mark,
+                  so it's hidden there for everyone else (Ring_Kinds.CanSetMarkers).
 ]]
 
 local env = select(2, ...)
@@ -13,6 +14,15 @@ local CLEAR_ICON = "atlas:GM-raidMarker-reset" -- the raid manager's reset butto
 
 -- Offered in Add Action, and the Target Markers built-in menu's order: Skull at the top.
 local MARKERS = { 8, 7, 6, 5, 4, 3, 2, 1, 0 }
+
+--- Whether you may set target and world markers in your group: anyone solo or in a party; in a
+--- raid only the leader and assistants (or everyone, with "everyone is assistant"). World markers
+--- also need a group (WorldMarker.lua). Rebuilt on group changes (Ring_Auto).
+function Ring_Kinds.CanSetMarkers()
+    if not IsInRaid() then return true end
+    return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
+        or (IsEveryoneAssistant and IsEveryoneAssistant()) or false
+end
 
 Ring_Kinds.Register({
     kind = "targetmarker",
@@ -33,6 +43,9 @@ Ring_Kinds.Register({
             Ring_Kinds.SetMacroText(button, suffix, "/tm " .. slice.id)
         end
     end,
+
+    condition = "targetmarker",
+    available = function() return Ring_Kinds.CanSetMarkers() end,
 
     icon = function(slice)
         return slice.id == 0 and CLEAR_ICON or ICON:format(slice.id)
