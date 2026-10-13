@@ -2,11 +2,18 @@
     Menus tab ("Rings" in code; Setting_Enum.WidgetType.Custom).
 
     Two parts:
-        Sidebar       a list nav (AX_Settings Setting.AttachListNav) with two sections:
-                      built-in rings (room for four) and the user's rings (five), each scrolling,
-                      with "+ New" and Import side by side above the user's. Cards show name, keybind and
-                      scope; clicking one opens this tab on that ring. Import shows its page
-                      (Share\Rings_Import.lua) in the ring's place (page.isImporting).
+        Sidebar       a list nav (AX_Settings Setting.AttachListNav) with two tabs, "+ New" and
+                      Import, a search box (filters both tabs by menu name, keybind or action), and one
+                      scrolling list of collapsible groups (kept closed / open between sessions):
+                        My Menus   the user's menus by scope (Account, <Class>s, This Character),
+                                   then the Library menus in use ("Library": bound ones, then ones
+                                   used as submenus of bound menus), then other classes' and other
+                                   characters' menus (read-only)
+                        Library    every built-in menu, by category (Ring_Data.LibraryCategoryOrder),
+                                   closed at first
+                      Cards show name, keybind and scope; clicking one opens this tab on that ring.
+                      Import shows its page (Share\Rings_Import.lua) in the ring's place
+                      (page.isImporting).
         Tab page      single column (the content area is too narrow for two): the wheel preview
                       (with the Add Action panel under it while adding; the quick action is set on
                       the preview's center), then Menu Settings: Name, Keybind (capture),
@@ -25,6 +32,7 @@
 
 local env = select(2, ...)
 local L = env.L
+local Config = env.Config
 local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
 local Frame, _, _, LayoutVertical = unpack(UIKit.UI.Frames)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
@@ -44,9 +52,8 @@ local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
 
 local format = string.format
 
--- Cards each sidebar list shows before it scrolls.
-local BUILT_IN_VISIBLE = 4
-local CUSTOM_VISIBLE = 5
+-- The sidebar list's tabs.
+local NAV_MINE, NAV_LIBRARY = "mine", "library"
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
@@ -58,8 +65,19 @@ local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 local PageMixin = {}
 Private.PageMixin = PageMixin
 
+--- The selected menu: one of this character's, or one that lives elsewhere (another class's or
+--- character's: read-only, see GetSelectedElsewhere).
 function PageMixin:GetSelectedRing()
-    return self.selectedRingId and Ring_Data.GetRing(self.selectedRingId)
+    if not self.selectedRingId then return nil end
+    return Ring_Data.GetRing(self.selectedRingId) or (Ring_Data.GetElsewhereRing(self.selectedRingId))
+end
+
+--- When the selected menu lives elsewhere: its owner (Ring_Data.GetElsewhereRing: class, keybind
+--- there, character), else nil.
+function PageMixin:GetSelectedElsewhere()
+    if not self.selectedRingId then return nil end
+    local _, owner = Ring_Data.GetElsewhereRing(self.selectedRingId)
+    return owner
 end
 
 --- A card was clicked (the list nav then opens this tab). Leaves Import.
@@ -98,33 +116,151 @@ local CARD_SCOPE = {
     character = "Config - Rings - Card - Character",
 }
 
+--- The card's detail line: its keybind, and its scope (Library for built-in menus).
 local function FormatRingMeta(ring)
     local _, scope = Ring_Data.GetRing(ring.id)
     local key = Ring_Data.GetBinding(ring.id)
     local keyText = key and Rings_Keybind.GetDisplayText(key) or L["Config - Rings - Card - NoKey"]
-    local scopeText = L[CARD_SCOPE[scope] or CARD_SCOPE.account]
+    local scopeText = Ring_Data.IsBuiltIn(ring) and L["Config - Rings - Card - Library"] or L[CARD_SCOPE[scope] or CARD_SCOPE.account]
     return keyText, scopeText
 end
 
---- List nav items for the built-in rings or the user's rings.
-function PageMixin:GetNavItems(builtIn)
-    local items = {}
-    for _, ring in ipairs(Ring_Data.GetRings()) do
-        if Ring_Data.IsBuiltIn(ring) == builtIn then
-            local keyText, scopeText = FormatRingMeta(ring)
-            items[#items + 1] = { id = ring.id, title = ring.name, left = keyText, right = scopeText }
+--- What the list's search box finds a menu by, besides its name: its keybind (as its card shows
+--- it), then its action names (its wedges and its center), so a key or a spell finds every menu
+--- it's on. Asked only while searching.
+--- @param key string|nil its keybind ("CTRL-1"), nil when unbound
+local function SearchKeywords(ring, key)
+    return function()
+        local names = { key and Rings_Keybind.GetDisplayText(key) or nil }
+        for _, slice in ipairs(type(ring.slices) == "table" and ring.slices or {}) do
+            names[#names + 1] = Ring_Actions.GetLabel(slice)
         end
+        local quick = Ring_Data.GetQuickActionSlice(ring)
+        if quick then names[#names + 1] = Ring_Actions.GetLabel(quick) end
+        return names
+    end
+end
+
+--- Adds a group row and its rings' cards (nothing for an empty group).
+local function AddGroup(items, id, title, rings, collapsed)
+    if #rings == 0 then return end
+    items[#items + 1] = { group = true, id = id, title = title, right = tostring(#rings), collapsed = collapsed }
+    for _, ring in ipairs(rings) do
+        local keyText, scopeText = FormatRingMeta(ring)
+        items[#items + 1] = { id = ring.id, title = ring.name, left = keyText, right = scopeText,
+                              keywords = SearchKeywords(ring, Ring_Data.GetBinding(ring.id)) }
+    end
+end
+
+local function ClassName(class)
+    return LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class] or class
+end
+
+--- A read-only group (menus that live elsewhere: dimmed, opening one shows it locked), closed at
+--- first. `entries`: { { ring, key, owner = the card's right text } }.
+local function AddElsewhereGroup(items, id, title, entries)
+    if #entries == 0 then return end
+    items[#items + 1] = { group = true, id = id, title = title, right = tostring(#entries), collapsed = true, muted = true }
+    for _, entry in ipairs(entries) do
+        items[#items + 1] = {
+            id = entry.ring.id, title = entry.ring.name, muted = true, right = entry.owner, keywords = SearchKeywords(entry.ring, entry.key),
+            left = entry.key and Rings_Keybind.GetDisplayText(entry.key) or L["Config - Rings - Card - NoKey"],
+        }
+    end
+end
+
+--- Other classes' class menus, then other characters' menus (as of their last session).
+local function AddElsewhere(items)
+    local classes = {}
+    for _, other in ipairs(Ring_Data.GetOtherClassRings()) do
+        local _, _, key = Ring_Data.GetOtherClassRing(other.ring.id)
+        classes[#classes + 1] = { ring = other.ring, key = key, owner = ClassName(other.class) }
+    end
+    AddElsewhereGroup(items, "other:classes", L["Config - Rings - Nav - OtherClasses"], classes)
+
+    local characters = {}
+    for _, other in ipairs(Ring_Data.GetOtherCharacterRings()) do
+        characters[#characters + 1] = { ring = other.ring, key = other.key, owner = other.character.name }
+    end
+    AddElsewhereGroup(items, "other:characters", L["Config - Rings - Nav - OtherCharacters"], characters)
+end
+
+--- My Menus: the user's menus by scope, then the Library menus in use (one group: bound first,
+--- then those used as submenus of bound menus, Ring_Data.GetOpenableRings), then other classes'
+--- and characters' menus (read-only).
+function PageMixin:GetMyMenusItems()
+    local byScope, bound, inSubmenus = {}, {}, {}
+    for _, scope in ipairs(Ring_Data.ScopeOrder) do byScope[scope] = {} end
+    local _, openable = Ring_Data.GetOpenableRings()
+    for _, ring in ipairs(Ring_Data.GetRings()) do
+        if not Ring_Data.IsBuiltIn(ring) then
+            local _, scope = Ring_Data.GetRing(ring.id)
+            table.insert(byScope[scope], ring)
+        elseif Ring_Data.GetBinding(ring.id) then
+            table.insert(bound, ring)
+        elseif openable[ring.id] then
+            table.insert(inSubmenus, ring)
+        end
+    end
+    local items = {}
+    for _, scope in ipairs(Ring_Data.ScopeOrder) do
+        AddGroup(items, "scope:" .. scope, Ring_Data.GetScopeName(scope), byScope[scope])
+    end
+    for _, ring in ipairs(inSubmenus) do table.insert(bound, ring) end
+    AddGroup(items, "library:inuse", L["Config - Rings - Nav - Library"], bound)
+    AddElsewhere(items)
+    return items
+end
+
+--- Library: every built-in menu by category, each group closed until opened.
+function PageMixin:GetLibraryItems()
+    local byCategory = {}
+    for _, category in ipairs(Ring_Data.LibraryCategoryOrder) do byCategory[category] = {} end
+    for _, ring in ipairs(Ring_Data.GetRings()) do
+        if Ring_Data.IsBuiltIn(ring) then
+            table.insert(byCategory[Ring_Data.GetLibraryCategory(ring)], ring)
+        end
+    end
+    local items = {}
+    for _, category in ipairs(Ring_Data.LibraryCategoryOrder) do
+        AddGroup(items, "category:" .. category, L["Config - Rings - Library - " .. category], byCategory[category], true)
     end
     return items
 end
 
+local function FirstRingId(items)
+    for _, item in ipairs(items) do
+        if not item.group then return item.id end
+    end
+end
+
 function PageMixin:RefreshNav()
-    -- Keep a ring selected: the user's first ring, else the first built-in one.
-    if not (self.selectedRingId and Ring_Data.GetRing(self.selectedRingId)) then
-        local first = self:GetNavItems(false)[1] or self:GetNavItems(true)[1]
-        self.selectedRingId = first and first.id or nil
+    -- Keep a ring selected: the first of My Menus, else the first in the Library.
+    if not self:GetSelectedRing() then
+        self.selectedRingId = FirstRingId(self:GetMyMenusItems()) or FirstRingId(self:GetLibraryItems())
     end
     self.Nav:Refresh()
+end
+
+--- Which groups the user closed or opened ([groupId] = true / false), kept account-wide. Looked
+--- up on each use: the settings can be built before the saved variables are loaded.
+local function SavedCollapsedGroups()
+    local function Stored(create)
+        local db = _G[Config.DBGlobalPersistent.databaseName]
+        if not db then return nil end
+        if create and type(db.MenuListCollapsed) ~= "table" then db.MenuListCollapsed = {} end
+        return type(db.MenuListCollapsed) == "table" and db.MenuListCollapsed or nil
+    end
+    return setmetatable({}, {
+        __index = function(_, groupId)
+            local stored = Stored(false)
+            return stored and stored[groupId]
+        end,
+        __newindex = function(_, groupId, collapsed)
+            local stored = Stored(true)
+            if stored then stored[groupId] = collapsed end
+        end,
+    })
 end
 
 --- Opens the Add Slice panel under the preview (pushing Ring Settings down). Already open: just
@@ -165,17 +301,20 @@ function PageMixin:RefreshSettings()
     end
 
     local ring = self:GetSelectedRing()
+    -- A menu that lives elsewhere is shown, not edited: no Add Action, Delete or Removed Actions.
+    local elsewhere = self:GetSelectedElsewhere()
     -- Automatic rings can't be added to by hand.
-    if not ring or Ring_Data.IsBuiltIn(ring) then self.isAddingSlice = false end
+    if not ring or Ring_Data.IsBuiltIn(ring) or elsewhere then self.isAddingSlice = false end
     -- The Add Slice panel opens under the preview while adding.
     self.Preview:SetShown(ring ~= nil)
     self.AddSlice:SetShown(ring ~= nil and self.isAddingSlice)
     self.Settings:SetShown(ring ~= nil)
     self.ShareBox:SetShown(ring ~= nil and not Ring_Data.IsBuiltIn(ring))
-    self.RemovedBox:SetRing(ring) -- shown while a built-in menu has removed actions
-    self.DeleteBox:SetShown(ring ~= nil)
+    self.RemovedBox:SetRing(not elsewhere and ring or nil) -- shown while a built-in menu has removed actions
+    self.DeleteBox:SetShown(ring ~= nil and not elsewhere)
     self.Empty:SetShown(ring == nil)
     self.preview:SetReadOnly(Ring_Data.IsBuiltIn(ring), ring and ring.builtin)
+    self.preview:SetLocked(elsewhere ~= nil)
     self.preview:SetRing(ring)
     if not ring then return end
 
@@ -203,9 +342,24 @@ end
 
 -- Actions
 
+--- Shows one of the user's menus in the sidebar: the My Menus tab, its scope's group opened, the
+--- list scrolled to it. `select`: also select it (one refresh for both).
+function PageMixin:RevealInMyMenus(ringId, select)
+    local _, scope = Ring_Data.GetRing(ringId)
+    if not scope then return end
+    self.navTab = NAV_MINE
+    self.Nav:SetGroupCollapsed("scope:" .. scope, false, true)
+    if select then
+        self.Nav:Select(ringId) -- refreshes and scrolls to it
+    else
+        self.Nav:Refresh()
+        self.Nav:ScrollTo(ringId)
+    end
+end
+
 function PageMixin:CreateNewRing()
     local ring = Ring_Data.CreateRing(L["Config - Rings - NewRing - DefaultName"], Ring_Data.Scope.Account)
-    self.Nav:Select(ring.id)
+    self:RevealInMyMenus(ring.id, true)
 end
 
 
@@ -382,24 +536,30 @@ function Rings_Tab.Build(parent, tab)
     end)
     page.ImportPanel:Hide()
 
+    page.navTab = NAV_MINE
     page.Nav = Setting.AttachListNav(tab, {
         sections = {
             {
-                title    = L["Config - Rings - Nav - BuiltIn"],
-                visible  = BUILT_IN_VISIBLE,
-                getItems = function() return page:GetNavItems(true) end,
-            },
-            {
-                title     = L["Config - Rings - Nav - Custom"],
+                title    = L["Config - Rings - Nav - Title"],
+                tabs     = {
+                    { id = NAV_MINE, text = L["Config - Rings - Nav - Mine"] },
+                    { id = NAV_LIBRARY, text = L["Config - Rings - Nav - Library"] },
+                },
+                search   = { placeholder = L["Config - Rings - Nav - Search"] },
+                getTab   = function() return page.navTab end,
+                onTab    = function(tabId) page.navTab = tabId end,
                 -- Side by side: both make menus.
-                actions   = {
+                actions  = {
                     { text = L["Config - Rings - NewRing"], onClick = function() page:CreateNewRing() end },
                     { text = L["Config - Rings - Nav - Import"], onClick = function() page:ShowImport() end },
                 },
-                visible   = CUSTOM_VISIBLE,
-                getItems  = function() return page:GetNavItems(false) end,
+                getItems = function()
+                    if page.navTab == NAV_LIBRARY then return page:GetLibraryItems() end
+                    return page:GetMyMenusItems()
+                end,
             },
         },
+        collapsed   = SavedCollapsedGroups(),
         -- No menu card lit while importing.
         getSelected = function() return not page.isImporting and page.selectedRingId or nil end,
         onSelect    = function(ringId) page:SelectRing(ringId) end,

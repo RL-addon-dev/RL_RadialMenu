@@ -9,6 +9,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key      = "specs",
+    category = Ring_Data.LibraryCategory.Character,
     name     = "Config - Rings - SpecRing - Name",
     versions = { env.GameVersion.Retail },
     events   = { "PLAYER_SPECIALIZATION_CHANGED" },

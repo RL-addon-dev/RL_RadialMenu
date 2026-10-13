@@ -9,6 +9,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key    = "equipsets",
+    category = Ring_Data.LibraryCategory.Equipment,
     name   = "Config - Rings - EquipSetRing - Name",
     events = { "EQUIPMENT_SETS_CHANGED" },
     scan   = function()

@@ -8,6 +8,7 @@ local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 
 Ring_Data.RegisterBuiltIn({
     key  = "special",
+    category = Ring_Data.LibraryCategory.Situational,
     name = "Config - Rings - SpecialRing - Name",
     versions = { env.GameVersion.Retail },
     scan = function()

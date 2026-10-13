@@ -88,6 +88,7 @@ local CATEGORY_NAMES = {
 for _, key in ipairs(CATEGORIES) do
     Ring_Data.RegisterBuiltIn({
         key    = key,
+        category = Ring_Data.LibraryCategory.Consumables,
         name   = CATEGORY_NAMES[key],
         events = { "BAG_UPDATE_DELAYED" },
         scan   = function()
@@ -100,6 +101,7 @@ end
 
 Ring_Data.RegisterBuiltIn({
     key    = "consumables",
+    category = Ring_Data.LibraryCategory.Consumables,
     name   = "Config - Rings - ConsumablesRing - Name",
     -- Always the four menus; each hides in game while it's empty (submenu visibility).
     scan   = function()

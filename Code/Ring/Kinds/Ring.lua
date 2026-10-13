@@ -13,6 +13,12 @@ local Ring_Live = env.AX_Modules:Await("@\\Ring\\Live")
 
 local ICON = "Interface\\Icons\\INV_Misc_Gear_01"
 
+--- The submenu, for its name and icon: this character's, else another class's or character's
+--- (shown in the settings, hidden in game: it doesn't exist here, so it has nothing to show).
+local function GetDisplayRing(id)
+    return Ring_Data.GetRing(id) or (Ring_Data.GetElsewhereRing(id))
+end
+
 Ring_Kinds.Register({
     kind = "ring",
 
@@ -31,7 +37,7 @@ Ring_Kinds.Register({
     icon = function(slice, depth)
         -- The submenu's first action shown right now (else its first), like a folder preview: an
         -- action bar's first filled button.
-        local ring = Ring_Data.GetRing(slice.ring)
+        local ring = GetDisplayRing(slice.ring)
         if not ring or depth >= 3 then return ICON end
         for _, child in ipairs(ring.slices) do
             if Ring_Actions.IsSliceAvailable(child, depth + 1) then return Ring_Actions.GetIcon(child, depth + 1) end
@@ -39,7 +45,7 @@ Ring_Kinds.Register({
         return ring.slices[1] and Ring_Actions.GetIcon(ring.slices[1], depth + 1) or ICON
     end,
     label = function(slice)
-        local ring = Ring_Data.GetRing(slice.ring)
+        local ring = GetDisplayRing(slice.ring)
         return ring and ring.name or ("ring:" .. tostring(slice.ring))
     end,
 

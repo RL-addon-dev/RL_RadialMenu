@@ -8,6 +8,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key  = "worldmarkers",
+    category = Ring_Data.LibraryCategory.Markers,
     name = "Config - Rings - WorldMarkerRing - Name",
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     scan = function()

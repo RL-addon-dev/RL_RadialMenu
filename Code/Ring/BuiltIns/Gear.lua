@@ -10,6 +10,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key  = "gear",
+    category = Ring_Data.LibraryCategory.Equipment,
     name = "Config - Rings - GearRing - Name",
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     scan = function()
