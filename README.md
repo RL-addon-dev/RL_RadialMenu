@@ -138,16 +138,23 @@ Everything is in `/radial` (also under Options → AddOns).
 
 ![Open Menus At, a fixed position in Edit Mode, and the cursor guide](Media/menu-positions.gif)
 
-- **Open Menus At:** at the mouse cursor, or at a **Fixed Position** you place in Edit Mode
-  (saved per Edit Mode layout).
-- **Select From** (fixed position): pick by the direction you move from where you pressed the
-  key, or by where the mouse is over the menu itself.
-- **Show Cursor Guide** (fixed position): a faint outline of the menu at the cursor, so you can
-  see the directions while the menu is elsewhere.
-- **Menu Size** and **Show Action Names**.
-- **Menu Behavior:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), Distance to Select,
-  Distance to Cancel Quick Action, Right-Click to Cancel, how world markers are placed, and what
-  target markers go on.
+The General tab, top to bottom:
+
+- **Style:** Menu Style (Quick or Relaxed), Reveal Delay (Quick), and Right-Click to Cancel.
+- **Selection:** Distance to Select and Distance to Cancel Quick Action.
+- **Position:**
+  - **Open Menus At:** at the mouse cursor, or at a **Fixed Position** you place in Edit Mode
+    (saved per Edit Mode layout).
+  - **Select From** (fixed position): pick by where the mouse is over the menu itself (the
+    default), or by the direction you move from where you pressed the key.
+- **Appearance:** Menu Size, Show Action Names, action tooltips, and **Show Cursor Guide** (fixed
+  position): a faint outline of the menu at the cursor, so you can see the directions while the
+  menu is elsewhere.
+- **Markers:** how world markers are placed, and what target markers go on.
+- **Reset:** settings back to their defaults (your menus are kept).
+
+In the Menus tab:
+
 - **Per menu:** name, keybind, quick action, whether it's on all your characters, the
   characters of your class or just this one, and its share string.
 

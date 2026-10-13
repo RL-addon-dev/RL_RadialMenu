@@ -33,9 +33,9 @@ local function IsFixed() return Ring_Display.IsFixed() end
 local function UsesCursorGuide() return Ring_Display.IsFixed() and not Ring_Display.IsSelectFromMenu() end
 local function IsRelaxed() return Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed end
 
--- Menu Style decides whether Reveal Delay shows.
+-- Menu Style decides whether Reveal Delay shows, and its own description.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "MenuStyle", function() CallbackRegistry.Trigger("Setting.Refresh") end)
--- Right-Click to Cancel changes how the Menu Style description says a Relaxed menu closes.
+-- Right-Click to Cancel changes how the Menu Style description says the menu cancels or closes.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", function() CallbackRegistry.Trigger("Setting.Refresh") end)
 
 --- Behavior settings describe distances from where they're measured: the key-down spot, or the
@@ -68,6 +68,74 @@ do -- Schema
             widgetName = L["Config - General"],
             widgetType = Setting_Enum.WidgetType.Tab,
             children   = {
+                -- How a menu opens and closes.
+                {
+                    widgetName = L["Config - General - MenuStyle"],
+                    widgetType = Setting_Enum.WidgetType.Container,
+                    children   = {
+                        {
+                            widgetName               = L["Config - Behavior - MenuStyle"],
+                            widgetDescription        = Setting_Define.Descriptor{ description = function()
+                                -- The chosen style's own description; how it cancels or closes
+                                -- depends on Right-Click to Cancel.
+                                local key = "Config - Behavior - MenuStyle - Description - " .. (IsRelaxed() and "Relaxed" or "Quick")
+                                if Config.DBGlobal:GetVariable("RightClickDismiss") then key = key .. " - RightClick" end
+                                return L[key]
+                            end },
+                            widgetType               = Setting_Enum.WidgetType.SelectionMenu,
+                            widgetSelectionMenu_data = { -- in env.Enum.MenuStyle's order (Config.lua)
+                                L["Config - Behavior - MenuStyle - Quick"],
+                                L["Config - Behavior - MenuStyle - Relaxed"]
+                            },
+                            key                      = "MenuStyle"
+                        },
+                        {
+                            widgetName                     = L["Config - Behavior - RevealDelay"],
+                            widgetDescription              = Setting_Define.Descriptor{ description = L["Config - Behavior - RevealDelay - Description"] },
+                            widgetType                     = Setting_Enum.WidgetType.Range,
+                            widgetRange_min                = 0,
+                            widgetRange_max                = 0.5,
+                            widgetRange_step               = 0.05,
+                            widgetRange_textFormattingFunc = function(value) return string.format("%.2fs", value) end,
+                            key                            = "RevealDelay",
+                            -- Relaxed menus show at once: there's no tap to wait for.
+                            showWhen                       = function() return not IsRelaxed() end
+                        },
+                        {
+                            widgetName        = L["Config - Behavior - RightClickDismiss"],
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - Behavior - RightClickDismiss - Description"] },
+                            widgetType        = Setting_Enum.WidgetType.CheckButton,
+                            key               = "RightClickDismiss"
+                        }
+                    }
+                },
+                -- How far the mouse moves to pick an action.
+                {
+                    widgetName = L["Config - General - Selection"],
+                    widgetType = Setting_Enum.WidgetType.Container,
+                    children   = {
+                        {
+                            widgetName                 = L["Config - Behavior - Deadzone"],
+                            widgetDescription          = Setting_Define.Descriptor{ description = function() return BehaviorDescription("Deadzone") end },
+                            widgetType                 = Setting_Enum.WidgetType.Range,
+                            widgetRange_min            = 8,
+                            widgetRange_max            = 60,
+                            widgetRange_step           = 1,
+                            widgetRange_textFormatting = "%spx",
+                            key                        = "Deadzone"
+                        },
+                        {
+                            widgetName                 = L["Config - Behavior - ProbeSize"],
+                            widgetDescription          = Setting_Define.Descriptor{ description = function() return BehaviorDescription("ProbeSize") end },
+                            widgetType                 = Setting_Enum.WidgetType.Range,
+                            widgetRange_min            = 1,
+                            widgetRange_max            = 60, -- the largest Distance to Select; with Select From Cursor, capped to the current one when used
+                            widgetRange_step           = 1,
+                            widgetRange_textFormatting = "%spx",
+                            key                        = "ProbeSize"
+                        }
+                    }
+                },
                 {
                     widgetName = L["Config - Display - Position"],
                     widgetType = Setting_Enum.WidgetType.Container,
@@ -154,63 +222,11 @@ do -- Schema
                         }
                     }
                 },
+                -- Target and world marker actions.
                 {
-                    widgetName = L["Config - Behavior"],
+                    widgetName = L["Config - General - Markers"],
                     widgetType = Setting_Enum.WidgetType.Container,
                     children   = {
-                        {
-                            widgetName               = L["Config - Behavior - MenuStyle"],
-                            widgetDescription        = Setting_Define.Descriptor{ description = function()
-                                -- How a Relaxed menu closes depends on Right-Click to Cancel.
-                                local key = "Config - Behavior - MenuStyle - Description"
-                                if Config.DBGlobal:GetVariable("RightClickDismiss") then key = key .. " - RightClick" end
-                                return L[key]
-                            end },
-                            widgetType               = Setting_Enum.WidgetType.SelectionMenu,
-                            widgetSelectionMenu_data = { -- in env.Enum.MenuStyle's order (Config.lua)
-                                L["Config - Behavior - MenuStyle - Quick"],
-                                L["Config - Behavior - MenuStyle - Relaxed"]
-                            },
-                            key                      = "MenuStyle"
-                        },
-                        {
-                            widgetName                     = L["Config - Behavior - RevealDelay"],
-                            widgetDescription              = Setting_Define.Descriptor{ description = L["Config - Behavior - RevealDelay - Description"] },
-                            widgetType                     = Setting_Enum.WidgetType.Range,
-                            widgetRange_min                = 0,
-                            widgetRange_max                = 0.5,
-                            widgetRange_step               = 0.05,
-                            widgetRange_textFormattingFunc = function(value) return string.format("%.2fs", value) end,
-                            key                            = "RevealDelay",
-                            -- Relaxed menus show at once: there's no tap to wait for.
-                            showWhen                       = function() return not IsRelaxed() end
-                        },
-                        {
-                            widgetName                 = L["Config - Behavior - Deadzone"],
-                            widgetDescription          = Setting_Define.Descriptor{ description = function() return BehaviorDescription("Deadzone") end },
-                            widgetType                 = Setting_Enum.WidgetType.Range,
-                            widgetRange_min            = 8,
-                            widgetRange_max            = 60,
-                            widgetRange_step           = 1,
-                            widgetRange_textFormatting = "%spx",
-                            key                        = "Deadzone"
-                        },
-                        {
-                            widgetName                 = L["Config - Behavior - ProbeSize"],
-                            widgetDescription          = Setting_Define.Descriptor{ description = function() return BehaviorDescription("ProbeSize") end },
-                            widgetType                 = Setting_Enum.WidgetType.Range,
-                            widgetRange_min            = 1,
-                            widgetRange_max            = 60, -- the largest Distance to Select; with Select From Cursor, capped to the current one when used
-                            widgetRange_step           = 1,
-                            widgetRange_textFormatting = "%spx",
-                            key                        = "ProbeSize"
-                        },
-                        {
-                            widgetName        = L["Config - Behavior - RightClickDismiss"],
-                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - Behavior - RightClickDismiss - Description"] },
-                            widgetType        = Setting_Enum.WidgetType.CheckButton,
-                            key               = "RightClickDismiss"
-                        },
                         {
                             widgetName               = L["Config - Behavior - WorldMarkerPlacement"],
                             widgetDescription        = Setting_Define.Descriptor{ description = function()
@@ -242,7 +258,7 @@ do -- Schema
                     }
                 },
                 {
-                    widgetName = nil,
+                    widgetName = L["Config - General - Reset"],
                     widgetType = Setting_Enum.WidgetType.Container,
                     children   = {
                         {
