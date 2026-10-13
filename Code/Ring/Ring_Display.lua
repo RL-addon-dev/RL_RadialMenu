@@ -39,10 +39,6 @@ function Ring_Display.GetOpenAt()
     return Config.DBGlobal:GetVariable("DisplayOpenAt")
 end
 
-function Ring_Display.SetOpenAt(value)
-    Config.DBGlobal:SetVariable("DisplayOpenAt", value)
-end
-
 function Ring_Display.IsFixed()
     return Ring_Display.GetOpenAt() == env.Enum.OpenAt.Fixed
 end
@@ -179,19 +175,8 @@ local function Initialize()
     UpdateAnchorSize()
 
     LEM:AddFrame(Anchor, OnPositionChanged, DEFAULT_POSITION, env.NAME_ALT)
+    -- Only the size here (and LibEditMode's Reset Position): the rest is in the addon's settings.
     LEM:AddFrameSettings(Anchor, {
-        {
-            name    = L["Config - Display - OpenAt"],
-            desc    = L["Config - Display - OpenAt - Description"],
-            kind    = LEM.SettingType.Dropdown,
-            default = env.Enum.OpenAt.Cursor,
-            values  = {
-                { text = L["Config - Display - OpenAt - Cursor"], value = env.Enum.OpenAt.Cursor },
-                { text = L["Config - Display - OpenAt - Fixed"],  value = env.Enum.OpenAt.Fixed },
-            },
-            get     = function() return Ring_Display.GetOpenAt() end,
-            set     = function(_, value) Ring_Display.SetOpenAt(value) end
-        },
         {
             name      = L["Config - Display - Scale"],
             desc      = L["Config - Display - Scale - Description"],
@@ -204,6 +189,17 @@ local function Initialize()
             set       = function(_, value) Ring_Display.SetScalePercent(value) end
         }
     })
+
+    -- LibEditMode always adds Reset To Default under a frame's settings (every setting back to its
+    -- default): not for this frame, where it would only reset the size. Hidden after the dialog
+    -- fills itself (it's shared with any other frame of this copy, so shown again for them).
+    local dialog = LEM.internal and LEM.internal.dialog
+    if dialog and dialog.UpdateSettings then
+        hooksecurefunc(dialog, "UpdateSettings", function(self)
+            local resetButton = self.Settings and self.Settings.ResetButton
+            if resetButton then resetButton:SetShown(not (self.selection and self.selection.parent == Anchor)) end
+        end)
+    end
 
     LEM:RegisterCallback("layout", ApplyPosition)
     LEM:RegisterCallback("enter", function() Anchor.Preview:Show() end)

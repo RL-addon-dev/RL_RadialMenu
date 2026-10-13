@@ -341,15 +341,22 @@ L["Config - Rings - Import - Button"] = "Import %d |4Menu:Menus;"
 L["Config - Rings - Import - Done"] = "Imported %d |4menu:menus;."
 L["Config - Rings - Import - Combat"] = "Menus can't be imported in combat."
 
--- Menu Behavior
-L["Config - Behavior"] = "Menu Behavior"
+-- General tab groups (with Position and Appearance above)
+L["Config - General - MenuStyle"] = "Style"
+L["Config - General - Selection"] = "Selection"
+L["Config - General - Markers"] = "Markers"
+L["Config - General - Reset"] = "Reset"
+
+-- Menu behavior (Style, Selection and Markers groups)
 L["Config - Display - CursorGuide"] = "Show Cursor Guide"
 L["Config - Display - CursorGuide - Description"] = "A faint outline of the radial menu is drawn at the cursor location to help show the action boundaries."
 L["Config - Display - CursorGuideColor"] = "Cursor Guide Color"
 L["Config - Display - CursorGuideColor - Description"] = "The lines stay faint, and brighten for the action you're pointing at."
 L["Config - Behavior - MenuStyle"] = "Menu Style"
-L["Config - Behavior - MenuStyle - Description"] = "Quick: hold the keybind, move toward an action and release to use it. Press Escape to cancel.\n\nRelaxed: press the keybind and the menu opens and stays open. Click an action to use it. Press Escape or the keybind to close it."
-L["Config - Behavior - MenuStyle - Description - RightClick"] = "Quick: hold the keybind, move toward an action and release to use it. Press Escape or right-click to cancel.\n\nRelaxed: press the keybind and the menu opens and stays open. Click an action to use it. Press Escape, the keybind or right-click to close it."
+L["Config - Behavior - MenuStyle - Description - Quick"] = "Hold the keybind, move toward an action and release to use it. Press Escape to cancel."
+L["Config - Behavior - MenuStyle - Description - Quick - RightClick"] = "Hold the keybind, move toward an action and release to use it. Press Escape or right-click to cancel."
+L["Config - Behavior - MenuStyle - Description - Relaxed"] = "Press the keybind and the menu opens and stays open. Click an action to use it. Press Escape or the keybind to close it."
+L["Config - Behavior - MenuStyle - Description - Relaxed - RightClick"] = "Press the keybind and the menu opens and stays open. Click an action to use it. Press Escape, the keybind or right-click to close it."
 L["Config - Behavior - MenuStyle - Quick"] = "Quick"
 L["Config - Behavior - MenuStyle - Relaxed"] = "Relaxed"
 L["Config - Behavior - RevealDelay"] = "Reveal Delay"
