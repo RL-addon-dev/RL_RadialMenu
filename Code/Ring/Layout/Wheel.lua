@@ -507,6 +507,7 @@ end
 function WheelMixin:SetQuickIcon(icon, slice)
     Ring_Layout.SetIcon(self.Quick.Icon, icon)
     self.Quick.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
+    Ring_Layout.SetUnderlay(self.Quick, slice)
     self.quickSlice = slice
     Ring_Layout.UpdateIconCooldown(self.Quick, slice)
     if self.showStates then Ring_Layout.UpdateIconState(self.Quick, slice, true) end

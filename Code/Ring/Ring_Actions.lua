@@ -53,6 +53,14 @@ function Ring_Actions.HasNoIconBorder(slice)
     return definition ~= nil and definition.noIconBorder == true
 end
 
+--- What's drawn behind `slice`'s icon (its kind's underlay): a texture and its tint { r, g, b },
+--- or nil.
+function Ring_Actions.GetUnderlay(slice)
+    local definition = Get(slice.kind)
+    if not (definition and definition.underlay) then return nil end
+    return definition.underlay(slice)
+end
+
 function Ring_Actions.GetLabel(slice)
     if slice.label then return slice.label end
     local definition = Get(slice.kind)

@@ -75,6 +75,7 @@ function ResultRowMixin:SetResult(result)
     Ring_Layout.SetIcon(self.IconFrame.Icon, result.icon or 134400)
     -- Like on the wheel: no action button border for kinds without one (markers, Close).
     self.IconFrame.Border:SetShown(not (result.slice and Ring_Actions.HasNoIconBorder(result.slice)))
+    Ring_Layout.SetUnderlay(self.IconFrame, result.slice) -- a world marker's beam, as on the wheel
     self.Name:SetText(result.name)
 
     -- Blocked results (e.g. a ring that would nest in a loop) stay visible but can't be added.

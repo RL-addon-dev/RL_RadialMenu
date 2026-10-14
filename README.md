@@ -53,7 +53,7 @@ right-click (Right-Click to Cancel) also close it.
 | Emotes | | ✓ | ✓ |
 | Pet Commands | Attack, Follow, Stay, stances, ...; hidden while you have no pet | ✓ | ✓ |
 | Target Markers | Skull, Cross, ... on your target, and Clear. With Mark Target Markers On: a tap marks the unit under the mouse; on the wheel, the unit you pressed the key over (out of combat; enemies need nameplates); in a raid, hidden unless you're leader or assistant | ✓ | ✓ |
-| World Markers | placed under the mouse, or with a targeting circle; and Clear. Hidden while you're not in a group, and in a raid unless you're leader or assistant | ✓ | ✓ |
+| World Markers | placed under the mouse, or with a targeting circle; and Clear. Shown with a beam of light in the marker's color, so they stand apart from target markers. Hidden while you're not in a group, and in a raid unless you're leader or assistant | ✓ | ✓ |
 | Equipped Slot | uses whatever is in that slot (trinket 1, ...); hidden while it has no use effect | ✓ | ✓ |
 | Equipment Set | puts on one of your Equipment Manager sets; hidden while you're wearing it | ✓ | ✓ |
 | Close Menu | closes the menu without using anything | ✓ | ✓ |
