@@ -5,25 +5,32 @@
                  raid, for the leader and assistants): hidden otherwise (Ring_Kinds.CanSetMarkers).
 ]]
 
-local env = select(2, ...)
+local addonName, env = ...
 local Config = env.Config
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
-local CLEAR_ICON = "atlas:GM-raidMarker-reset" -- the raid manager's reset button
+-- The light behind each marker's icon (underlay): one white beam (Art\Ring\WorldMarkerBeam.png,
+-- made by make_marker_beam.py), tinted per marker.
+local BEAM = "Interface\\AddOns\\" .. addonName .. "\\Art\\Ring\\WorldMarkerBeam.png"
 
--- World markers are numbered by color; the raid target icon each one shows on the ground.
-local TARGET_ICON = {
-    [1] = 6, -- blue square
-    [2] = 4, -- green triangle
-    [3] = 3, -- purple diamond
-    [4] = 7, -- red cross
-    [5] = 1, -- yellow star
-    [6] = 2, -- orange circle
-    [7] = 5, -- silver moon
-    [8] = 8, -- white skull
+-- World markers by the game's number (/wm 1 .. 8, slice.id): the raid target icon each shows on
+-- the ground, and the color of its beam.
+local MARKER = {
+    [1] = { icon = 6, color = { 0.25, 0.55, 1.00 } }, -- blue square
+    [2] = { icon = 4, color = { 0.25, 0.95, 0.35 } }, -- green triangle
+    [3] = { icon = 3, color = { 0.80, 0.35, 1.00 } }, -- purple diamond
+    [4] = { icon = 7, color = { 1.00, 0.25, 0.20 } }, -- red cross
+    [5] = { icon = 1, color = { 1.00, 0.85, 0.20 } }, -- yellow star
+    [6] = { icon = 2, color = { 1.00, 0.55, 0.15 } }, -- orange circle
+    [7] = { icon = 5, color = { 0.82, 0.88, 1.00 } }, -- silver moon
+    [8] = { icon = 8, color = { 1.00, 1.00, 1.00 } }, -- white skull
 }
+
+-- Clear (id 0): the raid manager's reset button, the same icon as Target Markers' Clear, so its
+-- beam tells them apart; neutral, as it clears every color.
+local CLEAR = { icon = "atlas:GM-raidMarker-reset", color = { 0.85, 0.85, 0.85 } }
 
 -- Offered in Add Action, and the World Markers built-in menu's order: the same order of icons
 -- as Target Markers (Skull at the top).
@@ -60,11 +67,21 @@ Ring_Kinds.Register({
     available = function() return IsInGroup() and Ring_Kinds.CanSetMarkers() end,
 
     icon = function(slice)
-        return slice.id == 0 and CLEAR_ICON or ICON:format(TARGET_ICON[slice.id] or slice.id)
+        if slice.id == 0 then return CLEAR.icon end
+        local marker = MARKER[slice.id]
+        return ICON:format(marker and marker.icon or slice.id)
+    end,
+    -- A beam of light in the marker's color behind its icon: the same raid icons as target
+    -- markers, told apart at a glance.
+    underlay = function(slice)
+        if slice.id == 0 then return BEAM, CLEAR.color end
+        local marker = MARKER[slice.id]
+        if marker then return BEAM, marker.color end
     end,
     label = function(slice)
         if slice.id == 0 then return L["Config - Rings - WorldMarker - Clear"] end
-        local name = _G["RAID_TARGET_" .. (TARGET_ICON[slice.id] or slice.id)] or tostring(slice.id)
+        local marker = MARKER[slice.id]
+        local name = _G["RAID_TARGET_" .. (marker and marker.icon or slice.id)] or tostring(slice.id)
         return format(L["Config - Rings - WorldMarker - Name"], name)
     end,
 

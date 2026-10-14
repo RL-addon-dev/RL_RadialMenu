@@ -20,6 +20,7 @@ local OUT_OF_RANGE_ALPHA = 0.5
 local ACTION_BUTTON_SIZE = 45
 local ICON_BORDER_WIDTH_RATIO = 46 / ACTION_BUTTON_SIZE
 local COOLDOWN_INSET_RATIO = 1 / ACTION_BUTTON_SIZE
+local UNDERLAY_SCALE = 1.75 -- a kind's underlay (world markers' beam) around the icon, kept clear of its neighbors
 Private.COOLDOWN_EVENTS = { -- the wheel refreshes its cooldowns and counts on these
     "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED" }
 
@@ -45,6 +46,18 @@ end
 function Ring_Layout.SetSliceIcon(iconFrame, slice)
     Ring_Layout.SetIcon(iconFrame.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
     iconFrame.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
+    Ring_Layout.SetUnderlay(iconFrame, slice)
+end
+
+--- Shows what `slice`'s kind draws behind its icon (a world marker's beam of light), or nothing.
+function Ring_Layout.SetUnderlay(iconFrame, slice)
+    local texture, color = nil, nil
+    if slice then texture, color = Ring_Actions.GetUnderlay(slice) end
+    if texture then
+        iconFrame.Underlay:SetTexture(texture)
+        iconFrame.Underlay:SetVertexColor(color and color[1] or 1, color and color[2] or 1, color and color[3] or 1)
+    end
+    iconFrame.Underlay:SetShown(texture ~= nil)
 end
 
 --- Icon with the retail action bar mask and border, in its own frame so both scale together.
@@ -56,6 +69,12 @@ function Ring_Layout.CreateActionIcon(parent, size)
 
     frame.Icon = frame:CreateTexture(nil, "OVERLAY", nil, 3)
     frame.Icon:SetAllPoints()
+
+    -- Behind the icon, a little larger and unmasked: a kind's underlay (SetUnderlay).
+    frame.Underlay = frame:CreateTexture(nil, "OVERLAY", nil, 2)
+    frame.Underlay:SetSize(size * UNDERLAY_SCALE, size * UNDERLAY_SCALE)
+    frame.Underlay:SetPoint("CENTER", frame.Icon)
+    frame.Underlay:Hide()
 
     -- ActionButtonTemplate leaves IconMask at its native atlas size, centered on the 45px icon
     -- (the mask art is larger than the icon). Keep that ratio at our icon size.

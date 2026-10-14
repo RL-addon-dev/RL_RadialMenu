@@ -31,6 +31,9 @@
             attributesChangeWith = function() return value end,   -- apply() depends on game state:
                                                                   -- rings rebuild when this changes
             noIconBorder = true,                                  -- icon without the action button border
+            underlay  = function(slice) return texture, color end, -- drawn behind the icon, a little
+                                                                  -- larger (1.75x), tinted { r, g, b }
+                                                                  -- (world markers' beam of light)
             share     = {                                         -- sharing menus as text (Data\Share.lua);
                                                                   -- leave out: travels as is, then validate
                 pack   = function(slice, macros) return slice end,  -- what travels; nil, reason: left out
