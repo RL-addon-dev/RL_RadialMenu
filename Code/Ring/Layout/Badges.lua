@@ -20,7 +20,7 @@ local HasAtlas, CLIP_MASK_TEXTURE = Private.HasAtlas, Private.FILL_TEXTURE
 -- small "Scroll" text pill.
 local SCROLL_BADGE_ATLASES = { "newplayertutorial-icon-mouse-middlebutton", "clickcast-icon-mouse" }
 local SCROLL_BADGE_SIZE = 30
-local SCROLL_BADGE_X, SCROLL_BADGE_Y = -1, 1 -- center offset from the icon's bottom-right corner
+local SCROLL_BADGE_X, SCROLL_BADGE_Y = 1, 1 -- center offset from the icon's bottom-left corner (the item count is bottom-right)
 -- Visibility badge (settings preview): an eye, or Blizzard's hidden (crossed-out) eye while the
 -- slice is hidden. First art this client has wins; without a hidden eye, a slash is drawn over
 -- the eye instead.
@@ -28,7 +28,7 @@ local CONDITION_BADGE_ATLASES = { "GM-icon-visible", "transmog-icon-visible", "s
 local CONDITION_HIDDEN_ATLASES = { "GM-icon-visibleDis", "GM-icon-hidden", "transmog-icon-hidden", "socialqueuing-icon-eye-hidden" }
 local CONDITION_BADGE_TEXTURE = "Interface\\Common\\help-i"
 local CONDITION_BADGE_SIZE = 56
-local CONDITION_BADGE_X, CONDITION_BADGE_Y = 1, 1 -- center offset from the icon's bottom-left corner
+local CONDITION_BADGE_X, CONDITION_BADGE_Y = -1, 1 -- center offset from the icon's bottom-right corner
 local CONDITION_SLASH_INSET = 4 -- slash runs corner to corner, this far in
 local CONDITION_SLASH_THICKNESS = 2.5
 local CONDITION_SLASH_SHADOW_THICKNESS = 5
@@ -46,7 +46,7 @@ local EXPAND_FILL_FRONT = { { 0.92, 0.92, 0.92 }, { 0.64, 0.64, 0.64 } }
 local EXPAND_HIGHLIGHT = { 1, 1, 1, 0.55 }
 local EXPAND_SHADOW = { 0, 0, 0, 0.45 }
 local EXPAND_SHADOW_OFFSET = 1
-local EXPAND_OFFSET_X, EXPAND_OFFSET_Y = -3, 1 -- badge center from the icon's bottom-right corner
+local EXPAND_OFFSET_X, EXPAND_OFFSET_Y = 3, 1 -- badge center from the icon's bottom-left corner
 local EXPAND_OUTLINE = { 0, 0, 0, 0.9 }
 local EXPAND_OUTLINE_WIDTH = 1
 local EXPAND_COUNT_COLOR = { 0.08, 0.08, 0.08 }
@@ -69,7 +69,7 @@ end
 
 -- Nested ring badge
 
---- Mouse icon on the icon's bottom-right corner (or a "Scroll" pill below it); child of the icon
+--- Mouse icon on the icon's bottom-left corner, clear of the item count (or a "Scroll" pill below it); child of the icon
 --- so it follows the intro/outro slide and the selected scale.
 function Private.CreateScrollBadge(wheel, wedge)
     local badge = CreateFrame("Frame", nil, wedge.Button)
@@ -78,7 +78,7 @@ function Private.CreateScrollBadge(wheel, wedge)
     local atlas = FirstAtlas(SCROLL_BADGE_ATLASES)
     if atlas then
         badge:SetSize(SCROLL_BADGE_SIZE, SCROLL_BADGE_SIZE)
-        badge:SetPoint("CENTER", wedge.Button, "BOTTOMRIGHT", SCROLL_BADGE_X, SCROLL_BADGE_Y)
+        badge:SetPoint("CENTER", wedge.Button, "BOTTOMLEFT", SCROLL_BADGE_X, SCROLL_BADGE_Y)
         badge.Texture = badge:CreateTexture(nil, "OVERLAY")
         badge.Texture:SetAllPoints()
         badge.Texture:SetAtlas(atlas)
@@ -102,7 +102,7 @@ function Private.CreateScrollBadge(wheel, wedge)
     local expand = CreateFrame("Frame", nil, wedge.Button)
     expand:SetFrameLevel(wheel:GetFrameLevel() + 9)
     expand:SetSize(span, span)
-    expand:SetPoint("CENTER", wedge.Button, "BOTTOMRIGHT", EXPAND_OFFSET_X, EXPAND_OFFSET_Y)
+    expand:SetPoint("CENTER", wedge.Button, "BOTTOMLEFT", EXPAND_OFFSET_X, EXPAND_OFFSET_Y)
     for i = EXPAND_STACK_FRAMES, 1, -1 do
         local offset = (i - 1) * EXPAND_STACK_STEP
         -- One draw layer, back frame lowest: each frame covers the frames behind it. Per frame:
@@ -152,13 +152,13 @@ function Ring_Layout.GetEyeAtlas(hidden)
     return FirstAtlas(hidden and CONDITION_HIDDEN_ATLASES or CONDITION_BADGE_ATLASES)
 end
 
---- Eye badge on the icon's bottom-left corner: this slice hides when it has nothing to fire. The
+--- Eye badge on the icon's bottom-right corner: this slice hides when it has nothing to fire. The
 --- hidden (crossed-out) eye means it's hidden right now.
 function Private.CreateConditionBadge(wheel, wedge)
     local badge = CreateFrame("Frame", nil, wedge.Button)
     badge:SetFrameLevel(wheel:GetFrameLevel() + 9)
     badge:SetSize(CONDITION_BADGE_SIZE, CONDITION_BADGE_SIZE)
-    badge:SetPoint("CENTER", wedge.Button, "BOTTOMLEFT", CONDITION_BADGE_X, CONDITION_BADGE_Y)
+    badge:SetPoint("CENTER", wedge.Button, "BOTTOMRIGHT", CONDITION_BADGE_X, CONDITION_BADGE_Y)
     badge.Texture = badge:CreateTexture(nil, "OVERLAY")
     badge.Texture:SetAllPoints()
 
