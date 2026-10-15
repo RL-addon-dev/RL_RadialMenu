@@ -100,7 +100,7 @@ what you removed, to restore it.
 | Flasks & Elixirs | flasks, phials and elixirs in your bags | ✓ | ✓ |
 | Food & Drink | food and drink in your bags | ✓ | ✓ |
 | Hearthstones | your Hearthstone, the hearthstone toys you own, Teleport Home to your houses, and Return | ✓ | — |
-| Other Consumables | bandages, scrolls, explosives & devices, item enhancements and Vantus runes in your bags | ✓ | ✓ |
+| Other Consumables | bandages, scrolls, explosives & devices, item enhancements and Vantus runes in your bags; on Retail also weapon oils and stones, augment runes, curios and other usable consumables | ✓ | ✓ |
 | Potions | potions and Healthstones in your bags | ✓ | ✓ |
 | Professions | your professions (opens their window) and their extra spells: Disenchant, Prospecting, Survey, Fishing… | ✓ | ✓ |
 | Quest Items | usable quest items from your quest log and bags (Forever: from your bags) | ✓ | ✓ |
