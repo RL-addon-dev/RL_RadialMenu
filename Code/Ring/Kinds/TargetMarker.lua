@@ -3,11 +3,13 @@
                   target marker. Like the game's target marker wheel and /tm: using the marker your
                   target already has removes it. In a raid, only the leader and assistants can mark,
                   so it's hidden there for everyone else (Ring_Kinds.CanSetMarkers).
-                  Mark Target Markers On = Mouse Cursor: on a tap (the quick action, also through
-                  Last Used or First Action), the unit under the mouse as it fires; picked on the
+                  Mark Target Markers On = Cursor: on a tap (the quick action, also through Last
+                  Used or First Action), the unit under the mouse as it fires; picked on the
                   wheel, the unit under the mouse when the keybind was pressed, like a ping
                   (Ring_Secure rewrites the slot's /tm for it, out of combat, for units with a
                   lasting token: nameplate, target, focus, group). Otherwise your target.
+                  Cursor + Focus: menus of only target markers mark any unit, in combat too, by
+                  making it your focus while open (Ring_Secure).
 ]]
 
 local env = select(2, ...)
@@ -79,7 +81,7 @@ Ring_Kinds.Register({
         return type(slice.id) == "number" and slice.id >= 0 and slice.id <= 8, "target marker needs a number from 0 to 8"
     end,
 
-    -- /tm is a secure command: works in combat, and takes a unit ([@nameplate3]) for Mouse Cursor.
+    -- /tm is a secure command: works in combat, and takes a unit ([@nameplate3]) for Cursor.
     -- Clearing uses the secure button's own raid target action, which removes every target marker
     -- at once.
     apply = function(button, suffix, slice)
