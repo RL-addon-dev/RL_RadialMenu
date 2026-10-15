@@ -5,6 +5,7 @@
 
 local env = select(2, ...)
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Layout = env.AX_Modules:Import("@\\Ring\\Layout")
 local Private = env.AX_Modules:Import("@\\Ring\\Layout\\Private")
 
@@ -28,10 +29,12 @@ Private.COOLDOWN_EVENTS = { -- the wheel refreshes its cooldowns and counts on t
 -- Action button icon
 
 local ATLAS_PREFIX = "atlas:"
+local WHITE = { 1, 1, 1 } -- an icon's own colors (no tint)
 
 --- Shows an action's icon on `texture`: an icon file / id, or an atlas written "atlas:<name>"
 --- (kinds may return either, see Ring_Actions.GetIcon). Clears the atlas's texture coordinates
---- when going back to a file, so the next icon isn't cropped.
+--- when going back to a file, so the next icon isn't cropped. The addon's symbols
+--- (Ring_Kinds.GetSymbol) are tinted; texture.symbolTint keeps it for UpdateIconState.
 function Ring_Layout.SetIcon(texture, icon)
     if type(icon) == "string" and icon:sub(1, #ATLAS_PREFIX) == ATLAS_PREFIX then
         texture:SetAtlas(icon:sub(#ATLAS_PREFIX + 1))
@@ -39,10 +42,13 @@ function Ring_Layout.SetIcon(texture, icon)
         texture:SetTexCoord(0, 1, 0, 1)
         texture:SetTexture(icon)
     end
+    texture.symbolTint = Ring_Kinds.IsSymbol(icon) and Ring_Kinds.SYMBOL_COLOR or nil
+    local tint = texture.symbolTint or WHITE
+    texture:SetVertexColor(tint[1], tint[2], tint[3])
 end
 
 --- Shows `slice` on an action icon (CreateActionIcon): its icon, and the action button border
---- unless its kind has none (noIconBorder: target and world markers show their art on its own).
+--- unless its kind has none (noIconBorder: markers and emotes show their art on its own).
 function Ring_Layout.SetSliceIcon(iconFrame, slice)
     Ring_Layout.SetIcon(iconFrame.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
     iconFrame.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
@@ -307,6 +313,7 @@ function Ring_Layout.UpdateIconState(icon, slice, fresh)
     elseif usable == false then
         color = noResources and COLOR_NO_RESOURCES or COLOR_UNUSABLE
     end
+    color = color or icon.Icon.symbolTint -- a symbol keeps its tint (SetIcon)
     if color then
         icon.Icon:SetVertexColor(color[1], color[2], color[3])
     else

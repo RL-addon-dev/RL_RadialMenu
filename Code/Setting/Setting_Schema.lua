@@ -316,6 +316,20 @@ do -- Schema
                     }
                 },
                 {
+                    -- Credit the CC BY 3.0 licence asks for (also README, NOTICE, Art\Symbols\CREDITS.md).
+                    widgetName        = L["Config - About - Artwork"],
+                    widgetType        = Setting_Enum.WidgetType.Container,
+                    widgetTransparent = true,
+                    children          = {
+                        {
+                            widgetName        = L["Config - About - Artwork - Symbols"],
+                            widgetType        = Setting_Enum.WidgetType.Text,
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - About - Artwork - Symbols - Description"] },
+                            widgetTransparent = true
+                        }
+                    }
+                },
+                {
                     widgetName        = L["Config - About - Developer"],
                     widgetType        = Setting_Enum.WidgetType.Container,
                     widgetTransparent = true,

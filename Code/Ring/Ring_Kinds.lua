@@ -60,12 +60,33 @@
     Also here: helpers shared by several definitions.
 ]]
 
-local env = select(2, ...)
+local addonName, env = ...
 local Ring_Kinds = env.AX_Modules:New("@\\Ring\\Kinds")
 
 local order, byKind = {}, {}
 
 Ring_Kinds.QUESTION_MARK_ICON = 134400
+
+-- Symbols: icons the addon ships for actions the game has none for (emotes): Art\Symbols\<name>.png,
+-- a white game-icons.net symbol on transparency (made by Art\Symbols\make_symbols.py). Drawn
+-- tinted (Ring_Layout.SetIcon); kinds using them leave out the action button border (noIconBorder).
+local SYMBOL_PATH = "Interface\\AddOns\\" .. addonName .. "\\Art\\Symbols\\"
+-- Each game's own UI metal, as the addon's settings art has it: elsewhere its warm grey metal
+-- (#9d988f, the checkbox and slider trim's lighter tone), in WoW Forever the copper of its Forever
+-- recolour (#966845: Art\recolor_forever.py's trim).
+Ring_Kinds.SYMBOL_COLOR = env.GAME_VERSION == env.GameVersion.Forever
+    and { 0x96 / 255, 0x68 / 255, 0x45 / 255 } -- copper
+    or { 0x9d / 255, 0x98 / 255, 0x8f / 255 }  -- silver
+
+--- The icon for symbol `name` (Art\Symbols\<name>.png).
+function Ring_Kinds.GetSymbol(name)
+    return SYMBOL_PATH .. name .. ".png"
+end
+
+--- Whether `icon` is one of the addon's symbols (drawn tinted).
+function Ring_Kinds.IsSymbol(icon)
+    return type(icon) == "string" and icon:sub(1, #SYMBOL_PATH) == SYMBOL_PATH
+end
 
 function Ring_Kinds.Register(definition)
     assert(type(definition.kind) == "string", "action kind needs a name")

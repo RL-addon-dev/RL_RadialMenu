@@ -405,6 +405,10 @@ L["Config - About - Inspirations - WaypointUI - Description"] =
 L["Config - About - Inspirations - Opie"] = "Opie by Foxlit"
 L["Config - About - Inspirations - Opie - Description"] =
 "Revolutionary radial action-binding addon that inspired the core concept of radial menu interfaces."
+L["Config - About - Artwork"] = "Artwork"
+L["Config - About - Artwork - Symbols"] = "Emote symbols from game-icons.net"
+L["Config - About - Artwork - Symbols - Description"] =
+"By Lorc, Delapouite, Caro Asercion and Cathelineau, under the Creative Commons Attribution 3.0 licence (creativecommons.org/licenses/by/3.0). Recoloured for this addon."
 L["Config - About - Developer"] = "Developer"
 L["Config - About - Developer - Name"] = "RL"
 L["Config - About - Developer - Name - Description"] = "Just a dude doing this for fun"

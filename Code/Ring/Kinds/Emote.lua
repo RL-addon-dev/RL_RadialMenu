@@ -5,36 +5,37 @@
 local env = select(2, ...)
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
-local ICON = "Interface\\Icons\\INV_Misc_Note_01"
+local ICON = "Interface\\Icons\\INV_Misc_Note_01" -- an emote without a symbol
 
--- Each offered emote's icon (other emotes show the note).
-local ICONS = {
-    APPLAUD = 1386545, -- spell_priest_pontifex
-    BOW     = 236308,  -- ability_warrior_furiousresolve
-    BYE     = 590341,  -- pet_type_flying
-    CHEER   = 6031602, -- inv_11xp_holiday_xmascracker01
-    CRY     = 3750312, -- ui_embercourt-emoji-miserable
-    DANCE   = 133886,  -- inv_misc_firedancer_01
-    FLEX    = 236314,  -- ability_warrior_strengthofarms
-    HELLO   = 3750314, -- ui_embercourt-emoji-veryhappy
-    HUG     = 2021577, -- ability_racial_sympatheticvigor
-    KISS    = 136209,  -- spell_shadow_soothingkiss
-    KNEEL   = 642414,  -- ability_monk_legsweep
-    LAUGH   = 3750310, -- ui_embercourt-emoji-elated
-    NO      = 456031,  -- thumbsdown
-    POINT   = 136157,  -- spell_shadow_fingerofdeath
-    ROAR    = 463283,  -- spell_druid_stamedingroar
-    SALUTE  = 1278391, -- inv_shield_1h_silverhand_b_01
-    SIT     = 6403297, -- ui_campcollection
-    SLEEP   = 136090,  -- spell_nature_sleep
-    THANK   = 3750311, -- ui_embercourt-emoji-happy
-    TRAIN   = 1029727, -- ability_foundryraid_traindeath
-    WAVE    = 1360761, -- ability_paladin_handoflight
-    YES     = 461267,  -- thumbsup
+-- Each offered emote's symbol (Ring_Kinds.GetSymbol: Art\Symbols, from game-icons.net). Similar
+-- emotes share one; the comment names that family. Other emotes show the note.
+local SYMBOLS = {
+    APPLAUD = "gloves",
+    BOW     = "prayer",
+    BYE     = "exit-door",
+    CHEER   = "party-popper",
+    CRY     = "tear-tracks",
+    DANCE   = "ballerina-shoes",
+    FLEX    = "muscle-up",
+    HELLO   = "palm",            -- greeting
+    HUG     = "embrassed-energy",
+    KISS    = "lips",
+    KNEEL   = "kneeling",
+    LAUGH   = "witch-face",
+    NO      = "thumb-down",
+    NOD     = "thumb-up",
+    POINT   = "pointing",
+    ROAR    = "sonic-shout",
+    SALUTE  = "swords-emblem",
+    SIT     = "bar-stool",
+    SLEEP   = "night-sleep",
+    THANK   = "pay-money",
+    TRAIN   = "subway-train",
+    WAVE    = "palm",            -- greeting
 }
 
 -- Slash commands that aren't emote tokens of their own: /yes is the NOD emote. Saved as the
--- command (its label and icon), fired as the token.
+-- command (its label), fired as the token, and shown with its symbol.
 local ALIASES = {
     YES = "NOD",
 }
@@ -47,6 +48,7 @@ local EMOTES = {
 
 Ring_Kinds.Register({
     kind = "emote",
+    noIconBorder = true, -- the symbol on its own, not a spell
 
     validate = function(slice)
         return type(slice.token) == "string", "emote needs a token (e.g. WAVE)"
@@ -57,7 +59,11 @@ Ring_Kinds.Register({
         Ring_Kinds.SetMacroText(button, suffix, ("/run DoEmote(%q)"):format(ALIASES[token] or token))
     end,
 
-    icon  = function(slice) return ICONS[slice.token:upper()] or ICON end,
+    icon  = function(slice)
+        local token = slice.token:upper()
+        local symbol = SYMBOLS[token] or SYMBOLS[ALIASES[token]]
+        return symbol and Ring_Kinds.GetSymbol(symbol) or ICON
+    end,
     label = function(slice) return "/" .. slice.token:lower() end,
 
     search = {
