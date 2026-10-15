@@ -53,10 +53,12 @@ Enum.WorldMarkerPlacement = {
 }
 
 -- Mark Target Markers On (TargetMarkerUnit): your target, or the unit under the mouse when the
--- keybind was pressed (out of combat; Ring_Secure).
+-- keybind was pressed (out of combat; Ring_Secure). CursorFocus: also any unit, in combat too, in
+-- menus of only target markers, by stealing your focus while the menu is open.
 Enum.TargetMarkerUnit = {
     Target = 1,
-    Cursor = 2
+    Cursor = 2,
+    CursorFocus = 3
 }
 
 

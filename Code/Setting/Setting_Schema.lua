@@ -244,14 +244,18 @@ do -- Schema
                         {
                             widgetName               = L["Config - Behavior - TargetMarkerUnit"],
                             widgetDescription        = Setting_Define.Descriptor{ description = function()
-                                -- The chosen option's own description (Mouse Cursor: its limits, in yellow).
-                                local cursor = Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor
-                                return L["Config - Behavior - TargetMarkerUnit - Description - " .. (cursor and "Cursor" or "Target")]
+                                -- The chosen option's own description (the Cursor ones: their limits, in yellow).
+                                local value = Config.DBGlobal:GetVariable("TargetMarkerUnit")
+                                for name, enumValue in pairs(env.Enum.TargetMarkerUnit) do
+                                    if enumValue == value then return L["Config - Behavior - TargetMarkerUnit - Description - " .. name] end
+                                end
+                                return L["Config - Behavior - TargetMarkerUnit - Description - Target"]
                             end },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
                             widgetSelectionMenu_data = { -- in env.Enum.TargetMarkerUnit's order (Config.lua)
                                 L["Config - Behavior - TargetMarkerUnit - Target"],
-                                L["Config - Behavior - TargetMarkerUnit - Cursor"]
+                                L["Config - Behavior - TargetMarkerUnit - Cursor"],
+                                L["Config - Behavior - TargetMarkerUnit - CursorFocus"]
                             },
                             key                      = "TargetMarkerUnit"
                         }

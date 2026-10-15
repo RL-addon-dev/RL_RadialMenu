@@ -35,12 +35,20 @@
     a First Action ("*first-sN") fires the slot in "ring-first", the first wedge that fires
     something (set at every rebuild; nothing when there's none).
 
-    Mark Target Markers On = Mouse Cursor: a tap (the mouse is still on the unit) fires a target
+    Mark Target Markers On = Cursor: a tap (the mouse is still on the unit) fires a target
     marker slot's copy ("<suffix>M", TAP_SUFFIX) that marks the mouseover as it fires, also
     through Last Used and First Action. For picks on the wheel, when a menu opens out of combat
     its target marker slots' /tm ("*macrotext-<suffix>") is pointed at the unit under the mouse (a
     token that still names it once the mouse moves: Ring_Kinds.GetUnitUnderMouse), like a ping;
     set back just after the release and when combat starts, so in combat they mark your target.
+
+    Cursor + Focus: the same, and a menu of only target markers ("ring-stealfocus": Close, Last
+    Used, First Action and submenus of markers allowed, since any other action couldn't clear the
+    focus) steals your focus when the press finds a unit under the mouse that wasn't aimed at
+    (in combat, or no nameplate): the press's click fires on its key down ("useOnKeyDown") as
+    "FocusSteal" (/focus [@mouseover]), and FOCUS_STOLEN makes the pick fire the marker's copy
+    that marks the focus and clears it ("<suffix>F"); a cancel, dismiss or Close fires "FocusClear"
+    (/clearfocus) instead of nothing.
 
     Menu Style = Relaxed ("ring-relaxed"): the key's release fires nothing and leaves the ring open
     (RELAXED_OPEN) with its bindings, and the probe still up. There's no quick action on a tap:
@@ -82,9 +90,12 @@ local PRE_CLICK = [[
     -- Relaxed: a left click on the open menu ("RelaxedSelect", bound below) picks, on its release.
     local isPick = button == "RelaxedSelect"
     if isPick and down then return false end
+    -- Clicks fire on release, except the key down that steals focus (below).
+    self:SetAttribute("useOnKeyDown", false)
 
     if down then
-        -- Relaxed: the keybind again closes the open menu, firing nothing.
+        -- Relaxed: the keybind again closes the open menu, firing nothing (clearing a stolen focus:
+        -- this click fires on its key down).
         if RELAXED_OPEN == ringId and OPEN_RING == ringId then
             OPEN_RING = nil
             OPEN_BUTTON = nil
@@ -93,6 +104,11 @@ local PRE_CLICK = [[
             probe:UnregisterAutoHide()
             probe:Hide()
             owner:CallMethod("OnRingClose", ringId, "cancel", nil)
+            if FOCUS_STOLEN then
+                FOCUS_STOLEN = nil
+                self:SetAttribute("useOnKeyDown", true)
+                return "FocusClear"
+            end
             return false
         end
 
@@ -106,6 +122,7 @@ local PRE_CLICK = [[
         OPEN_RING = ringId
         OPEN_BUTTON = self
         RELAXED_OPEN = nil
+        FOCUS_STOLEN = nil
 
         local probeSize = self:GetAttribute("ring-probe")
         probe:ClearAllPoints()
@@ -140,6 +157,15 @@ local PRE_CLICK = [[
         end
 
         owner:CallMethod("OnRingOpen", ringId, START_X, START_Y)
+        -- Cursor + Focus, in a menu of only target markers: the unit under the mouse becomes your
+        -- focus, which the markers mark ("<suffix>F"); every way out clears it. This click fires on
+        -- its key down. Not when OnRingOpen already aimed the markers at the unit (out of combat, a
+        -- unit with a lasting token: "ring-aimed").
+        if self:GetAttribute("ring-stealfocus") and not self:GetAttribute("ring-aimed") and UnitExists("mouseover") then
+            FOCUS_STOLEN = true
+            self:SetAttribute("useOnKeyDown", true)
+            return "FocusSteal"
+        end
         return false
     end
 
@@ -187,6 +213,8 @@ local PRE_CLICK = [[
     OPEN_RING = nil
     OPEN_BUTTON = nil
     RELAXED_OPEN = nil
+    local stolen = FOCUS_STOLEN
+    FOCUS_STOLEN = nil
     helper:ClearBindings()
     probe:UnregisterAutoHide()
     probe:Hide()
@@ -207,14 +235,18 @@ local PRE_CLICK = [[
     if type(index) == "number" then self:SetAttribute("ring-last", index) end
 
     owner:CallMethod("OnRingClose", ringId, result, index)
-    if not index then return false end
+    -- Nothing picked: clear a stolen focus.
+    if not index then return stolen and "FocusClear" or false end
     local suffix = "s" .. index
     if self:GetAttribute("ring-scrollcount-" .. index) then
         suffix = suffix .. "_" .. (self:GetAttribute("ring-scroll-" .. index) or 1)
     end
-    -- A tap (the mouse never left the unit): a target marker's copy that marks the mouseover
-    -- (Mouse Cursor; also through Last Used and First Action).
-    if result == "quick" and self:GetAttribute("*macrotext-" .. suffix .. "M") then
+    -- Focus stolen: a target marker's copy that marks your focus, then clears it. Else a tap (the
+    -- mouse never left the unit): its copy that marks the mouseover (Cursor; also through Last Used
+    -- and First Action).
+    if stolen and self:GetAttribute("*macrotext-" .. suffix .. "F") then
+        suffix = suffix .. "F"
+    elseif result == "quick" and self:GetAttribute("*macrotext-" .. suffix .. "M") then
         suffix = suffix .. "M"
     end
     -- An Action Bar 1 button: fire its slot on the bar's page right now (Kinds\ActionBar.lua).
@@ -245,6 +277,11 @@ local HELPER_CLICK = [[
         probe:UnregisterAutoHide()
         probe:Hide()
         owner:CallMethod("OnRingClose", ringId, "cancel", nil)
+        -- Clear a stolen focus (Cursor + Focus).
+        if FOCUS_STOLEN then
+            FOCUS_STOLEN = nil
+            return "FocusClear"
+        end
         return false
     end
 
@@ -289,11 +326,30 @@ local Probe = CreateFrame("Frame", "RLRM_CenterProbe", UIParent, "SecureFrameTem
 Probe:SetSize(4, 4)
 Probe:Hide()
 
+-- Cursor + Focus: the clicks that steal and clear your focus (on ring buttons, the helper
+-- too for FocusClear; the snippets spell the names out), and their macros.
+local FOCUS_STEAL, FOCUS_STEAL_TEXT = "FocusSteal", "/focus [@mouseover]"
+local FOCUS_CLEAR, FOCUS_CLEAR_TEXT = "FocusClear", "/clearfocus"
+
 local Helper = CreateFrame("Button", "RLRM_RingHelper", UIParent, "SecureActionButtonTemplate")
 Helper:SetSize(1, 1)
 Helper:EnableMouse(false)
 Helper:RegisterForClicks("AnyDown")
+-- Its bindings click on key down: fire then (a dismiss clearing a stolen focus).
+Helper:SetAttribute("useOnKeyDown", true)
+Helper:SetAttribute("*type-" .. FOCUS_CLEAR, "macro")
+Helper:SetAttribute("*macrotext-" .. FOCUS_CLEAR, FOCUS_CLEAR_TEXT)
 SecureHandlerWrapScript(Helper, "OnClick", Controller, HELPER_CLICK)
+
+-- Clears every target marker, for a Clear target marker that also clears a stolen focus: a
+-- macro can't clear them all, so its copy clicks this, then clears the focus.
+local ClearMarkers = CreateFrame("Button", "RLRM_ClearMarkers", UIParent, "SecureActionButtonTemplate")
+ClearMarkers:SetSize(1, 1)
+ClearMarkers:EnableMouse(false)
+ClearMarkers:RegisterForClicks("AnyUp") -- /click sends a release
+ClearMarkers:SetAttribute("useOnKeyDown", false)
+ClearMarkers:SetAttribute("type", "raidtarget")
+ClearMarkers:SetAttribute("action", "clear-all")
 
 local ringsById = {}
 local pendingBindings = {} -- filled by SetupRing, bound by Rebuild (account keybinds first)
@@ -310,6 +366,15 @@ local QueueRebuild -- defined with the rebuild queue below
 -- Button suffix of the tap-only quick action ("*type-sQ" ...), and its "ring-quick" value.
 local QUICK_SUFFIX = "Q"
 local TAP_SUFFIX = "M" -- a target marker's tap copy ("<suffix>M"; PRE_CLICK spells it out)
+local FOCUS_SUFFIX = "F" -- a target marker's stolen focus copy ("<suffix>F"; PRE_CLICK spells it out)
+
+--- Mark Target Markers On: the unit under the mouse (Cursor or Cursor + Focus), and whether menus
+--- of only target markers steal your focus for it (Cursor + Focus).
+local function GetMarkerMode()
+    local value = Config.DBGlobal:GetVariable("TargetMarkerUnit")
+    local steal = value == env.Enum.TargetMarkerUnit.CursorFocus
+    return steal or value == env.Enum.TargetMarkerUnit.Cursor, steal
+end
 
 -- Modifiers a binding string can start with, in WoW's order (ALT-CTRL-SHIFT-KEY).
 local MODIFIERS = { "ALT-", "CTRL-", "SHIFT-", "META-" }
@@ -359,6 +424,7 @@ end
 local function ResetAimedMarkers()
     if not aimedButton or InCombatLockdown() then return end
     AimMarkers(aimedButton, aimedLive, nil)
+    aimedButton:SetAttribute("ring-aimed", nil)
     aimedButton, aimedLive = nil, nil
 end
 
@@ -386,12 +452,13 @@ function Controller:OnRingOpen(ringId, startX, startY)
 
     openRingId, openSince, openRelaxed = ringId, GetTime(), false
     local button = buttonsById[ringId]
-    -- Mark Target Markers On = Mouse Cursor: the unit hovered now, like a ping.
-    if #ring.markerSuffixes > 0 and not InCombatLockdown()
-        and Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor then
+    -- Mark Target Markers On = Cursor: the unit hovered now, like a ping. "ring-aimed" tells
+    -- the press snippet, which runs on after this, that it needn't steal your focus.
+    if #ring.markerSuffixes > 0 and not InCombatLockdown() and GetMarkerMode() then
         local unit = Ring_Kinds.GetUnitUnderMouse()
         if unit then
             AimMarkers(button, ring, unit)
+            button:SetAttribute("ring-aimed", true)
             aimedButton, aimedLive = button, ring
         end
     end
@@ -480,16 +547,70 @@ local function GetRingButton(ringId)
     return button
 end
 
---- Mouse Cursor, for slot `suffix` just applied with `slice`. A target marker slot gets a tap copy
+--- Cursor, for slot `suffix` just applied with `slice`. A target marker slot gets a tap copy
 --- ("<suffix>M") that marks the mouseover as it fires (a tap leaves the mouse on the unit, so any
 --- unit, in combat too; else your target), and is listed for aiming (live.markerSuffixes,
---- AimMarkers). Any other slot's copy is cleared, so a copy never outlives its marker. Out of combat.
+--- AimMarkers). In a menu that steals your focus (live.canStealFocus), target markers (Clear too)
+--- also get a copy that marks your focus (Clear: clears every marker) and then clears it
+--- ("<suffix>F"); Close gets one that only clears it. Any other slot's copies are cleared, so a
+--- copy never outlives its marker. Out of combat.
 local function SetupMarkerSlot(button, live, suffix, slice)
     local isMarker = Ring_Kinds.IsUnitMarker(slice)
     if isMarker then table.insert(live.markerSuffixes, { suffix = suffix, id = slice.id }) end
-    local tap = isMarker and Config.DBGlobal:GetVariable("TargetMarkerUnit") == env.Enum.TargetMarkerUnit.Cursor
+    local tap = isMarker and live.cursorMarkers
     button:SetAttribute("*type-" .. suffix .. TAP_SUFFIX, tap and "macro" or nil)
     button:SetAttribute("*macrotext-" .. suffix .. TAP_SUFFIX, tap and Ring_Kinds.GetTargetMarkerText(slice.id, "mouseover") or nil)
+
+    local steal = live.canStealFocus
+    local focusText
+    if steal and slice.kind == "targetmarker" then
+        focusText = (isMarker and Ring_Kinds.GetTargetMarkerText(slice.id, "focus") or "/click " .. ClearMarkers:GetName())
+            .. "\n" .. FOCUS_CLEAR_TEXT
+    elseif steal and slice.kind == "close" then
+        -- A Close in a scroll submenu is picked like any action (PRE_CLICK only checks wedges for
+        -- Close): its copy just clears the focus.
+        focusText = FOCUS_CLEAR_TEXT
+    end
+    button:SetAttribute("*type-" .. suffix .. FOCUS_SUFFIX, focusText and "macro" or nil)
+    button:SetAttribute("*macrotext-" .. suffix .. FOCUS_SUFFIX, focusText)
+end
+
+-- Menus that can steal your focus (Cursor + Focus) hold only these: any other action couldn't
+-- clear it after firing. Last Used and First Action fire one of the menu's own wedges;
+-- submenus that scroll may hold target markers and Close.
+local STEAL_KINDS = { targetmarker = true, close = true, lastused = true, first = true }
+local STEAL_CHILD_KINDS = { targetmarker = true, close = true }
+
+--- Whether `slice` lets its menu steal your focus, and whether it marks a unit.
+local function CheckStealSlice(slice)
+    if STEAL_KINDS[slice.kind] then return true, Ring_Kinds.IsUnitMarker(slice) end
+    if not Ring_Live.IsScroll(slice) then return false, false end
+    -- An empty one fires nothing when picked, so it couldn't clear the focus either.
+    local children = Ring_Live.GetScrollSlices(slice)
+    if #children == 0 then return false, false end
+    local marks = false
+    for _, child in ipairs(children) do
+        if not STEAL_CHILD_KINDS[child.kind] then return false, false end
+        marks = marks or Ring_Kinds.IsUnitMarker(child)
+    end
+    return true, marks
+end
+
+--- Whether live ring `live` can steal your focus (with Cursor + Focus): it marks units, and every
+--- action it can fire (the quick action too) is a target marker or fires nothing. Before its slots
+--- are set up (SetupMarkerSlot gives them focus copies only then).
+local function CanStealFocus(live)
+    local marks = false
+    local function Allows(slice)
+        local ok, slotMarks = CheckStealSlice(slice)
+        marks = marks or slotMarks
+        return ok
+    end
+    if live.quickSlice and not Allows(live.quickSlice) then return false end
+    for _, slice in ipairs(live.slices) do
+        if not Allows(slice) then return false end
+    end
+    return marks
 end
 
 --- Nested ring (scroll) slice attributes. Returns true if the slice is a nested ring.
@@ -522,6 +643,11 @@ local function SetupRing(ring)
     local live = Ring_Live.Build(ring)
     local count = #live.slices
     live.markerSuffixes = {} -- target marker slots { suffix, id } (SetupMarkerSlot), for AimMarkers
+    -- Mark Target Markers On, read once for its slots: Cursor (either kind), and whether this menu
+    -- steals your focus (Cursor + Focus, and a menu of only target markers).
+    local cursor, steal = GetMarkerMode()
+    live.cursorMarkers = cursor
+    live.canStealFocus = steal and CanStealFocus(live)
     -- Rebuilt: its /tm lines are fresh, so a pending reset (ResetAimedMarkers) has nothing to undo,
     -- and its old slot list may not match the new slots.
     if aimedButton == button then aimedButton, aimedLive = nil, nil end
@@ -568,6 +694,14 @@ local function SetupRing(ring)
         if SetupNestedSlice(live, button, index, slice) then hasScroll = true end
     end
     button:SetAttribute("ring-hasscroll", hasScroll or nil)
+    -- Cursor + Focus: the press steals your focus (PRE_CLICK), every way out clears it.
+    local canSteal = live.canStealFocus
+    button:SetAttribute("ring-stealfocus", canSteal or nil)
+    button:SetAttribute("ring-aimed", nil)
+    button:SetAttribute("*type-" .. FOCUS_STEAL, canSteal and "macro" or nil)
+    button:SetAttribute("*macrotext-" .. FOCUS_STEAL, canSteal and FOCUS_STEAL_TEXT or nil)
+    button:SetAttribute("*type-" .. FOCUS_CLEAR, canSteal and "macro" or nil)
+    button:SetAttribute("*macrotext-" .. FOCUS_CLEAR, canSteal and FOCUS_CLEAR_TEXT or nil)
 
     ringsById[ring.id] = live
     local binding, scope = Ring_Data.GetBinding(ring.id)
