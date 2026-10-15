@@ -39,6 +39,13 @@ if IS_RETAIL then
     SLOT_TYPES[MAIN_HAND].INVTYPE_RANGED, SLOT_TYPES[MAIN_HAND].INVTYPE_RANGEDRIGHT = true, true
 end
 
+-- Equip types that go in any of SLOTS: the bag scan skips everything else (bags, ammo, and the
+-- many items with no equip type) before asking for more about it.
+local EQUIPPABLE = {}
+for _, slot in ipairs(SLOTS) do
+    for equipLoc in pairs(SLOT_TYPES[slot]) do EQUIPPABLE[equipLoc] = true end
+end
+
 --- Whether your character can use item `id` (its armor or weapon type, class, level): a Mage
 --- carrying a shield doesn't see it offered.
 local function CanUse(id)
@@ -47,11 +54,13 @@ end
 
 local scanned, scannedAt -- the last scan, and when (GetTime: one value per frame)
 
---- Usable items in your bags by the slot they go in: [slot] = { { id, link, name, icon }, ... },
---- once per copy (item link), sorted by name; every slot of SLOTS has a list. One-handers go in
---- the off hand too for classes that dual wield; rings and trinkets in both of their slots.
---- Equipped items aren't in the bags, so they're never listed. Scanned once per frame: the Equip
---- menus refill together (Ring_Auto), each asking for its own slot.
+--- Usable items in your bags by the slot they go in: [slot] = { { id, link, name }, ... }, once
+--- per copy (item link), sorted by name (from the link); every slot of SLOTS has a list.
+--- One-handers go in the off hand too for classes that dual wield; rings and trinkets in both of
+--- their slots. Equipped items aren't in the bags, so they're never listed. Scanned once per
+--- frame: the Equip menus refill together (Ring_Auto), each asking for its own slot. Each bag
+--- slot costs an item id and its equip type; only gear asks for its link and whether you can use
+--- it.
 function Ring_Kinds.GetBagItemsBySlot()
     local now = GetTime()
     if scanned and scannedAt == now then return scanned end
@@ -60,12 +69,12 @@ function Ring_Kinds.GetBagItemsBySlot()
     local dualWield = CanDualWield ~= nil and CanDualWield()
     for bag = 0, NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4 do
         for bagSlot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
-            local info = C_Container.GetContainerItemInfo(bag, bagSlot)
-            local link = info and info.hyperlink
-            local equipLoc = link and not seen[link] and select(4, GetItemInfoInstant(info.itemID))
-            if equipLoc and equipLoc ~= "" and CanUse(info.itemID) then
+            local id = C_Container.GetContainerItemID(bag, bagSlot)
+            local equipLoc = id and select(4, GetItemInfoInstant(id))
+            local link = equipLoc and EQUIPPABLE[equipLoc] and C_Container.GetContainerItemLink(bag, bagSlot)
+            if link and not seen[link] and CanUse(id) then
                 seen[link] = true
-                local item = { id = info.itemID, link = link, name = info.itemName or "", icon = info.iconFileID }
+                local item = { id = id, link = link, name = link:match("|h%[(.-)%]|h") or "" }
                 for _, slot in ipairs(SLOTS) do
                     if SLOT_TYPES[slot][equipLoc] or (slot == OFF_HAND and dualWield and equipLoc == "INVTYPE_WEAPON") then
                         table.insert(bySlot[slot], item)

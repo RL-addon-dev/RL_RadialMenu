@@ -2,14 +2,18 @@
     Keeps the menus current with the game. After any relevant event (bags, quests, toys, pet,
     equipment, spells, zone, ...), one update a moment later:
 
-        1. refills the built-in menus (Code\Ring\BuiltIns\*.lua; each lists the events it needs),
-           in the order the user arranged them;
+        1. refills the built-in menus whose own events fired (Code\Ring\BuiltIns\*.lua; each lists
+           the events it needs), in the order the user arranged them. All of them at login and
+           after hand edits; ones that list no events hold the same actions always (whether each
+           shows is step 3), so they only fill then;
         2. rebuilds when the state that secure attributes depend on changed (the zone ability a
            zone ability slice casts: Ring_Actions.GetAttributeSignature);
         3. rebuilds when any action's visibility changed (Ring_Actions.IsSliceAvailable: the
            in-game menus leave out actions with nothing to fire), an action bar's buttons too.
 
     Rebuilds go through "Ring.DataChanged" with reason "auto": quiet, and after combat if needed.
+    In combat nothing can be rebuilt, so the update waits: events meanwhile are remembered, and one
+    update runs when combat ends.
 ]]
 
 local env = select(2, ...)
@@ -41,10 +45,15 @@ local EVENTS = {
 
 -- Built-in menus
 
+-- Built-in menu keys to refill at the next update (definition.key = ring.builtin), or all of them.
+local dirtyKeys, refillAll = {}, true
+
 local function RefillBuiltIns()
     for _, ring in ipairs(Ring_Data.GetRings()) do
-        if ring.builtin then Ring_Data.RefillBuiltIn(ring) end
+        if ring.builtin and (refillAll or dirtyKeys[ring.builtin]) then Ring_Data.RefillBuiltIn(ring) end
     end
+    wipe(dirtyKeys)
+    refillAll = false
 end
 
 
@@ -103,11 +112,23 @@ end
 
 -- Update
 
+local combatWaiter = CreateFrame("Frame")
+
 function Ring_Auto.Update()
     if not Ring_Data.IsReady() then return end
+    -- Nothing can be rebuilt in combat: keep what's dirty, and update once it ends.
+    if InCombatLockdown() then
+        combatWaiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
     RefillBuiltIns()
     CheckGameState()
 end
+
+combatWaiter:SetScript("OnEvent", function(self)
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    Ring_Auto.Update()
+end)
 
 local updatePending = false
 local function ScheduleUpdate()
@@ -119,8 +140,15 @@ local function ScheduleUpdate()
     end)
 end
 
+--- Refills every built-in menu at the next update (not just the ones whose events fired).
+local function ScheduleFullUpdate()
+    refillAll = true
+    ScheduleUpdate()
+end
+
 do
     local frame = CreateFrame("Frame")
+    local keysByEvent = {} -- event -> built-in menu keys that refill after it
     local registered = {}
     local function Register(event)
         if registered[event] or not env.IsEventValid(event) then return end
@@ -129,20 +157,34 @@ do
     end
     for _, event in ipairs(EVENTS) do Register(event) end
     for _, definition in ipairs(Ring_Data.GetBuiltInDefinitions()) do
-        for _, event in ipairs(definition.events or {}) do Register(event) end
+        for _, event in ipairs(definition.events or {}) do
+            Register(event)
+            if registered[event] then -- not for events this game doesn't have
+                keysByEvent[event] = keysByEvent[event] or {}
+                table.insert(keysByEvent[event], definition.key)
+            end
+        end
     end
     frame:RegisterUnitEvent("UNIT_PET", "player")
-    frame:SetScript("OnEvent", ScheduleUpdate)
+    frame:SetScript("OnEvent", function(_, event)
+        -- Login, reload and loading screens: everything may have changed.
+        if event == "PLAYER_ENTERING_WORLD" then refillAll = true end
+        local keys = keysByEvent[event]
+        if keys then
+            for _, key in ipairs(keys) do dirtyKeys[key] = true end
+        end
+        ScheduleUpdate()
+    end)
 
     if ZoneAbilityFrame and ZoneAbilityFrame.UpdateDisplayedZoneAbilities then
         hooksecurefunc(ZoneAbilityFrame, "UpdateDisplayedZoneAbilities", ScheduleUpdate)
     end
 end
 
-CallbackRegistry.Add("Ring.DataReady", ScheduleUpdate)
+CallbackRegistry.Add("Ring.DataReady", ScheduleFullUpdate)
 -- Hand edits (a slice added, a menu created): refill in case they touched a built-in's order.
 CallbackRegistry.Add("Ring.DataChanged", function(_, reason)
-    if reason ~= "auto" then ScheduleUpdate() end
+    if reason ~= "auto" then ScheduleFullUpdate() end
 end)
 -- Every rebuild uses the visibility of that moment; remember it so only real changes rebuild.
 CallbackRegistry.Add("Ring.Rebuilt", function()
