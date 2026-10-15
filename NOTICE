@@ -15,3 +15,10 @@ Included libraries:
                     LICENSE)
 - libs\LibEditMode  by Adrian L Lange (p3lim), unmodified, under its own licence
                     (libs\LibEditMode\LICENSE.txt), included as a separate work
+
+Included artwork:
+- Art\Symbols       emote symbols from game-icons.net (https://game-icons.net) by Lorc,
+                    Delapouite, Caro Asercion and Cathelineau, under the Creative Commons
+                    Attribution 3.0 Unported licence (https://creativecommons.org/licenses/by/3.0/),
+                    not the GPL. Converted to PNG and recoloured. Each symbol's artist is listed in
+                    Art\Symbols\CREDITS.md.

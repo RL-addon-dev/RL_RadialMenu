@@ -50,7 +50,7 @@ right-click (Right-Click to Cancel) also close it.
 | Items | consumables show how many you have; hidden while you have none | ✓ | ✓ |
 | Toys, Mounts, Battle Pets | from your collections, plus a random favorite mount or pet | ✓ | ✓ |
 | Macros | your account and character macros | ✓ | ✓ |
-| Emotes | | ✓ | ✓ |
+| Emotes | each with its own symbol (silver on Retail, copper on WoW Forever); similar emotes share one | ✓ | ✓ |
 | Pet Commands | Attack, Follow, Stay, stances, ...; hidden while you have no pet | ✓ | ✓ |
 | Target Markers | Skull, Cross, ... on your target, and Clear. With Mark Target Markers On: a tap marks the unit under the mouse; on the wheel, the unit you pressed the key over (out of combat; enemies need nameplates); in a raid, hidden unless you're leader or assistant | ✓ | ✓ |
 | World Markers | placed under the mouse, or with a targeting circle; and Clear. Shown with a beam of light in the marker's color, so they stand apart from target markers. Hidden while you're not in a group, and in a raid unless you're leader or assistant | ✓ | ✓ |
@@ -173,4 +173,8 @@ RL: Radial Menu is free software under the **GNU General Public License v3** (se
 - The settings window and its UI toolkit (`libs\AX_Settings`, `libs\AX_Modules`) are based on
   **WaypointUI** by **AdaptiveX** (GPLv3).
 - Fixed position via **LibEditMode** by p3lim.
+- Emote symbols (`Art\Symbols`) from [game-icons.net](https://game-icons.net) by Lorc, Delapouite,
+  Caro Asercion and Cathelineau, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) (not
+  the GPL); converted to PNG and recoloured. Each symbol's artist is in
+  [Art/Symbols/CREDITS.md](Art/Symbols/CREDITS.md).
 - The menu's look follows Blizzard's ping wheel.
