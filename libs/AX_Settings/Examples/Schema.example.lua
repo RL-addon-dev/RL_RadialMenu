@@ -177,25 +177,67 @@ Setting_Schema.SCHEMA = {
                     -- containers and rows), parent it, and return it.
                     local page = CreateFrame("Frame", nil, parent) -- stand-in: use a UIKit frame
                     page.selectedId = "default"
+                    page.listTab = "mine"
 
                     page.Nav = Setting.AttachListNav(tab, {
                         sections = {
                             {
                                 title    = "Built-In",
-                                visible  = 2,
+                                visible  = 2,                    -- cards shown before it scrolls
                                 getItems = function()
                                     return { { id = "default", title = "Default", left = "", right = "Account" } }
                                 end,
                             },
                             {
-                                title     = "Your Profiles",
-                                newButton = { text = "+ New Profile", onClick = function() --[[ create, then page.Nav:Select(newId) ]] end },
-                                getItems  = function() return {} end,
+                                -- The last section fills the rest of the sidebar (no `visible`).
+                                title    = "Profiles",
+                                -- A split button, one part per tab; getItems returns that tab's items.
+                                tabs     = {
+                                    { id = "mine",   text = "Mine" },
+                                    { id = "shared", text = "Shared" },
+                                },
+                                getTab   = function() return page.listTab end,
+                                onTab    = function(tabId) page.listTab = tabId end,
+                                -- Filters by title, and by each item's `keywords`.
+                                search   = { placeholder = "Search profiles" },
+                                -- Equal buttons side by side (or `newButton`: one, full width).
+                                actions  = {
+                                    { text = "+ New",  onClick = function() --[[ create, then page.Nav:Select(newId) ]] end },
+                                    { text = "Import", onClick = function() --[[ show the import page ]] end },
+                                },
+                                getItems = function()
+                                    if page.listTab == "shared" then
+                                        return {
+                                            -- A group row: collapsible header for the items after it.
+                                            { group = true, id = "group:guild", title = "Guild", right = "1", collapsed = true },
+                                            -- muted: read-only look, still selectable.
+                                            { id = "raid", title = "Raid Night", left = "From Ana", right = "Shared", muted = true },
+                                        }
+                                    end
+                                    return {
+                                        { group = true, id = "group:pvp", title = "PvP", right = "2" },
+                                        -- keywords: also matched by the search (a function is only
+                                        -- asked while searching, so it can be costly).
+                                        { id = "arena", title = "Arena", left = "Ctrl-1", right = "Account",
+                                          keywords = function() return { "Burst", "Defensives" } end },
+                                        { id = "bgs", title = "Battlegrounds", left = "", right = "Account",
+                                          keywords = { "Flag carrier" } },
+                                    }
+                                end,
                             },
                         },
-                        getSelected = function() return page.selectedId end,
-                        onSelect    = function(id) page.selectedId = id --[[ fill the page for id ]] end,
+                        getSelected   = function() return page.selectedId end,
+                        onSelect      = function(id) page.selectedId = id --[[ fill the page for id ]] end,
+                        -- Pass a saved table to keep the groups' open / closed state between sessions.
+                        collapsed     = MyAddonDB and MyAddonDB.collapsedGroups or {},
+                        onGroupToggle = function(groupId, collapsed) end,  -- optional
                     })
+
+                    -- From code: open a group without refreshing (Select refreshes next), select
+                    -- an item (scrolls it into view), or just scroll to one.
+                    --   page.Nav:SetGroupCollapsed("group:pvp", false, true)
+                    --   page.Nav:Select("arena")
+                    --   page.Nav:ScrollTo("arena")
 
                     -- Called on every settings refresh.
                     function page:OnSettingRefresh() self.Nav:Refresh() end
