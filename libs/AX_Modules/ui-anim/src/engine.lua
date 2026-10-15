@@ -565,6 +565,11 @@ end
 
 
 
+--- How many animations are running (each keeps the engine's per-frame update going).
+function UIAnim_Engine.GetActiveCount()
+    return activeInstanceCount
+end
+
 function UIAnim_Engine.New()
     local wrapper = {}
     wrapperRegistry[wrapper] = { states = {}, runId = 0, pendingCount = 0, defCache = {}, startNotified = false }

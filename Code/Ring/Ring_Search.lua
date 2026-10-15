@@ -5,7 +5,8 @@
     Typing a number also offers what has that id (spell / item / toy / mount), with a note when
     you can't use it right now (spell not known, none in your bags, mount not collected).
 
-    Candidates are cached per kind and rebuilt after the kind's `search.events`.
+    Candidates are cached per kind and rebuilt after the kind's `search.events`, listened to while
+    the settings are open; all of them are dropped when the settings close.
 ]]
 
 local env = select(2, ...)
@@ -72,21 +73,30 @@ function Ring_Search.Invalidate(kind)
     if kind then cache[kind] = nil else wipe(cache) end
 end
 
+-- The lists are only kept, and their sources' events only listened to, while the settings are
+-- open: closed, every list is let go (all your pets, mounts, toys... can be thousands of
+-- entries) and the next search builds what it needs again.
 do
     local kindsByEvent = {}
     local frame = CreateFrame("Frame")
     for _, definition in ipairs(Ring_Kinds.All()) do
         for _, event in ipairs(definition.search and definition.search.events or {}) do
-            if not kindsByEvent[event] and env.IsEventValid(event) then
-                kindsByEvent[event] = {}
-                frame:RegisterEvent(event)
-            end
+            if not kindsByEvent[event] and env.IsEventValid(event) then kindsByEvent[event] = {} end
             if kindsByEvent[event] then tinsert(kindsByEvent[event], definition.kind) end
         end
     end
     frame:SetScript("OnEvent", function(_, event)
-        for _, kind in ipairs(kindsByEvent[event] or {}) do Ring_Search.Invalidate(kind) end
+        for _, kind in ipairs(kindsByEvent[event]) do Ring_Search.Invalidate(kind) end
         CallbackRegistry.Trigger("Ring.SearchSourcesChanged")
+    end)
+
+    CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+        if host then
+            for event in pairs(kindsByEvent) do frame:RegisterEvent(event) end
+        else
+            frame:UnregisterAllEvents()
+            Ring_Search.Invalidate()
+        end
     end)
 end
 

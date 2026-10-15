@@ -310,25 +310,39 @@ function FrameMixin:TriggerEvent(event, ...)
     end
 end
 
+-- UserUpdate frames re-scan when their size is set, but only when it actually changed: a layout
+-- pass sets the same size again on every pass, and re-scanning then queued another pass, every
+-- frame, forever (a percentage-width text in the settings did, ~1 ms and ~1 MB/s of garbage).
+
 function FrameMixin:SetSize(...)
-    Method_SetSize(self, ...)
-    if self.uk_flag_updateMode == UIKit_Enum.UpdateMode.UserUpdate then
-        UIKit_UI_Scanner.ScanFrame(self)
+    if self.uk_flag_updateMode ~= UIKit_Enum.UpdateMode.UserUpdate then
+        Method_SetSize(self, ...)
+        return
     end
+    local width, height = self:GetSize()
+    Method_SetSize(self, ...)
+    local newWidth, newHeight = self:GetSize()
+    if newWidth ~= width or newHeight ~= height then UIKit_UI_Scanner.ScanFrame(self) end
 end
 
 function FrameMixin:SetWidth(...)
-    Method_SetWidth(self, ...)
-    if self.uk_flag_updateMode == UIKit_Enum.UpdateMode.UserUpdate then
-        UIKit_UI_Scanner.ScanFrame(self)
+    if self.uk_flag_updateMode ~= UIKit_Enum.UpdateMode.UserUpdate then
+        Method_SetWidth(self, ...)
+        return
     end
+    local width = self:GetWidth()
+    Method_SetWidth(self, ...)
+    if self:GetWidth() ~= width then UIKit_UI_Scanner.ScanFrame(self) end
 end
 
 function FrameMixin:SetHeight(...)
-    Method_SetHeight(self, ...)
-    if self.uk_flag_updateMode == UIKit_Enum.UpdateMode.UserUpdate then
-        UIKit_UI_Scanner.ScanFrame(self)
+    if self.uk_flag_updateMode ~= UIKit_Enum.UpdateMode.UserUpdate then
+        Method_SetHeight(self, ...)
+        return
     end
+    local height = self:GetHeight()
+    Method_SetHeight(self, ...)
+    if self:GetHeight() ~= height then UIKit_UI_Scanner.ScanFrame(self) end
 end
 
 local function PropagateMouseClicksEnable(frame)

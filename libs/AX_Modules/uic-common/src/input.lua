@@ -49,6 +49,10 @@ do --Input
         local focused = self:IsFocused()
         local enabled = self:IsEnabled()
 
+        -- The caret blinks only while focused: its looping animation would otherwise keep the
+        -- animation engine running every frame after focus is lost.
+        if not focused then self.AnimGroup:Stop(self.Caret) end
+
         if not enabled then
             self.Background:background(UIDef.UIInput_Disabled)
         elseif focused then

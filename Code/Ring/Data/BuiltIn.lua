@@ -122,6 +122,7 @@ function Ring_Data.SetAutoSlices(id, slices)
 
     ring.slices = slices
     Private.NormalizeRing(ring)
+    Private.ForgetOpenableRings() -- its submenus may have changed (Consumables)
     CallbackRegistry.Trigger("Ring.DataChanged", "auto")
     return true
 end
