@@ -1,15 +1,17 @@
 --[[
-    Consumables: four built-in menus filled from your bags, and a fifth holding them as submenus.
+    Consumables: built-in menus filled from your bags, and one holding them as submenus.
 
         Potions             potions, and Healthstones
         Flasks & Elixirs    flasks, phials, elixirs
         Food & Drink        food and drink
-        Other Consumables   bandages, scrolls, explosives & devices, item enhancements, Vantus runes
+        Other Consumables   bandages, scrolls, explosives & devices, item enhancements, Vantus runes;
+                            on Retail also the game's Consumable - Other (weapon oils and stones,
+                            augment runes, ...) and curios
         Consumables         the four above (scroll submenus: one wedge each, hidden while empty)
 
-    Only items with a use (an item spell): curios go into a slot, and "Other" is mostly things you
-    can't use, so neither is listed, except the Other items placed by id (Healthstones). Each item once, sorted by type then item id, so a refill
-    doesn't reshuffle them as items move around the bags (the menus remember a custom order too).
+    Only items with a use (an item spell). Healthstones are Consumable - Other too, but placed by
+    id in Potions. Each item once, sorted by type then item id, so a refill doesn't reshuffle them
+    as items move around the bags (the menus remember a custom order too).
 ]]
 
 local env = select(2, ...)
@@ -34,6 +36,11 @@ local MENU_BY_SUBCLASS = {
     [7] = "utility",   -- Bandage
     [9] = "utility",   -- Vantus Rune
 }
+if env.GAME_VERSION == env.GameVersion.Retail then
+    MENU_BY_SUBCLASS[8] = "utility"  -- Other: weapon oils and stones, augment runes, ...
+    MENU_BY_SUBCLASS[10] = "utility" -- Utility Curio
+    MENU_BY_SUBCLASS[11] = "utility" -- Combat Curio
+end
 -- Items placed by id, whatever their subclass: Healthstones are Consumable - Other (8).
 local MENU_BY_ITEM = {
     [5512]   = "potions", -- Healthstone (WoW Forever: Minor Healthstone)
