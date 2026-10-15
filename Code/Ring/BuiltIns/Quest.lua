@@ -37,6 +37,10 @@ local function GetBagItemQuestInfo(bag, slot)
     return info, questID, isActive
 end
 
+-- Item ids found to be neither a quest item nor a quest starter: that never changes for an item,
+-- so later scans skip the quest lookup for them (most of the bags).
+local notQuest = {}
+
 --- Item ids, in quest log order, then bag order.
 local function ScanQuestItems()
     local itemIDs, seen = {}, {}
@@ -64,9 +68,11 @@ local function ScanQuestItems()
     for bag = 0, LAST_BAG do
         for slot = 1, GetContainerNumSlots(bag) or 0 do
             local itemID = GetContainerItemID(bag, slot)
-            if itemID then
+            if itemID and not notQuest[itemID] then
                 local isQuestItem, questID, isActive = GetBagItemQuestInfo(bag, slot)
-                if (isQuestItem and GetItemSpell(itemID)) or (questID and not isActive) then
+                if not isQuestItem and not questID then
+                    notQuest[itemID] = true
+                elseif (isQuestItem and GetItemSpell(itemID)) or (questID and not isActive) then
                     Add(itemID)
                 end
             end
