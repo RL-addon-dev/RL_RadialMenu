@@ -87,6 +87,11 @@ local function ProcessAnimations(_, deltaTime)
     end
 end
 
+--- How many number animations are running (each keeps the per-frame update going).
+function UIAnim_Methods.GetActiveCount()
+    return activeInstanceCount
+end
+
 function UIAnim_Methods.AnimateNumber(startValue, endValue, duration, easing, onUpdate, onFinish)
     local easingFunction = type(easing) == "function" and easing or UIAnim_Easing[easing] or LINEAR_EASING
 

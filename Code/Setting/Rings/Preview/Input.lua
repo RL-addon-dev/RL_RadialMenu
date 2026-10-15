@@ -11,6 +11,7 @@ local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
 local Ring_Search = env.AX_Modules:Await("@\\Ring\\Search")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
+local Perf = env.AX_Modules:Import("@\\Perf")
 
 local GetCursorPosition, GetCursorInfo, IsMouseButtonDown = GetCursorPosition, GetCursorInfo, IsMouseButtonDown
 local atan2, deg, floor, abs, cos, sin, pi = math.atan2, math.deg, math.floor, math.abs, math.cos, math.sin, math.pi
@@ -222,7 +223,16 @@ end
 
 -- Frame scripts
 
+local Update -- the per-frame work (below); Private.OnUpdate times it for the performance log
+
 function Private.OnUpdate(wheel)
+    if not Perf.enabled then return Update(wheel) end
+    local start = debugprofilestop()
+    Update(wheel)
+    Perf.CountPreviewFrame(debugprofilestop() - start)
+end
+
+Update = function(wheel)
     local preview = wheel.preview
     if preview.drag then
         preview:SetGapTarget(nil)

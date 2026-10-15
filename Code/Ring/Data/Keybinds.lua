@@ -76,11 +76,22 @@ function Ring_Data.GetBindingOverrides(id)
     return overrides
 end
 
+-- GetOpenableRings' answer, kept until the menus change: asked on every game state update
+-- (Ring_Auto), it only changes with menus, submenus and keybinds.
+local openableRings, openableSet
+
+--- Forgets the openable menus. Called just before "Ring.DataChanged" / "Ring.DataReady" fire, so
+--- their listeners already get the new answer.
+function Private.ForgetOpenableRings()
+    openableRings, openableSet = nil, nil
+end
+
 --- Menus that can be opened in game: those with a keybind, and the submenus they use (at any
---- depth). Other menus have nothing in game to keep current.
+--- depth). Other menus have nothing in game to keep current. Cached: don't change the tables.
 --- @return table rings in Ring_Data.GetRings order
 --- @return table set [ringId] = true
 function Ring_Data.GetOpenableRings()
+    if openableRings then return openableRings, openableSet end
     local set = {}
     local function Add(ring)
         if not ring or set[ring.id] then return end
@@ -99,6 +110,7 @@ function Ring_Data.GetOpenableRings()
     for _, ring in ipairs(all) do
         if set[ring.id] then rings[#rings + 1] = ring end
     end
+    openableRings, openableSet = rings, set
     return rings, set
 end
 

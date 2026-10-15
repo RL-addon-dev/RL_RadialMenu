@@ -574,12 +574,17 @@ function Ring_Layout.CreateWheel(parent, name)
     wheel.sliceCount = 0
     wheel.slices = {}
 
-    -- Keep cooldowns current while the wheel is on screen.
+    -- Keep cooldowns current while the wheel is on screen: the events are only listened to then
+    -- (this child frame is shown and hidden with the wheel), not on every global cooldown in combat
+    -- while it's closed.
     local events = CreateFrame("Frame", nil, wheel)
-    for _, event in ipairs(Private.COOLDOWN_EVENTS) do events:RegisterEvent(event) end
-    events:SetScript("OnEvent", function()
-        if wheel:IsVisible() then wheel:UpdateCooldowns() end
-    end)
+    local function Listen(self)
+        for _, event in ipairs(Private.COOLDOWN_EVENTS) do self:RegisterEvent(event) end
+    end
+    events:SetScript("OnShow", Listen)
+    events:SetScript("OnHide", events.UnregisterAllEvents)
+    events:SetScript("OnEvent", function() wheel:UpdateCooldowns() end)
+    if events:IsVisible() then Listen(events) end
 
     Mixin(wheel, WheelMixin)
     return wheel

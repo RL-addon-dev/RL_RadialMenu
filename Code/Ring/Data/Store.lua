@@ -134,6 +134,7 @@ end
 local GetScopeTable = Private.GetScopeTable
 
 function Private.Changed()
+    Private.ForgetOpenableRings()
     CallbackRegistry.Trigger("Ring.DataChanged")
 end
 local Changed = Private.Changed

@@ -328,6 +328,10 @@ function AddSliceMixin:Setup(getRing, onDone)
     CallbackRegistry.Add("Ring.SearchSourcesChanged", function()
         if self:IsVisible() then self:Update() end
     end)
+    -- Settings closed: let go of the last results too, with the search lists (Ring_Search).
+    CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+        if not host then self.results = nil end
+    end)
 end
 
 Rings_AddSlice.Panel = UIKit.Template(function(id, name, children, ...)

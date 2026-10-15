@@ -5,7 +5,10 @@
         1. refills the built-in menus whose own events fired (Code\Ring\BuiltIns\*.lua; each lists
            the events it needs), in the order the user arranged them. All of them at login and
            after hand edits; ones that list no events hold the same actions always (whether each
-           shows is step 3), so they only fill then;
+           shows is step 3), so they only fill then. Only menus that can be opened in game
+           (keybound, and their submenus) refill while the settings are closed: the others are
+           remembered and refill when the settings open (where they're shown). Binding one, or
+           adding it as a submenu, is an edit in the settings, which refills everything;
         2. rebuilds when the state that secure attributes depend on changed (the zone ability a
            zone ability slice casts: Ring_Actions.GetAttributeSignature);
         3. rebuilds when any action's visibility changed (Ring_Actions.IsSliceAvailable: the
@@ -21,6 +24,8 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Auto = env.AX_Modules:New("@\\Ring\\Auto")
+local Perf = env.AX_Modules:Import("@\\Perf")
+local Setting = env.AX_Modules:Await("@\\Setting")
 
 local UPDATE_DELAY = 0.25 -- coalesces bursts of bag / quest log / spell events
 
@@ -45,22 +50,38 @@ local EVENTS = {
 
 -- Built-in menus
 
--- Built-in menu keys to refill at the next update (definition.key = ring.builtin), or all of them.
+-- Built-in menu keys to refill (definition.key = ring.builtin), or all of them. A menu that can't
+-- be opened in game stays here until the settings open.
 local dirtyKeys, refillAll = {}, true
 
+--- Refills the dirty built-in menus that are in use: all of them while the settings are open,
+--- else only those that can be opened in game; the rest stay dirty.
+--- @return number refilled how many were refilled (for the performance log)
 local function RefillBuiltIns()
+    local everything = Setting.GetHost and Setting.GetHost() ~= nil
+    local _, openable = Ring_Data.GetOpenableRings()
+    local refilled = 0
     for _, ring in ipairs(Ring_Data.GetRings()) do
-        if ring.builtin and (refillAll or dirtyKeys[ring.builtin]) then Ring_Data.RefillBuiltIn(ring) end
+        local key = ring.builtin
+        if key and (refillAll or dirtyKeys[key]) then
+            if everything or openable[ring.id] then
+                Ring_Data.RefillBuiltIn(ring)
+                dirtyKeys[key] = nil
+                refilled = refilled + 1
+            else
+                dirtyKeys[key] = true
+            end
+        end
     end
-    wipe(dirtyKeys)
     refillAll = false
+    return refilled
 end
 
 
 
--- Secure attribute state and visibility: remembered as signatures, rebuilt when they change
+-- Secure attribute state and visibility: remembered, rebuilt when they change
 
-local lastAttributeSignature, lastAvailability
+local lastAttributeSignature
 
 -- Only menus that can be opened in game (keybound, and their submenus) are checked: the others
 -- have no in-game buttons to rebuild.
@@ -73,20 +94,30 @@ local function HasSliceOfKinds(kinds)
     end
 end
 
---- One character per action with a visibility rule: whether it's shown right now.
-local function GetAvailabilitySignature()
-    local parts = {}
-    local function Add(slice)
-        if Ring_Actions.GetVisibilityCondition(slice) then
-            parts[#parts + 1] = Ring_Actions.IsSliceAvailable(slice) and "1" or "0"
-        end
-    end
+-- Whether each action with a visibility rule is shown, in menu order: kept in one table and
+-- compared in place (every update, so nothing is built to compare).
+local availability, availabilityRead = {}, false
+
+--- Reads every action's shown state into `availability`. @return boolean whether any changed
+local function ReadAvailability()
+    local changed, count = false, 0
     for _, ring in ipairs((Ring_Data.GetOpenableRings())) do
         for _, slice in ipairs(ring.slices) do
-            Add(slice)
+            if Ring_Actions.GetVisibilityCondition(slice) then
+                count = count + 1
+                local shown = Ring_Actions.IsSliceAvailable(slice) and true or false
+                if availability[count] ~= shown then
+                    availability[count] = shown
+                    changed = true
+                end
+            end
         end
     end
-    return table.concat(parts)
+    for index = #availability, count + 1, -1 do -- fewer actions than last time
+        availability[index] = nil
+        changed = true
+    end
+    return changed
 end
 
 local function CheckGameState()
@@ -99,11 +130,8 @@ local function CheckGameState()
         lastAttributeSignature = signature
     end
 
-    local availability = GetAvailabilitySignature()
-    if availability ~= lastAvailability then
-        changed = changed or lastAvailability ~= nil
-        lastAvailability = availability
-    end
+    if ReadAvailability() and availabilityRead then changed = true end
+    availabilityRead = true
 
     if changed then Ring_Data.NotifyDynamicChange() end
 end
@@ -121,8 +149,10 @@ function Ring_Auto.Update()
         combatWaiter:RegisterEvent("PLAYER_REGEN_ENABLED")
         return
     end
-    RefillBuiltIns()
+    local start = Perf.enabled and debugprofilestop()
+    local refilled = RefillBuiltIns()
     CheckGameState()
+    if start then Perf.CountUpdate(debugprofilestop() - start, refilled) end
 end
 
 combatWaiter:SetScript("OnEvent", function(self)
@@ -167,6 +197,7 @@ do
     end
     frame:RegisterUnitEvent("UNIT_PET", "player")
     frame:SetScript("OnEvent", function(_, event)
+        if Perf.enabled then Perf.CountEvent(event) end
         -- Login, reload and loading screens: everything may have changed.
         if event == "PLAYER_ENTERING_WORLD" then refillAll = true end
         local keys = keysByEvent[event]
@@ -186,7 +217,13 @@ CallbackRegistry.Add("Ring.DataReady", ScheduleFullUpdate)
 CallbackRegistry.Add("Ring.DataChanged", function(_, reason)
     if reason ~= "auto" then ScheduleFullUpdate() end
 end)
+-- Settings opened: refill the built-in menus left waiting (RefillBuiltIns), so the Library and
+-- the preview show what they hold now.
+CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+    if host and next(dirtyKeys) then ScheduleUpdate() end
+end)
 -- Every rebuild uses the visibility of that moment; remember it so only real changes rebuild.
 CallbackRegistry.Add("Ring.Rebuilt", function()
-    lastAvailability = GetAvailabilitySignature()
+    ReadAvailability()
+    availabilityRead = true
 end)

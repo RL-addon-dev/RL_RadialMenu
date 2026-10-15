@@ -8,3 +8,7 @@ UIAnim.Enum = UIAnim_Enum
 UIAnim.New = UIAnim_Engine.New
 UIAnim.Animate = UIAnim_Engine.Animate
 UIAnim.AnimateNumber = UIAnim_Methods.AnimateNumber
+--- Running animations (both kinds): while any run, the engine updates every frame.
+function UIAnim.GetActiveCount()
+    return UIAnim_Engine.GetActiveCount() + UIAnim_Methods.GetActiveCount()
+end

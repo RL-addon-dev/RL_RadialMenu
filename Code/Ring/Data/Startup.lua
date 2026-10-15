@@ -71,6 +71,7 @@ local function Initialize()
     Private.EnsureBuiltInRings()
 
     isReady = true
+    Private.ForgetOpenableRings()
     CallbackRegistry.Trigger("Ring.DataReady")
 end
 
