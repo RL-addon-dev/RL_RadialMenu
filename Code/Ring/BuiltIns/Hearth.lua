@@ -62,6 +62,7 @@ local HEARTHSTONE_TOYS = {
 
 Ring_Data.RegisterBuiltIn({
     key    = "hearth",
+    category = Ring_Data.LibraryCategory.Travel,
     name   = "Config - Rings - HearthRing - Name",
     versions = { env.GameVersion.Retail },
     -- Toys load after login (TOYS_UPDATED).

@@ -153,9 +153,30 @@ end
 - `actions` (optional): a row of equal buttons like `newButton`, under it, for pages that aren't
   an item (Import, Share, ...): `{ { text = "Import", onClick = ShowImport }, ... }`. Clicking one
   calls `onClick`, opens the tab and refreshes.
+- Groups: an item `{ group = true, id = "g1", title = "Weapons", right = "3" }` is a collapsible
+  header for the items after it, up to the next group. Click it to collapse or expand; it starts
+  expanded unless it has `collapsed = true`. Pass `collapsed = MySavedTable` in the spec to keep
+  the user's choices between sessions (`[groupId] = true / false`), and `onGroupToggle(groupId,
+  collapsed)` to hear about them. `nav:SetGroupCollapsed(groupId, collapsed, noRefresh)` toggles from code
+  (`noRefresh`: skip the refresh when you refresh or `Select` right after).
+- `muted = true` on an item: a read-only look (dimmed text); it can still be selected.
+- `tabs` (optional, per section): a split button above `newButton` (one frame, a part per tab,
+  the selected part gold; art in `Art\Setting\SplitButton.png`, left / middle / right parts):
+  `tabs = { { id = "mine", text = "Mine" }, { id = "all", text = "All" } }` with
+  `getTab = function() return currentId end` and `onTab = function(id) currentId = id end`.
+  Clicking one calls `onTab`, opens the tab and refreshes, so `getItems` can return that tab's items.
+- `search = { placeholder = "Search" }` (optional, per section): a search box under the `tabs` (above
+  `newButton` and `actions`).
+  While it has text, only cards whose title contains it are listed (any case), each under its group
+  row, and groups are shown open whether collapsed or not; groups with no match are left out.
+  Escape clears it. The text stays while switching `tabs`, filtering the new tab's items.
+  Items can also match on `keywords`: `{ "Fireball", ... }`, or a function returning that list
+  (asked only while searching, so it can be costly to build). A card found by a keyword shows that
+  keyword in place of its left detail text, so it's clear why it's listed.
 - The tab's own button becomes the first section's header; later sections get their own header.
 - `nav:Refresh()` after items or the selection change; `nav:Select(id)` selects from code
-  (calls `onSelect`, opens the tab, refreshes).
+  (calls `onSelect`, opens the tab, refreshes, scrolls its card into view); `nav:ScrollTo(id)`
+  scrolls just enough to show a card (one in a collapsed group isn't listed: open it first).
 - The list fills the sidebar below the tab's button, so the list tab should be the last tab above
   the footer tabs.
 

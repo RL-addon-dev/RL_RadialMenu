@@ -275,6 +275,7 @@ end
 
 Ring_Data.RegisterBuiltIn({
     key    = "season",
+    category = Ring_Data.LibraryCategory.Travel,
     name   = "Config - Rings - SeasonRing - Name",
     versions = { env.GameVersion.Retail },
     events = { "SPELLS_CHANGED" }, -- a teleport learned

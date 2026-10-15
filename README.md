@@ -7,8 +7,8 @@ wheel. **Hold a key, flick the mouse, release.**
 
 - One keybind per menu, as many menus as you like.
 - Works in combat.
-- Built-in menus that fill themselves: quest items, hearthstones, trinkets, season teleports,
-  markers, specializations, talent loadouts and professions.
+- A **Library** of menus that fill themselves: quest items, hearthstones, consumables, gear,
+  action bars, markers, specializations, talent loadouts, professions and more.
 - A **quick action** for a tap: press and release without moving. The action fires without the
   menu ever appearing.
 
@@ -82,9 +82,11 @@ The icons show what the game shows on your action bars:
 keybind, **scroll the mouse wheel** over it to cycle through its actions, and release on the one
 shown. Double-click it in the settings to **spread** its actions into the menu instead.
 
-## Built-in menus
+## Library menus
 
 These fill themselves and stay up to date. Give them a keybind and rearrange them as you like.
+In the settings, the **Library** tab lists them by category; the ones you bind, or use as
+submenus of bound menus, also show under **My Menus**.
 Remove what you don't need with the X: it stays out as the menu refills, and the menu's page lists
 what you removed, to restore it.
 
@@ -115,7 +117,7 @@ what you removed, to restore it.
 **Share:** open one of your menus and find **Share Menu** under its settings. Click the string,
 press Ctrl+C, and send it to a friend.
 
-- Its submenus come along. A built-in submenu links to the importer's own built-in menu.
+- Its submenus come along. A Library submenu links to the importer's own Library menu.
 - Macros come along with their text. The box lists which ones, so nothing is shared by surprise.
 - Left out: keybinds, battle pets (tied to your account; a random favorite still works), macros
   you've deleted, and submenus with nothing left in them. The box lists what's left out and why.

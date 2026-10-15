@@ -31,6 +31,7 @@ for _, slot in ipairs(Ring_Kinds.EQUIP_SLOTS) do
     table.insert(Ring_Kinds.EQUIP_MENU_KEYS, key)
     Ring_Data.RegisterBuiltIn({
         key    = key,
+        category = Ring_Data.LibraryCategory.Equipment,
         name   = "Config - Rings - EquipRing - " .. slot,
         events = { "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP" },
         scan   = function()

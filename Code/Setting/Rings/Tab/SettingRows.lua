@@ -31,15 +31,21 @@ function PageMixin:RefreshSettingRows(ring)
 
     -- Built-in rings (Quest Items) keep their name and stay on all characters, and can't be deleted.
     local builtIn = Ring_Data.IsBuiltIn(ring)
+    -- A menu that lives elsewhere (another class's or character's): shown, not edited (no
+    -- Available On: it isn't this character's).
+    local elsewhere = self:GetSelectedElsewhere()
+    local locked = builtIn or elsewhere ~= nil
 
     local nameInput = self.NameRow:GetInput()
-    if builtIn and nameInput:HasFocus() then nameInput:ClearFocus() end
+    if locked and nameInput:HasFocus() then nameInput:ClearFocus() end
     if not nameInput:HasFocus() then nameInput:SetText(ring.name) end
-    self.NameRow.Input:SetEnabled(not builtIn)
-    nameInput:SetEnabled(not builtIn)
+    self.NameRow.Input:SetEnabled(not locked)
+    nameInput:SetEnabled(not locked)
 
     self:RefreshKeybindRow(ring)
+    self.KeybindRow:GetButton():SetEnabled(elsewhere == nil)
 
+    self.ScopeRow:SetShown(elsewhere == nil)
     local _, scope = Ring_Data.GetRing(ring.id)
     local scopeMenu = self.ScopeRow:GetButtonSelectionMenu()
     scopeMenu:SetValue(tIndexOf(Ring_Data.ScopeOrder, scope) or 1)
@@ -78,6 +84,7 @@ function PageMixin:OnScopeChanged(index)
         return
     end
     Ring_Data.SetScope(ring.id, Ring_Data.ScopeOrder[index])
+    self:RevealInMyMenus(ring.id) -- it moved to another group: open that one
 end
 
 
@@ -88,6 +95,23 @@ function PageMixin:RefreshKeybindRow(ring)
     local button = self.KeybindRow:GetButton()
     if self.capturingRingId == ring.id and Rings_Keybind.IsCapturing() then
         button:SetText(L["Config - Rings - Keybind - Capturing"])
+        return
+    end
+
+    -- A menu that lives elsewhere: its keybind there, whose it is, and how to change or use it.
+    local elsewhere = self:GetSelectedElsewhere()
+    if elsewhere then
+        button:SetText(elsewhere.key and Rings_Keybind.GetDisplayText(elsewhere.key) or L["Config - Rings - Keybind - NotBound"])
+        local note
+        if elsewhere.character then
+            local character = elsewhere.character
+            note = format(L["Config - Rings - OtherCharacter - Description"], character.name or "?",
+                character.updated and date("%Y-%m-%d", character.updated) or "?", character.name or "?")
+        else
+            local className = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[elsewhere.class] or elsewhere.class
+            note = format(L["Config - Rings - OtherClass - Description"], className)
+        end
+        self.KeybindRow:SetInfo(L["Config - Rings - Keybind"], "|cffffd100" .. note .. "|r")
         return
     end
 
@@ -111,7 +135,7 @@ end
 
 function PageMixin:OnKeybindClicked(mouseButton)
     local ring = self:GetSelectedRing()
-    if not ring then return end
+    if not ring or self:GetSelectedElsewhere() then return end
 
     if mouseButton == "RightButton" then
         Rings_Keybind.CancelCapture()

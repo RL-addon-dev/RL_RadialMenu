@@ -10,6 +10,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key      = "professions",
+    category = Ring_Data.LibraryCategory.Character,
     name     = "Config - Rings - ProfessionRing - Name",
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     events   = { "SKILL_LINES_CHANGED", "SPELLS_CHANGED" },

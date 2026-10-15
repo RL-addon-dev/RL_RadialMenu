@@ -123,10 +123,12 @@ end
 --- @return table summary { submenus = { name, ... } (the shared ones), macros = { name, ... }
 ---     (their text travels too), skippedNames = { [reason] = { label, ... } } (left out) }
 function Ring_Data.BuildShare(ringIds)
-    -- The ticked menus, then every submenu they reach (depth first), each once.
+    -- The ticked menus, then every submenu they reach (depth first), each once. Any of them can
+    -- live elsewhere (another class's or character's, Elsewhere.lua): shared from their saved
+    -- copy, so a menu travels whole wherever its submenus live.
     local rings, indexOf = {}, {}
     local function Add(id)
-        local ring = Ring_Data.GetRing(id)
+        local ring = Ring_Data.GetRing(id) or (Ring_Data.GetElsewhereRing(id))
         if not ring or Ring_Data.IsBuiltIn(ring) or indexOf[ring.id] then return end
         rings[#rings + 1] = ring
         indexOf[ring.id] = #rings
@@ -148,13 +150,13 @@ function Ring_Data.BuildShare(ringIds)
         local menu, newIndex = { name = ring.name, slices = {} }, {}
         for index, slice in ipairs(ring.slices) do
             local packed, reason
-            -- Another class's or character's submenu doesn't exist here: left out, and not listed
-            -- as skipped.
-            local elsewhere = Ring_Data.IsElsewhere(slice)
+            -- A submenu found nowhere (no saved copy: a character that hasn't logged in since)
+            -- is left out, and not listed as skipped.
+            local child = slice.kind == "ring" and indexOf[tostring(slice.ring)]
+            local elsewhere = not child and Ring_Data.IsElsewhere(slice)
             if elsewhere then
                 packed = nil
             elseif slice.kind == "ring" then
-                local child = indexOf[tostring(slice.ring)]
                 local childRing = not child and Ring_Data.GetRing(slice.ring)
                 if child then
                     packed = { kind = "ring", ring = child }

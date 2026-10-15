@@ -88,6 +88,10 @@ end
 
 function PreviewMixin:HandleDrop()
     if not self.ring then return end
+    if self.locked then
+        env.Print(L["Config - Rings - OtherClass - Locked"])
+        return
+    end
     if self.readOnly then
         env.Print(L["Config - Rings - Auto - Locked"])
         return
@@ -266,14 +270,14 @@ function Private.OnUpdate(wheel)
     preview:SetTooltipIndex(iconIndex or (centerTip and "center") or nil)
     -- X on the center while hovering it, when the quick action is a slice (Last Used Slice and
     -- None are switched with a double-click instead).
-    preview.QuickRemove:SetShown(centerTip and preview:GetQuickStoredSlice() ~= nil or false)
+    preview.QuickRemove:SetShown(centerTip and not preview.locked and preview:GetQuickStoredSlice() ~= nil or false)
     wheel:SetPointerAngle(index and atan2(dy, dx) or nil)
     wheel:SetCenterHighlight(index == nil and not gapTarget)
 end
 
 function Private.OnMouseDown(wheel, button)
     local preview = wheel.preview
-    if button ~= "LeftButton" or GetCursorInfo() then return end
+    if button ~= "LeftButton" or GetCursorInfo() or preview.locked then return end
 
     local index = preview:GetIconUnderCursor()
     local now = GetTime()

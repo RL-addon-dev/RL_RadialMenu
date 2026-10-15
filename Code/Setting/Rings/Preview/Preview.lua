@@ -41,8 +41,9 @@
     A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
     on it there, since they follow the icon).
 
-    Another class's or character's submenu (inside an account menu) is always left out: it
-    doesn't exist on this character.
+    Another class's or character's submenu (inside an account menu) counts as hidden: it doesn't
+    exist on this character, so it has nothing to show (its name and icon come from that menu's
+    saved copy, Elsewhere.lua; its tooltip says whose it is).
 
     Hide Hidden Actions (the eye in the top corner, PreviewHideHidden): slices hidden in game right
     now are left out too. The wheel's indices are then positions among the shown slices
@@ -176,6 +177,13 @@ function PreviewMixin:SetReadOnly(readOnly, builtInKey)
     self.emptyText = emptyText or L["Config - Rings - Preview - Empty"] -- shown by SetRing
 end
 
+--- Locked (another class's menu): look only. Unlike read-only (a built-in menu, rearranged and
+--- trimmed but not added to), nothing changes it: no drags, X, double-clicks or drops.
+function PreviewMixin:SetLocked(locked)
+    self.locked = locked or false
+    if self.locked then self.readOnly = true end
+end
+
 --- Redraws the wheel for `ring` (nil clears it).
 function PreviewMixin:SetRing(ring)
     self:EndDrag(false)
@@ -187,14 +195,13 @@ function PreviewMixin:SetRing(ring)
 
     local wheel = self.wheel
     -- The slices on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
-    -- Another class's or character's submenu is never on it (it doesn't exist here).
+    -- Another class's or character's submenu counts as hidden: it doesn't exist here, so it has
+    -- nothing to show (its tooltip says whose it is).
     local hideHidden = IsHidingHidden()
     self.shown = {}
     local slices, hiddenCount = {}, 0
     for index, slice in ipairs(ring and ring.slices or {}) do
-        if Ring_Data.IsElsewhere(slice) then
-            -- left out
-        elseif hideHidden and not Ring_Actions.IsSliceAvailable(slice) then
+        if hideHidden and not Ring_Actions.IsSliceAvailable(slice) then
             hiddenCount = hiddenCount + 1
         else
             self.shown[#self.shown + 1] = index

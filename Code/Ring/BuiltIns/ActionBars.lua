@@ -12,6 +12,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 for bar = 1, Ring_Kinds.NUM_ACTION_BARS do
     Ring_Data.RegisterBuiltIn({
         key    = "actionbar" .. bar,
+        category = Ring_Data.LibraryCategory.ActionBars,
         name   = "Config - Rings - ActionBarRing - " .. bar,
         -- Always the 12 buttons; each hides while it's empty.
         scan   = function()

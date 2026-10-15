@@ -78,6 +78,7 @@ end
 
 Ring_Data.RegisterBuiltIn({
     key    = "quest",
+    category = Ring_Data.LibraryCategory.Situational,
     name   = "Config - Rings - QuestRing - Name",
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     -- Events a client doesn't have are skipped (Ring_Auto).

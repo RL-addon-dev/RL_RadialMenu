@@ -7,6 +7,7 @@ Art/Icon/make_slice_icon.py
 Art/Ring/make_marker_beam.py
 Art/Ring/generate_wedges.py
 Art/recolor_forever.py
+libs/AX_Settings/Art/Setting/make_split_button.py
 
 # Editor and OS files
 .vscode/

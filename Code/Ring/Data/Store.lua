@@ -7,6 +7,7 @@
         QuickAction.lua  quick action (tap), Last Used
         BuiltIn.lua      built-in menus: automatic contents, remembered order
         Share.lua        sharing menus as text: share string, import plan, import
+        Elsewhere.lua    other classes' and characters' menus (read-only in the settings)
         Startup.lua      Initialize: saved-data migrations (Migrations\), first-run menus, built-ins
     Helpers they share are in the Private module ("@\\Ring\\Data\\Private"), not public.
 
@@ -209,7 +210,7 @@ local function ClassText(key, colored)
     return color and color.WrapTextInColorCode and color:WrapTextInColorCode(text) or text
 end
 
---- "All Characters", "Mages" or "This Character": the Available On choice.
+--- "Account", "Mages" or "This Character": the Available On choice.
 function Ring_Data.GetScopeName(scope)
     if scope == Ring_Data.Scope.Class then return ClassText("Config - Rings - Scope - Class") end
     return env.L[scope == Ring_Data.Scope.Character and "Config - Rings - Scope - Character" or "Config - Rings - Scope - Account"]
@@ -225,8 +226,8 @@ function Ring_Data.GetScopeWhere(scope)
     end
 end
 
---- "Nevergryn's menu" or "Mage menu" for a character or class menu (its tooltip), nil for an
---- account menu.
+--- "Nevergryn's menu" or "Mage menu" for a character or class menu (its tooltip), this
+--- character's or another's (Elsewhere.lua), nil for an account menu.
 function Ring_Data.GetOwnerLabel(id)
     local _, scope = Ring_Data.GetRing(id)
     if scope == Ring_Data.Scope.Character then
@@ -234,10 +235,18 @@ function Ring_Data.GetOwnerLabel(id)
     elseif scope == Ring_Data.Scope.Class then
         return format(env.L["Config - Rings - ClassMenu"], (UnitClass("player")))
     end
+    local _, owner = Ring_Data.GetElsewhereRing(id)
+    if owner and owner.character then
+        return format(env.L["Config - Rings - CharacterMenu"], owner.character.name or "?")
+    elseif owner then
+        local className = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[owner.class] or owner.class
+        return format(env.L["Config - Rings - ClassMenu"], className)
+    end
 end
 
 --- Whether `slice` is a submenu this character doesn't have: another class's or another
---- character's menu inside an account menu. It only exists for them, so here it's left out.
+--- character's menu inside an account menu. It only exists for them: hidden in game, shown as
+--- hidden in the settings' preview.
 function Ring_Data.IsElsewhere(slice)
     return slice.kind == "ring" and Ring_Data.GetRing(slice.ring) == nil
 end

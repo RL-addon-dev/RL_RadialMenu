@@ -190,7 +190,7 @@ function PreviewMixin:SetSelected(index, showRemove)
     end
 
     local wedge = index and wheel.Wedges[index]
-    if wedge then wedge.RemoveButton:SetShown(showRemove ~= false) end
+    if wedge then wedge.RemoveButton:SetShown(showRemove ~= false and not self.locked) end
 end
 
 

@@ -14,6 +14,8 @@
             name   = "Config - Rings - QuestRing - Name",   -- locale key of its (fixed) name
             events = { "QUEST_LOG_UPDATE", ... },          -- refill after these (Ring_Auto)
             scan   = function() return slices end,         -- what it holds right now
+            category = Ring_Data.LibraryCategory.Situational, -- its Library group in the settings
+                                                           -- (default Situational)
             versions = { env.GameVersion.Retail },         -- games it exists in (env.GameVersion,
                                                            -- Preload.lua; leave out for every version)
         })
@@ -37,12 +39,40 @@ local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 
 local definitions, order = {}, {}
 
+-- Library groups for the built-in menus (definition.category). The values are saved (the settings
+-- keep each group's open / closed state as "category:<value>") and name the locale string
+-- "Config - Rings - Library - <value>": never rename one.
+Ring_Data.LibraryCategory = {
+    ActionBars  = "actionbars",
+    Character   = "character",
+    Consumables = "consumables",
+    Equipment   = "equipment",
+    Markers     = "markers",
+    Situational = "situational",
+    Travel      = "travel"
+}
+-- The settings' order.
+Ring_Data.LibraryCategoryOrder = {
+    Ring_Data.LibraryCategory.ActionBars, Ring_Data.LibraryCategory.Character,
+    Ring_Data.LibraryCategory.Consumables, Ring_Data.LibraryCategory.Equipment,
+    Ring_Data.LibraryCategory.Markers, Ring_Data.LibraryCategory.Situational,
+    Ring_Data.LibraryCategory.Travel
+}
+
 function Ring_Data.RegisterBuiltIn(definition)
     assert(type(definition.key) == "string" and type(definition.scan) == "function", "built-in menu needs a key and a scan")
+    assert(definition.category == nil or tIndexOf(Ring_Data.LibraryCategoryOrder, definition.category),
+        "built-in menu has an unknown category (Ring_Data.LibraryCategory): " .. definition.key)
     if not env.IsForThisGame(definition.versions) then return end
     assert(not definitions[definition.key], "built-in menu registered twice: " .. definition.key)
     definitions[definition.key] = definition
     order[#order + 1] = definition
+end
+
+--- The Library group of built-in ring `ring` (its definition's category), or Situational.
+function Ring_Data.GetLibraryCategory(ring)
+    local definition = ring and ring.builtin and definitions[ring.builtin]
+    return definition and definition.category or Ring_Data.LibraryCategory.Situational
 end
 
 --- Every built-in menu definition, in registration order.
