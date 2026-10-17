@@ -3,7 +3,9 @@
 
     Driven by the secure controller via CallMethod. Mirrors the secure selection math
     every frame so the highlight matches what will fire on release (Relaxed, once the keybind is
-    released: on a left click).
+    released: on a left click). Opened by a controller (WoW Forever's gamepad UI): its right
+    stick, tilted, picks over the cursor, as the secure snippet does, and doesn't turn the camera
+    while the menu is shown (both: Ring_Stick).
 ]]
 
 local env = select(2, ...)
@@ -12,6 +14,7 @@ local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Display = env.AX_Modules:Import("@\\Ring\\Display")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Import("@\\Ring\\Layout")
+local Ring_Stick = env.AX_Modules:Import("@\\Ring\\Stick")
 local Ring_View = env.AX_Modules:New("@\\Ring\\View")
 
 local GetCursorPosition, GetTime = GetCursorPosition, GetTime
@@ -25,6 +28,12 @@ local ANIM_DISTANCE = 20
 -- Icon states (resources, range, active): range has no event of its own, so all of them are
 -- refreshed this often while open. Blizzard's action bars check range on the same interval.
 local STATE_INTERVAL = TOOLTIP_UPDATE_TIME or 0.2
+
+-- Controller: the right stick's direction (0 to 1) as a cursor offset in pixels, for the same
+-- wedge math as the mouse (Ring_Layout.GetSliceIndex). Only its angle should count, so the offset
+-- must land outside the dead zone even at the smallest tilt that aims: the largest Distance to
+-- Select (60px) / that tilt (0.5) = 120px, with ten times that to spare.
+local STICK_REACH = 60 / 0.5 * 10
 
 local function Clamp01(value) return min(max(value, 0), 1) end
 
@@ -41,6 +50,9 @@ local View = Ring_Layout.CreateWheel(UIParent, "RLRM_RingView")
 View:SetFrameStrata("FULLSCREEN_DIALOG")
 View:SetShowStates(true)
 View:Hide()
+
+-- While shown, a controller's right stick aims instead of turning the camera (Ring_Stick).
+View:HookScript("OnHide", function() Ring_Stick.SetCameraBlocked(false) end)
 
 local function UpdateCenter(self, inDeadzone, moved)
     if self.isSingleCentered then
@@ -123,6 +135,23 @@ local function OnUpdate(self)
     local x, y = GetCursorPosition()
     local dx, dy = x / scale - self.originX, y / scale - self.originY
     local moved = not self.probe:IsShown()
+    -- The right stick, tilted: its direction, as if the cursor were far out that way. Opened by a
+    -- controller: the cursor doesn't count; the stick let go shows the pick it left (the
+    -- button's "ring-sticky", Ring_Secure), else the center (the quick action).
+    local stickX, stickY
+    if self.padButton then stickX, stickY = Ring_Stick.GetTilted() end
+    if stickX then
+        dx, dy, moved = stickX * STICK_REACH, stickY * STICK_REACH, true
+    elseif self.padButton then
+        local sticky = self.padButton:GetAttribute("ring-sticky")
+        if sticky then
+            -- Wedges go clockwise from the top: the middle of wedge `sticky`.
+            local angle = math.rad(90 - (sticky - 1) * 360 / #self.ring.slices)
+            dx, dy, moved = math.cos(angle) * STICK_REACH, math.sin(angle) * STICK_REACH, true
+        else
+            dx, dy, moved = 0, 0, false
+        end
+    end
 
     -- Same rules as the secure snippet (Ring_Secure). Select From = Menu Center: nothing is
     -- picked until the cursor leaves the quick action square, wherever it is over the menu.
@@ -155,8 +184,12 @@ end
 --- @param displaySlices table|nil what each wedge shows (nested scroll slices show the child's
 ---                     current slice); defaults to ring.slices
 --- @param relaxed boolean Menu Style = Relaxed: shown at once (no tap to wait for)
-function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, relaxed)
+--- @param padButton Frame|false opened by a controller's click: the menu's secure button (its
+---                  "ring-sticky" pick shows); the stick picks, the cursor doesn't
+function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, relaxed, padButton)
     View.ring = ring
+    View.padButton = padButton or nil
+    Ring_Stick.SetCameraBlocked(View.padButton ~= nil)
     View.startX, View.startY = startX, startY
     View.probe = probe
     View.quickSlice = quickSlice
@@ -174,7 +207,7 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     if GameTooltip:GetOwner() == View then GameTooltip:Hide() end
     View.tooltipIndex = nil
     View:SetSlices(displaySlices or ring.slices, View.animatedOffset, ring.quickSlice ~= nil)
-    View:SetScrollBadges(ring.slices, true)
+    View:SetScrollBadges(ring.slices, true, View.padButton ~= nil)
     View:SetQuickIcon(quickSlice and Ring_Actions.GetIcon(quickSlice), quickSlice)
     View:SetPointerAngle(nil)
     UpdateCenter(View, true, false)

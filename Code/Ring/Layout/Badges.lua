@@ -19,6 +19,9 @@ local HasAtlas, CLIP_MASK_TEXTURE = Private.HasAtlas, Private.FILL_TEXTURE
 -- middle button (wheel) icon if present, else the click-casting window's mouse icon, else a
 -- small "Scroll" text pill.
 local SCROLL_BADGE_ATLASES = { "newplayertutorial-icon-mouse-middlebutton", "clickcast-icon-mouse" }
+-- A menu opened by a controller scrolls with the D-pad: the D-pad (up / down) art instead, when the
+-- client has it (WoW Forever's gamepad UI; its D-pad shapes are shared by every controller family).
+local SCROLL_BADGE_PAD_ATLASES = { "gamepad-ps-dpadupdown-normal" }
 local SCROLL_BADGE_SIZE = 30
 local SCROLL_BADGE_X, SCROLL_BADGE_Y = 1, 1 -- center offset from the icon's bottom-left corner (the item count is bottom-right)
 -- Visibility badge (settings preview): an eye, or Blizzard's hidden (crossed-out) eye while the
@@ -82,6 +85,8 @@ function Private.CreateScrollBadge(wheel, wedge)
         badge.Texture = badge:CreateTexture(nil, "OVERLAY")
         badge.Texture:SetAllPoints()
         badge.Texture:SetAtlas(atlas)
+        badge.mouseAtlas = atlas
+        badge.padAtlas = FirstAtlas(SCROLL_BADGE_PAD_ATLASES) or atlas
     else
         badge:SetSize(SCROLL_PILL_WIDTH, SCROLL_PILL_HEIGHT)
         badge:SetPoint("TOP", wedge.Button, "BOTTOM", 0, 4)
@@ -210,12 +215,15 @@ local WheelMixin = Private.WheelMixin
 --- @param slices table the ring's own slices (not display slices, which resolve nested rings)
 --- @param hideSingleScroll boolean|nil no mouse wheel on a scroll submenu with at most one action
 ---     shown right now: nothing to scroll to (the in-game menu; the preview always shows it)
-function WheelMixin:SetScrollBadges(slices, hideSingleScroll)
+--- @param pad boolean|nil opened by a controller: the D-pad, which scrolls it, instead of the wheel
+function WheelMixin:SetScrollBadges(slices, hideSingleScroll, pad)
     for i = 1, #self.Wedges do
         local slice = i <= (self.sliceCount or 0) and slices[i] or nil
         local scrolls = Ring_Live.IsScroll(slice)
         if scrolls and hideSingleScroll then scrolls = #Ring_Live.GetScrollSlices(slice) > 1 end
-        self.Wedges[i].ScrollBadge:SetShown(scrolls)
+        local badge = self.Wedges[i].ScrollBadge
+        badge:SetShown(scrolls)
+        if scrolls and badge.Texture then badge.Texture:SetAtlas(pad and badge.padAtlas or badge.mouseAtlas) end
         local expand = self.Wedges[i].ExpandBadge
         local spread = Ring_Live.IsSpread(slice)
         expand:SetShown(spread)

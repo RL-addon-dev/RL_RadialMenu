@@ -79,6 +79,7 @@ local DB_GLOBAL_DEFAULTS = {
     CursorGuide   = false, -- fixed position: outline of the gesture at the cursor
     CursorGuideColor = { r = 1, g = 1, b = 1 },
     MenuStyle     = Enum.MenuStyle.Quick,
+    FlickToSelect = false, -- a controller's menu: letting go of the aimed right stick uses the action (Ring_Secure)
     RevealDelay   = 0.15, -- seconds
     Deadzone      = 24,   -- px
     ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)
@@ -128,4 +129,7 @@ env.AX_SettingsOptions = {
         end,
     },
     getSchema = function() return env.AX_Modules:Import("@\\Setting\\Schema").SCHEMA end,
+    -- Not in Options -> AddOns when the game loads in WoW Forever's gamepad UI: the settings open
+    -- from the addon drawer there (switching later leaves it as it was).
+    showInOptions = function() return not env.IsGamepadUI() end,
 }

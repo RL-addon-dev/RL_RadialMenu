@@ -444,6 +444,10 @@ end
 
 do -- Selection Menu
     local function SelectionMenu_Refresh(self, force)
+        -- Labels from a function: re-read on every refresh, so they can follow other settings.
+        if type(self.__selectionMenuData) == "function" then
+            self:GetButtonSelectionMenu():SetData(self.__selectionMenuData())
+        end
         if not force and HasDBKeyValueChanged(self) == false then return end
 
         local value = self:GetLocalValue()
@@ -486,6 +490,7 @@ do -- Selection Menu
 
         buttonSelectionMenu.__widgetRef = widget
         widget.__setFunc = set
+        widget.__selectionMenuData = selectionMenuData
 
         buttonSelectionMenu:SetSelectionMenu(SettingFrame.SelectionMenu)
         buttonSelectionMenu:SetData(ResolveValueThatIsFunctionOrValue(selectionMenuData))

@@ -30,6 +30,13 @@ function Setting:OpenTabByIndex(index)
         if isSelected and not tab.hasRendered then
             tab:_Render()
             tab.hasRendered = true
+            -- The first layout runs before text has wrapped to its final size, so the content height
+            -- (and the scroll range) comes out short. Lay out again once it has, as the first setup does.
+            C_Timer.After(0, function()
+                C_Timer.After(0, function()
+                    if tab:IsShown() then tab:_Render() end
+                end)
+            end)
         end
 
         Setting_Constructor:Refresh(true)
@@ -236,6 +243,8 @@ local function OnAddonLoaded()
     SettingFrameAnchor:Hide()
     SettingFrame:Hide()
 
+    -- The addon can leave the settings out of Options -> AddOns (only the own window then).
+    if Setting_Options.showInOptions and Setting_Options.showInOptions() == false then return end
     local category = Settings.RegisterCanvasLayoutCategory(SettingFrameAnchor, Setting_Preload.NAME)
     Settings.RegisterAddOnCategory(category)
     categoryId = category:GetID()
