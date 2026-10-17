@@ -31,7 +31,8 @@ end
 -- Which Position / Appearance settings apply (Ring_Display loads after this file: read at refresh).
 local function IsFixed() return Ring_Display.IsFixed() end
 local function UsesCursorGuide() return Ring_Display.IsFixed() and not Ring_Display.IsSelectFromMenu() end
-local function IsRelaxed() return Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed end
+-- Menus work like Relaxed: the setting, or always in WoW Forever's gamepad UI (Ring_Secure).
+local function IsRelaxed() return env.IsGamepadUI() or Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed end
 -- Playing with a controller (WoW Forever's gamepad UI): settings about the mouse are hidden (their
 -- values still apply to menus opened with the keyboard or mouse), and controller ones shown.
 local function IsController() return env.IsGamepadUI() end
@@ -87,15 +88,10 @@ do -- Schema
                         {
                             widgetName               = L["Config - Behavior - MenuStyle"],
                             widgetDescription        = Setting_Define.Descriptor{ description = function()
-                                -- The chosen style's own description: with a controller, its
-                                -- buttons; else how it cancels or closes, which depends on
-                                -- Right-Click to Cancel.
+                                -- The chosen style's own description; how it cancels or closes
+                                -- depends on Right-Click to Cancel.
                                 local key = "Config - Behavior - MenuStyle - Description - " .. (IsRelaxed() and "Relaxed" or "Quick")
-                                if IsController() then
-                                    key = key .. " - Controller"
-                                elseif Config.DBGlobal:GetVariable("RightClickDismiss") then
-                                    key = key .. " - RightClick"
-                                end
+                                if Config.DBGlobal:GetVariable("RightClickDismiss") then key = key .. " - RightClick" end
                                 return L[key]
                             end },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
@@ -103,7 +99,9 @@ do -- Schema
                                 L["Config - Behavior - MenuStyle - Quick"],
                                 L["Config - Behavior - MenuStyle - Relaxed"]
                             },
-                            key                      = "MenuStyle"
+                            key                      = "MenuStyle",
+                            -- With a controller, menus always work like Relaxed (A picks, B closes).
+                            showWhen                 = IsMouse
                         },
                         {
                             widgetName        = L["Config - Behavior - FlickToSelect"],

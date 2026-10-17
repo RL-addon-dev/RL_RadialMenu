@@ -7,6 +7,7 @@ local env = select(2, ...)
 local L = env.L
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
+local Ring_Crossbar = env.AX_Modules:Await("@\\Ring\\Crossbar")
 local Rings_Keybind = env.AX_Modules:Import("@\\Setting\\Rings\\Keybind")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Tab\\Private")
 
@@ -22,9 +23,17 @@ local KEYBIND_SAVED = {
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
---- How to set a keybind: controller buttons only while they can be captured (env.IsGamepadUI).
+--- How to set a keybind. Controller buttons only while they can be captured (env.IsGamepadUI):
+--- then the buttons for combinations (the crossbar modifiers) and the reserved ones (the
+--- targeting modifiers; A, B, X, Y alone), as icons.
 local function KeybindDescription()
-    return L[env.IsGamepadUI() and "Config - Rings - Keybind - Description - Controller" or "Config - Rings - Keybind - Description"]
+    if not env.IsGamepadUI() then return L["Config - Rings - Keybind - Description"] end
+    local Text = Rings_Keybind.GetDisplayText
+    local function Bound(action, default) return Text(Ring_Crossbar.GetBoundKey(action) or default) end
+    return format(L["Config - Rings - Keybind - Description - Controller"],
+        Bound("GAMEPADLEFTMOD", "PADLTRIGGER"), Bound("GAMEPADRIGHTMOD", "PADRTRIGGER"),
+        Bound("GAMEPADLEFTTARGETMODIFIER", "PADLSHOULDER"), Bound("GAMEPADRIGHTTARGETMODIFIER", "PADRSHOULDER"),
+        Text("PAD1"), Text("PAD2"), Text("PAD3"), Text("PAD4"))
 end
 
 
@@ -177,6 +186,28 @@ function PageMixin:OnKeyCaptured(key)
     self.capturingRingId = nil
     if not ringId then return end
 
+    -- A crossbar combo puts the menu's macro on that crossbar slot: ask before replacing what's
+    -- there (nothing changes until then).
+    local occupant = Ring_Crossbar.IsSlot(key) and Ring_Crossbar.GetOccupant(ringId, key)
+    if occupant then
+        self:RefreshSettings()
+        SettingFrame.Prompt:Open({
+            text         = L["Config - Rings - Keybind - Crossbar - Replace"],
+            options      = {
+                { text = L["Config - Rings - Keybind - Crossbar - Replace - Yes"], callback = function() self:ApplyKeybind(ringId, key) end },
+                { text = L["Config - Rings - Keybind - Crossbar - Replace - No"], callback = nil }
+            },
+            hideOnEscape = true,
+            timeout      = 15
+        }, Rings_Keybind.GetDisplayText(key), occupant)
+        return
+    end
+    self:ApplyKeybind(ringId, key)
+end
+
+--- Saves `key` as menu `ringId`'s keybind, says where it came from, and for a crossbar combo puts
+--- the menu's macro on its slot.
+function PageMixin:ApplyKeybind(ringId, key)
     -- Say where the key came from: menus that lose it (same scope), or a menu of another scope
     -- that keeps it (the narrower scope's menu opens where it applies, the other one elsewhere).
     local others = {}
@@ -195,6 +226,14 @@ function PageMixin:OnKeyCaptured(key)
             env.Print(format(L["Config - Rings - Keybind - Overrides"], keyText, ring.name, Ring_Data.GetScopeWhere(scope), other.name))
         else
             env.Print(format(L["Config - Rings - Keybind - OverriddenBy"], keyText, ring.name, Ring_Data.GetScopeWhere(otherScope), other.name))
+        end
+    end
+    if Ring_Crossbar.IsSlot(key) then
+        local ok, reason = Ring_Crossbar.Place(ringId, key)
+        if ok then
+            env.Print(format(L["Config - Rings - Keybind - Crossbar - Placed"], keyText, ring.name))
+        else
+            env.Print(L["Config - Rings - Keybind - Crossbar - Error - " .. reason])
         end
     end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)

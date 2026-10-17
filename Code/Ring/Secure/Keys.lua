@@ -5,6 +5,7 @@
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Crossbar = env.AX_Modules:Import("@\\Ring\\Crossbar")
 local Private = env.AX_Modules:Import("@\\Ring\\Secure\\Private")
 
 local InCombatLockdown = InCombatLockdown
@@ -19,13 +20,14 @@ local pendingBindings = Private.pendingBindings
 -- (after combat, if in it). A key taken more than RECLAIM_LIMIT times within RECLAIM_WINDOW
 -- seconds is fought over (another addon taking it back too): left alone until the next rebuild.
 
---- The click a menu's keybind sends: "PadKey" for a controller button (PAD1, SHIFT-PADDUP, ...:
---- that open has the stick, D-pad, A and B: PRE_CLICK) while WoW Forever's gamepad UI is on, else
+--- The click a menu's keybind sends: "Gamepad" for a controller button (PAD1, PADRSTICK, ...: a
+--- controller's open, with the stick, D-pad, A and B: PRE_CLICK) while WoW Forever's gamepad UI
+--- is on, else
 --- "LeftButton" (elsewhere a controller button opens like a key: ConsolePort and other controller
 --- addons handle the controller their own way). Menus rebuild when the UI switches (Rebuild.lua).
 local function GetBindingClick(key)
     local base = key:match("[^%-]+$") or key -- the key without its modifiers (not NUMPAD1)
-    return base:sub(1, 3) == "PAD" and env.IsGamepadUI() and "PadKey" or "LeftButton"
+    return base:sub(1, 3) == "PAD" and env.IsGamepadUI() and "Gamepad" or "LeftButton"
 end
 
 local RECLAIM_LIMIT, RECLAIM_WINDOW = 5, 2
@@ -75,19 +77,68 @@ for _, name in ipairs({ "SetOverrideBinding", "SetOverrideBindingClick", "SetOve
     if _G[name] then hooksecurefunc(name, OnOverrideBindingSet) end
 end
 
---- Binds the keybinds SetupRing collected (pendingBindings). Widest scope first: where a class or
---- character menu uses the same key, it replaces it here. The keys are remembered to take back
---- from other bindings (ReclaimKeys). Out of combat, after ClearOverrideBindings(Controller).
+-- Stick dispatchers (Snippets.lua, STICK_CLICK): one per stick (L3 / R3), made when a menu first
+-- uses it (frames can't be destroyed: reused). The stick is bound to it instead of a menu; it
+-- opens the menu of the modifiers held.
+local SIDES = { "TOP", "LEFT", "RIGHT", "BOTH" }
+local dispatchers = {}
+
+local function GetDispatcher(stick)
+    local dispatcher = dispatchers[stick]
+    if not dispatcher then
+        dispatcher = CreateFrame("Button", "RLRM_Stick_" .. stick, UIParent, "SecureActionButtonTemplate")
+        dispatcher:SetSize(1, 1)
+        dispatcher:EnableMouse(false)
+        dispatcher:RegisterForClicks("AnyDown")
+        dispatcher:SetAttribute("useOnKeyDown", true)
+        dispatcher:SetAttribute("type", "macro")
+        SecureHandlerWrapScript(dispatcher, "OnClick", Controller, Private.STICK_CLICK)
+        dispatchers[stick] = dispatcher
+    end
+    return dispatcher
+end
+
+--- Calls callback(binding) for each of SetupRing's keybinds (pendingBindings), widest scope first:
+--- where a class or character menu uses the same key, it comes after (and replaces) the other.
+local function ForEachBinding(callback)
+    for _, scope in ipairs(Ring_Data.ScopeOrder) do
+        for _, binding in ipairs(pendingBindings) do
+            if binding.scope == scope then callback(binding) end
+        end
+    end
+end
+
+--- Binds the keybinds SetupRing collected (pendingBindings), the narrowest scope's menu winning a
+--- shared key. L3 / R3 combos (Ring_Crossbar) go to their stick's dispatcher, bound to the stick
+--- (in WoW Forever's gamepad UI only). The keys are remembered to take back from other bindings
+--- (ReclaimKeys). Out of combat, after ClearOverrideBindings(Controller).
 function Private.BindMenuKeys()
     wipe(ownedKeys)
     wipe(reclaimCount)
     wipe(givenUp)
-    for _, scope in ipairs(Ring_Data.ScopeOrder) do
-        for _, binding in ipairs(pendingBindings) do
-            if binding.scope == scope then
-                SetOverrideBindingClick(Controller, true, binding.key, binding.button, GetBindingClick(binding.key))
-                ownedKeys[binding.key] = binding.button
-            end
+
+    local sticks = {} -- [stick] = { [side] = menu button name }
+    local gamepadUI = env.IsGamepadUI()
+    ForEachBinding(function(binding)
+        local side, stick = Ring_Crossbar.ParseStick(binding.key)
+        if not side then
+            SetOverrideBindingClick(Controller, true, binding.key, binding.button, GetBindingClick(binding.key))
+            ownedKeys[binding.key] = binding.button
+        elseif gamepadUI then
+            sticks[stick] = sticks[stick] or {}
+            sticks[stick][side] = binding.button
+        end
+    end)
+
+    for stick in pairs(sticks) do GetDispatcher(stick) end
+    for stick, dispatcher in pairs(dispatchers) do
+        local menus = sticks[stick] or {}
+        for _, side in ipairs(SIDES) do dispatcher:SetAttribute("menu-" .. side, menus[side]) end
+        if sticks[stick] then
+            dispatcher:SetAttribute("modifier-LEFT", Ring_Crossbar.GetModifierIndex("LEFT"))
+            dispatcher:SetAttribute("modifier-RIGHT", Ring_Crossbar.GetModifierIndex("RIGHT"))
+            SetOverrideBindingClick(Controller, true, stick, dispatcher:GetName(), GetBindingClick(stick))
+            ownedKeys[stick] = dispatcher:GetName()
         end
     end
 end

@@ -9,6 +9,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Ring_Crossbar = env.AX_Modules:Import("@\\Ring\\Crossbar")
 local Private = env.AX_Modules:Import("@\\Ring\\Secure\\Private")
 
 local InCombatLockdown = InCombatLockdown
@@ -57,6 +58,8 @@ local function Rebuild()
         if Ring_Data.GetBinding(ring.id) then SetupRing(ring) end
     end
     Private.BindMenuKeys()
+    -- Crossbar combo macros: renamed with their menu, deleted with their combo (Ring_Crossbar).
+    Ring_Crossbar.Reconcile()
     CallbackRegistry.Trigger("Ring.Rebuilt")
 end
 

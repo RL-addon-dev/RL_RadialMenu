@@ -12,6 +12,7 @@ local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Live = env.AX_Modules:Import("@\\Ring\\Live")
 local Ring_Display = env.AX_Modules:Import("@\\Ring\\Display")
+local Ring_Crossbar = env.AX_Modules:Import("@\\Ring\\Crossbar")
 local Private = env.AX_Modules:Import("@\\Ring\\Secure\\Private")
 
 local ClearMarkers = Private.ClearMarkers
@@ -227,11 +228,18 @@ local function SetupRing(ring)
     ringsById[ring.id] = live
     local binding, scope = Ring_Data.GetBinding(ring.id)
     button:SetAttribute("ring-keymods", GetModifierPrefix(binding))
-    button:SetAttribute("ring-keybase", binding and (binding:match("[^%-]+$") or binding) or nil)
+    -- The key it's on, without modifiers (a controller combo: its plain button or stick), left to
+    -- the menu while open: pressed again, it reaches the menu (which closes).
+    local keyBase = binding and (Ring_Crossbar.GetPlainButton(binding) or binding:match("[^%-]+$") or binding)
+    button:SetAttribute("ring-keybase", keyBase or nil)
     button:SetAttribute("ring-rightclick", Config.DBGlobal:GetVariable("RightClickDismiss") and true or nil)
-    button:SetAttribute("ring-relaxed", Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed or nil)
+    -- Menu Style; always Relaxed in WoW Forever's gamepad UI (A picks, B closes). Menus rebuild
+    -- when the UI switches (Rebuild.lua).
+    local relaxed = env.IsGamepadUI() or Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed
+    button:SetAttribute("ring-relaxed", relaxed or nil)
     button:SetAttribute("ring-flick", Config.DBGlobal:GetVariable("FlickToSelect") and true or nil)
-    if binding and (count > 0 or live.quickSlice) then
+    -- A crossbar slot isn't a key: its macro on the crossbar opens the menu (Ring_Crossbar).
+    if binding and not Ring_Crossbar.IsSlot(binding) and (count > 0 or live.quickSlice) then
         pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), scope = scope }
     end
 end
