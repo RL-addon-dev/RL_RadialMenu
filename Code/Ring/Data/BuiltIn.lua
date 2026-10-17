@@ -1,48 +1,48 @@
 --[[
-    Ring data: built-in menus. They always exist (created at load), are account-wide, and can't be
-    renamed, deleted or added to by hand: Ring_Auto fills their slices. The user can rearrange
-    them, and that order is remembered by slice identity (ring.order) across refills.
+    Ring data: built-in menus. They always exist (created at load) and are account-wide. They can't
+    be renamed, deleted or added to by hand, because Ring_Auto fills them. The user can rearrange
+    them, and that order is remembered by action identity (ring.order) across refills.
 
-    The user can remove actions too: they're remembered by identity in ring.removed
-    ({ key, label, icon }, name and icon saved for showing them while they aren't around) and
-    left out of every refill until restored. New actions still appear.
+    The user can remove actions too. They're remembered by identity in ring.removed, with a name and
+    icon for showing them while they aren't around, and left out of every refill until restored.
+    New actions still appear.
 
-    Each built-in menu is one file in Code\Ring\BuiltIns\ (listed in BuiltIns.xml):
+    Each built-in menu is one file in Code\Ring\BuiltIns\ (listed in BuiltIns.xml). Here's an
+    example, and Types.lua (BuiltInDefinition) describes each field.
 
         Ring_Data.RegisterBuiltIn({
-            key    = "quest",                              -- ring.builtin (saved; never rename)
-            name   = "Config - Rings - QuestRing - Name",   -- locale key of its (fixed) name
-            events = { "QUEST_LOG_UPDATE", ... },          -- refill after these (Ring_Auto)
-            scan   = function() return slices end,         -- what it holds right now
-            category = Ring_Data.LibraryCategory.Situational, -- its Library group in the settings
-                                                           -- (default Situational)
-            versions = { env.GameVersion.Retail },         -- games it exists in (env.GameVersion,
-                                                           -- Preload.lua; leave out for every version)
+            key      = "quest",                                -- saved as ring.builtin, never renamed
+            name     = "Config - Rings - QuestRing - Name",     -- the locale key of its fixed name
+            events   = { "QUEST_LOG_UPDATE", ... },            -- it refills after these (Ring_Auto)
+            scan     = function() return slices end,           -- what it holds right now
+            category = Ring_Data.LibraryCategory.Situational,  -- its Library group (Situational by default)
+            versions = { env.GameVersion.Retail },             -- the games it exists in (every one by default)
         })
 
     Keys are one lowercase word ("targetmarkers"), like action kind names and for the same reason
-    (see Ring_Kinds.lua): they're saved data. Renaming one after release needs a migration, or
-    the menu is deleted and recreated, losing its keybind and order.
+    (see Ring_Kinds.lua). They're saved data, so renaming one after release needs a migration, or
+    the menu is deleted and recreated and loses its keybind and order.
 
-    Its empty text is the locale string "Config - Rings - Auto - Empty - <key>" (optional).
-    A built-in menu for other game versions isn't registered (no menu, no events). Its versions
-    must be ones where every action kind it uses exists (Ring_Kinds.lua). Built-in rings
-    whose key isn't registered (retired, or not for this game) are removed at load; each game
-    version keeps its own saved variables.
+    The text an empty built-in menu shows is the optional locale string
+    "Config - Rings - Auto - Empty - <key>". A built-in menu for other game versions isn't
+    registered, so it has no menu and no events. Its versions must be ones where every action kind
+    it uses exists (Ring_Kinds.lua). Built-in menus whose key isn't registered (retired, or not for
+    this game) are removed at load. Each game version keeps its own saved variables.
 ]]
 
 local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 
 local definitions, order = {}, {}
 
--- Library groups for the built-in menus (definition.category). The values are saved (the settings
--- keep each group's open / closed state as "category:<value>") and name the locale string
--- "Config - Rings - Library - <value>": never rename one.
-Ring_Data.LibraryCategory = {
+-- Library groups for the built-in menus (definition.category). The values are saved, because the
+-- settings keep each group's open or closed state as "category:<value>", and they name the locale
+-- string "Config - Rings - Library - <value>". Never rename one.
+Ring_Data.LibraryCategory = Utils_Standard.Strict({
     ActionBars  = "actionbars",
     Character   = "character",
     Consumables = "consumables",
@@ -50,8 +50,8 @@ Ring_Data.LibraryCategory = {
     Markers     = "markers",
     Situational = "situational",
     Travel      = "travel"
-}
--- The settings' order.
+}, "library category")
+-- The order the settings list them in.
 Ring_Data.LibraryCategoryOrder = {
     Ring_Data.LibraryCategory.ActionBars, Ring_Data.LibraryCategory.Character,
     Ring_Data.LibraryCategory.Consumables, Ring_Data.LibraryCategory.Equipment,
@@ -71,35 +71,45 @@ function Ring_Data.RegisterBuiltIn(definition)
     order[#order + 1] = definition
 end
 
---- The Library group of built-in ring `ring` (its definition's category), or Situational.
+--- The Library group of built-in menu `ring`, from its definition. Situational when it has none.
+---@param ring Ring?
+---@return string category a Ring_Data.LibraryCategory value
 function Ring_Data.GetLibraryCategory(ring)
     local definition = ring and ring.builtin and definitions[ring.builtin]
-    return definition and definition.category or Ring_Data.LibraryCategory.Situational
+    return (definition and definition.category) or Ring_Data.LibraryCategory.Situational
 end
 
 --- Every built-in menu definition, in registration order.
+---@return BuiltInDefinition[]
 function Ring_Data.GetBuiltInDefinitions()
     return order
 end
 
 --- This character's built-in menu with key `key` (ring.builtin), or nil.
+---@param key string
+---@return Ring?
 function Ring_Data.GetBuiltInRing(key)
     for _, ring in ipairs(Ring_Data.GetRings()) do
         if ring.builtin == key then return ring end
     end
 end
 
---- Built-in menus always exist and fill themselves: they can't be deleted, made per character,
---- renamed, or have slices added / removed by hand.
+--- Whether `ring` is a built-in menu. Those always exist and fill themselves, so they can't be
+--- deleted, made per character, renamed, or have actions added or removed by hand.
+---@param ring Ring?
+---@return boolean
 function Ring_Data.IsBuiltIn(ring)
     return ring ~= nil and ring.builtin ~= nil
 end
 
---- Ring_Auto's refill of a built-in ring. Fires env.Event.DataChanged with reason env.ChangeReason.Auto, so the
---- secure rebuild it causes (after combat, if needed) doesn't announce itself.
---- Whatever refers to a slice by position (a quick action dragged onto the center) follows that
---- slice to its new position, or is dropped if the slice is gone. A submenu slice keeps its
---- spread / scroll setting (slice.expand), which the user can change on built-in menus too.
+--- Ring_Auto's refill of a built-in menu. It fires env.Event.DataChanged with
+--- env.ChangeReason.Auto, so the secure rebuild it causes (after combat, if needed) doesn't
+--- announce itself. What refers to an action by position, like a remembered scroll position,
+--- follows the action to its new position, or is dropped when the action is gone. A submenu keeps
+--- its spread or scroll setting (slice.expand), which the user can change on built-in menus too.
+---@param id string|number
+---@param slices Slice[]
+---@return boolean ok false when `id` isn't a built-in menu
 function Ring_Data.SetAutoSlices(id, slices)
     local ring = Ring_Data.GetRing(id)
     if not Ring_Data.IsBuiltIn(ring) then return false end
@@ -124,12 +134,13 @@ function Ring_Data.SetAutoSlices(id, slices)
 
     ring.slices = slices
     Private.NormalizeRing(ring)
-    Private.ForgetOpenableRings() -- its submenus may have changed (Consumables)
-    CallbackRegistry.Trigger(env.Event.DataChanged, env.ChangeReason.Auto)
+    -- Its submenus may have changed (Consumables), so the openable menus are worked out again.
+    Private.Changed(env.ChangeReason.Auto)
     return true
 end
 
---- Something the rings show changed outside the ring data (the zone ability): rebuild quietly.
+--- Something the menus show changed outside the menu data (the zone ability), so they rebuild
+--- quietly.
 function Ring_Data.NotifyDynamicChange()
     CallbackRegistry.Trigger(env.Event.DataChanged, env.ChangeReason.Auto)
 end
@@ -138,6 +149,10 @@ end
 
 -- Refilling
 
+--- Whether two action lists hold the same actions in the same order.
+---@param a Slice[]
+---@param b Slice[]
+---@return boolean
 local function SameSlices(a, b)
     if #a ~= #b then return false end
     for i = 1, #a do
@@ -146,9 +161,10 @@ local function SameSlices(a, b)
     return true
 end
 
---- Fills built-in `ring` from its definition: what it holds now, minus the actions the user
---- removed, in the order they arranged (new actions at the end). Ring_Auto calls it after the
---- definition's events; restoring an action calls it at once.
+--- Fills built-in menu `ring` from its definition. That's what it holds now, minus the actions the
+--- user removed, in the order they arranged (new actions at the end). Ring_Auto calls it after the
+--- definition's events, and restoring an action calls it at once.
+---@param ring Ring
 function Ring_Data.RefillBuiltIn(ring)
     local definition = ring.builtin and definitions[ring.builtin]
     if not definition then return end
@@ -166,13 +182,17 @@ end
 
 -- Removed actions
 
---- The actions removed from built-in `ring`: { { key, label, icon }, ... }, oldest first.
+--- The actions removed from built-in menu `ring`, oldest first.
+---@param ring Ring?
+---@return RemovedAction[]
 function Ring_Data.GetRemovedSlices(ring)
-    return ring and ring.removed or {}
+    return (ring and ring.removed) or {}
 end
 
---- Remembers `slice` as removed from built-in `ring` (Ring_Data.RemoveSlice), with its name and
---- icon as they are now.
+--- Remembers `slice` as removed from built-in menu `ring` (Ring_Data.RemoveSlice), with its name
+--- and icon as they are now.
+---@param ring Ring
+---@param slice Slice
 function Private.RememberRemoved(ring, slice)
     local key = Ring_Data.GetSliceKey(slice)
     ring.removed = ring.removed or {}
@@ -182,8 +202,11 @@ function Private.RememberRemoved(ring, slice)
     ring.removed[#ring.removed + 1] = { key = key, label = Ring_Actions.GetLabel(slice), icon = Ring_Actions.GetIcon(slice) }
 end
 
---- Puts removed action `key` back into built-in menu `id` (every removed action when `key` is
---- nil). It shows again at the next refill, which happens now.
+--- Puts removed action `key` back into built-in menu `id`, or every removed action when `key` is
+--- nil. It shows again at the next refill, which happens now.
+---@param id string|number
+---@param key string?
+---@return boolean ok
 function Ring_Data.RestoreRemoved(id, key)
     local ring = Ring_Data.GetRing(id)
     if not (Ring_Data.IsBuiltIn(ring) and ring.removed) then return false end
@@ -204,40 +227,38 @@ end
 
 -- Remembered order
 
---- Built-in rings can be rearranged: remember the order by slice identity so Ring_Auto's refills
---- keep it. Slices not in the ring right now (a quest item you used up) keep their place in the
---- remembered order, after the ones that are.
+--- Remembers a built-in menu's order by action identity, so Ring_Auto's refills keep it. Actions
+--- not in the menu right now (a quest item you used up) keep their place in the remembered order,
+--- after the ones that are.
+---@param ring Ring
 function Private.RememberAutoOrder(ring)
     if not Ring_Data.IsBuiltIn(ring) then return end
     local keys, seen = {}, {}
-    for _, slice in ipairs(ring.slices) do
-        local key = Ring_Data.GetSliceKey(slice)
-        if not seen[key] then
-            seen[key] = true
-            keys[#keys + 1] = key
-        end
+    local function Add(key)
+        if seen[key] then return end
+        seen[key] = true
+        keys[#keys + 1] = key
     end
-    for _, key in ipairs(ring.order or {}) do
-        if not seen[key] then
-            seen[key] = true
-            keys[#keys + 1] = key
-        end
-    end
+    for _, slice in ipairs(ring.slices) do Add(Ring_Data.GetSliceKey(slice)) end
+    for _, key in ipairs(ring.order or {}) do Add(key) end
     ring.order = keys
 end
 
---- Sorts freshly generated slices of a built-in ring into its remembered order; slices it
---- hasn't seen yet go at the end, in the order they were generated.
+--- Sorts a built-in menu's freshly scanned actions into its remembered order. Actions it hasn't
+--- seen yet go at the end, in the order they were scanned.
+---@param ring Ring
+---@param slices Slice[] sorted in place
+---@return Slice[] slices
 function Ring_Data.ApplyAutoOrder(ring, slices)
     local rank = {}
     for index, key in ipairs(ring.order or {}) do rank[key] = index end
-    local generated = {}
-    for index, slice in ipairs(slices) do generated[slice] = index end
+    local scanned = {}
+    for index, slice in ipairs(slices) do scanned[slice] = index end
     table.sort(slices, function(a, b)
-        local ra, rb = rank[Ring_Data.GetSliceKey(a)], rank[Ring_Data.GetSliceKey(b)]
-        if ra and rb then return ra < rb end
-        if ra or rb then return ra ~= nil end
-        return generated[a] < generated[b]
+        local rankA, rankB = rank[Ring_Data.GetSliceKey(a)], rank[Ring_Data.GetSliceKey(b)]
+        if rankA and rankB then return rankA < rankB end
+        if rankA or rankB then return rankA ~= nil end
+        return scanned[a] < scanned[b]
     end)
     return slices
 end
@@ -246,13 +267,13 @@ end
 
 -- Creating them
 
---- Makes sure every registered built-in ring exists (as an account ring, named in the client's
---- language), and removes built-in rings that aren't registered any more.
+--- Makes sure every registered built-in menu exists (as an account menu, named in the client's
+--- language), and removes built-in menus that aren't registered any more.
 function Private.EnsureBuiltInRings()
     local existing = {}
     for _, ring in ipairs(Ring_Data.GetRings()) do
         if ring.builtin and not definitions[ring.builtin] then
-            ring.builtin = nil -- DeleteRing refuses built-in rings
+            ring.builtin = nil -- DeleteRing refuses built-in menus
             Ring_Data.DeleteRing(ring.id)
         elseif ring.builtin then
             existing[ring.builtin] = ring

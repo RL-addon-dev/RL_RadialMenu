@@ -32,6 +32,15 @@ function Utils_Standard.Strict(tbl, label)
     })
 end
 
+--- `parent[key]`, made an empty table first when it isn't one (missing, or old data of another type).
+---@param parent table
+---@param key any
+---@return table
+function Utils_Standard.GetOrCreateTable(parent, key)
+    if type(parent[key]) ~= "table" then parent[key] = {} end
+    return parent[key]
+end
+
 local nextUniqueID = 0
 
 function Utils_Standard.GetUniqueID()

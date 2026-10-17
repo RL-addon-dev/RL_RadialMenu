@@ -157,11 +157,11 @@ env.AX_SettingsOptions = {
     },
     windowPosition = {
         get = function()
-            local stored = Config.DBGlobalPersistent and _G[Config.DBGlobalPersistent.databaseName]
+            local stored = Config.DBGlobalPersistent and Config.DBGlobalPersistent:GetData()
             return stored and stored.SettingWindowPosition
         end,
         set = function(position)
-            _G[Config.DBGlobalPersistent.databaseName].SettingWindowPosition = position
+            Config.DBGlobalPersistent:GetData().SettingWindowPosition = position
         end,
     },
     getSchema = function() return env.AX_Modules:Import("@\\Setting\\Schema").SCHEMA end,
