@@ -17,12 +17,11 @@ local env = select(2, ...)
 local Config = env.Config
 local L = env.L
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
-local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Setting = env.AX_Modules:Import("@\\Setting")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local LEM = env.LibEditMode
 local Ring_Display = env.AX_Modules:New("@\\Ring\\Display")
 
-local DB_GLOBAL_NAME = "RL_RadialMenuDB_Global"
 local DEFAULT_POSITION = { point = "CENTER", x = 0, y = 0 }
 local FALLBACK_SIZE = 375 -- RadialWheelFrameTemplate size
 local SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 200, 5
@@ -36,7 +35,7 @@ Ring_Display.SCALE_STEP = SCALE_STEP
 -- Settings
 
 function Ring_Display.GetOpenAt()
-    return Config.DBGlobal:GetVariable("DisplayOpenAt")
+    return Config.Get(Config.Key.DisplayOpenAt)
 end
 
 function Ring_Display.IsFixed()
@@ -46,16 +45,16 @@ end
 --- Fixed position with Select From = Menu Center: actions are picked by where the cursor is
 --- relative to the menu's center instead of by the direction moved from the key-down spot.
 function Ring_Display.IsSelectFromMenu()
-    return Ring_Display.IsFixed() and Config.DBGlobal:GetVariable("SelectFrom") == env.Enum.SelectFrom.Menu
+    return Ring_Display.IsFixed() and Config.Get(Config.Key.SelectFrom) == env.Enum.SelectFrom.Menu
 end
 
 --- @return number scale multiplier (1 = 100%)
 function Ring_Display.GetScale()
-    return (Config.DBGlobal:GetVariable("DisplayScale") or 100) / 100
+    return (Config.Get(Config.Key.DisplayScale) or 100) / 100
 end
 
 function Ring_Display.SetScalePercent(value)
-    Config.DBGlobal:SetVariable("DisplayScale", value)
+    Config.Set(Config.Key.DisplayScale, value)
 end
 
 
@@ -82,7 +81,7 @@ end
 --- The fixed menu's center may have moved (position, size, UI scale, layout): Ring_Secure keeps a
 --- copy for Select From = Menu Center.
 local function NotifyMoved()
-    CallbackRegistry.Trigger("Ring.DisplayMoved")
+    CallbackRegistry.Trigger(env.Event.DisplayMoved)
 end
 
 local function UpdateAnchorSize()
@@ -168,7 +167,7 @@ end
 local function OnSettingChanged()
     UpdateAnchorSize()
     RefreshEditModeSettings()
-    CallbackRegistry.Trigger("Setting.Refresh")
+    CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
 end
 
 local function Initialize()
@@ -185,7 +184,7 @@ local function Initialize()
             minValue  = SCALE_MIN,
             maxValue  = SCALE_MAX,
             valueStep = SCALE_STEP,
-            get       = function() return Config.DBGlobal:GetVariable("DisplayScale") end,
+            get       = function() return Config.Get(Config.Key.DisplayScale) end,
             set       = function(_, value) Ring_Display.SetScalePercent(value) end
         }
     })
@@ -205,10 +204,10 @@ local function Initialize()
     LEM:RegisterCallback("enter", function() Anchor.Preview:Show() end)
     LEM:RegisterCallback("exit", function() Anchor.Preview:Hide() end)
 
-    SavedVariables.OnChange(DB_GLOBAL_NAME, "DisplayScale", OnSettingChanged)
-    SavedVariables.OnChange(DB_GLOBAL_NAME, "DisplayOpenAt", OnSettingChanged)
-    SavedVariables.OnChange(DB_GLOBAL_NAME, "SelectFrom", OnSettingChanged)
-    CallbackRegistry.Add("Config.Reset", OnSettingChanged)
+    Config.OnChange(Config.Key.DisplayScale, OnSettingChanged)
+    Config.OnChange(Config.Key.DisplayOpenAt, OnSettingChanged)
+    Config.OnChange(Config.Key.SelectFrom, OnSettingChanged)
+    CallbackRegistry.Add(env.Event.ConfigReset, OnSettingChanged)
 
     -- UIParent's size in UI units changes with the UI scale / window size, and with it the
     -- center's coordinates.
@@ -218,4 +217,4 @@ local function Initialize()
     scaleEvents:SetScript("OnEvent", NotifyMoved)
 end
 
-CallbackRegistry.Add("Preload.DatabaseReady", Initialize)
+CallbackRegistry.Add(env.Event.DatabaseReady, Initialize)

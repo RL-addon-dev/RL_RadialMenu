@@ -201,8 +201,8 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     View.nextStateUpdate = nil
     View.animatedOffset = -ANIM_DISTANCE
 
-    View:SetShowLabels(Config.DBGlobal:GetVariable("ShowActionNames"))
-    View.showTooltips = Config.DBGlobal:GetVariable("ShowActionTooltips") and true or false
+    View:SetShowLabels(Config.Get(Config.Key.ShowActionNames))
+    View.showTooltips = Config.Get(Config.Key.ShowActionTooltips) and true or false
     -- Opened again without closing (another menu's key pressed while one is held): drop its tooltip.
     if GameTooltip:GetOwner() == View then GameTooltip:Hide() end
     View.tooltipIndex = nil
@@ -231,7 +231,7 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     -- Fixed position: optional guide at the key-down cursor spot (UIParent units, like startX/Y).
     -- Not when selecting from the menu's position: there you point at the menu itself.
     View.useGuide = Ring_Display.IsFixed() and not View.fromMenu
-        and Config.DBGlobal:GetVariable("CursorGuide") and true or false
+        and Config.Get(Config.Key.CursorGuide) and true or false
     if View.useGuide then
         Guide:Setup(#ring.slices, View.deadzone, Ring_Data.GetProbeSize(), View.quickSlice ~= nil)
         Guide:ClearAllPoints()

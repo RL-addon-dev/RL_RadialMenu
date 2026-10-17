@@ -118,16 +118,18 @@ After changing its own size, call `tab:_Render()` so the tab lays out again.
 
 ## Refreshing
 
-`Setting.Refresh` (CallbackRegistry) makes every widget re-read its value and re-check
+`Setting_Enum.Event.Refresh` (CallbackRegistry, `"Setting.Refresh"`) makes every widget re-read its value and re-check
 `showWhen` / `disableWhen`. It fires after any widget changes a value; trigger it yourself after
 changing stored values elsewhere:
 
 ```lua
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
-CallbackRegistry.Trigger("Setting.Refresh")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
+CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
 ```
 
-`Setting.HostChanged` fires with `"window"`, `"options"` or `nil` when the settings move or close.
+`Setting_Enum.Event.HostChanged` fires with a `Setting_Enum.Host` value (`Options` or `Window`) or
+`nil` when the settings move or close. `Setting.GetHost()` returns the same value.
 
 ## List tabs
 

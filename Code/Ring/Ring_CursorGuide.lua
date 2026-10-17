@@ -89,7 +89,7 @@ end
 --- `probeSize`; `hasQuick` = a tap fires something (else the center only cancels).
 function Guide:Setup(count, deadzone, probeSize, hasQuick)
     -- Current color (the setting can change between openings).
-    local color = Config.DBGlobal:GetVariable("CursorGuideColor") or {}
+    local color = Config.Get(Config.Key.CursorGuideColor) or {}
     local r, g, b = color.r or 1, color.g or 1, color.b or 1
     GUIDE_COLOR[1], GUIDE_COLOR[2], GUIDE_COLOR[3] = r, g, b
     GUIDE_ACTIVE_COLOR[1], GUIDE_ACTIVE_COLOR[2], GUIDE_ACTIVE_COLOR[3] = r, g, b

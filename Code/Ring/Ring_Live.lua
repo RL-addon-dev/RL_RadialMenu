@@ -65,6 +65,8 @@ local function AddEntries(entries, slices, ownerId, visited, depth, flatten)
 end
 
 --- The live entries of `ring` (see the header).
+---@param ring Ring?
+---@return LiveEntry[]
 function Ring_Live.GetEntries(ring)
     local entries = {}
     if ring then AddEntries(entries, ring.slices, ring.id, { [ring.id] = true }, 0) end
@@ -73,6 +75,8 @@ end
 
 --- The ring as the player sees it right now: `entries`, their `slices`, and the center's
 --- `quickSlice` while it can fire.
+---@param ring Ring
+---@return LiveRing
 function Ring_Live.Build(ring)
     local entries = Ring_Live.GetEntries(ring)
     local slices = {}

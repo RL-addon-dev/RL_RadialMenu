@@ -24,10 +24,11 @@ function Ring_Data.GetLastUsedKey(id)
 end
 
 --- Remembers `key` (Ring_Data.GetSliceKey) as the slice last fired from ring `id` on this
---- character. Not a ring edit: fires "Ring.LastUsedChanged", not "Ring.DataChanged".
+--- character. This isn't a menu edit, so it fires env.Event.LastUsedChanged instead of
+--- env.Event.DataChanged.
 function Ring_Data.SetLastUsedKey(id, key)
     Private.GetStoredTable(Config.DBLocalPersistent, "LastUsedSlice")[tostring(id)] = key
-    CallbackRegistry.Trigger("Ring.LastUsedChanged", tostring(id))
+    CallbackRegistry.Trigger(env.Event.LastUsedChanged, tostring(id))
 end
 
 --- The action a tap fires (in the center), or nil.
@@ -96,7 +97,7 @@ function Ring_Data.MoveQuickSliceToWheel(id, index, replace)
     if not ok then return false, err end
     -- The replaced action leaves the wheel, so it moves to the center as it is.
     SetCenter(ring, replaced or nil)
-    -- AddSlice / ReplaceSlice fire "Ring.DataChanged".
+    -- AddSlice / ReplaceSlice fire env.Event.DataChanged.
     if replace then return Ring_Data.ReplaceSlice(id, index, slice) end
     return Ring_Data.AddSlice(id, slice, index)
 end

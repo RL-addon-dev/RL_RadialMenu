@@ -1,11 +1,12 @@
 --[[
-    Loads first: what every other file uses. Addon info, the locale table (filled by
-    Locales\*.lua), and chat output.
+    Loads first, with what every other file uses. Addon info, the game version, the addon's events,
+    the locale table (filled by Locales\*.lua), and chat output.
 ]]
 
 local addonName, env = ...
 
 local Path = env.AX_Modules:Import("ax_modules\\path")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 
 -- Basic addon information
 env.NAME = "RL: |cff00e900Radial Menu|r"
@@ -15,14 +16,11 @@ env.VERSION_STRING = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?" -- f
 
 -- Which game this is running in (the .toc lists the interfaces it supports). Built-in menus can be
 -- limited to some of them (Code\Ring\Data\BuiltIn.lua). WoW Forever's builds are 1.6x (16001...).
-env.GameVersion = setmetatable({
+env.GameVersion = Utils_Standard.Strict({
     Retail  = "retail",
     Forever = "forever",
     Classic = "classic", -- any other classic client
-}, {
-    -- A misspelled name (env.GameVersion.Retial) is an error, not a silent nil.
-    __index = function(_, name) error("unknown game version: " .. tostring(name), 2) end,
-})
+}, "game version")
 do
     local interface = select(4, GetBuildInfo())
     env.GAME_VERSION = (interface >= 110000 and env.GameVersion.Retail)
@@ -58,6 +56,25 @@ function env.IsEventValid(event)
     if C_EventUtils and C_EventUtils.IsEventValid then return C_EventUtils.IsEventValid(event) end
     return true
 end
+
+-- The addon's own CallbackRegistry events. Comments show what each passes to its callbacks.
+-- Not here are the settings window's events (Setting_Enum.Event, from AX_Settings) and a single
+-- setting changing (Config.OnChange).
+env.Event = Utils_Standard.Strict({
+    DatabaseReady        = "Preload.DatabaseReady",     -- saved variables loaded (Config.lua)
+    ConfigReset          = "Config.Reset",              -- settings reset to defaults, without any OnChange callbacks
+    DataReady            = "Ring.DataReady",            -- menus loaded and migrated, built-ins created (Ring_Data)
+    DataChanged          = "Ring.DataChanged",          -- any menu edit, passes a ChangeReason or nil
+    LastUsedChanged      = "Ring.LastUsedChanged",      -- a menu's Last Used action changed, passes its ringId
+    Rebuilt              = "Ring.Rebuilt",              -- the secure buttons were rebuilt (Ring_Secure)
+    DisplayMoved         = "Ring.DisplayMoved",         -- the fixed menu's center may have moved (Ring_Display)
+    SearchSourcesChanged = "Ring.SearchSourcesChanged", -- Add Action's search lists are out of date (Ring_Search)
+}, "event")
+
+-- Why menus changed or need a rebuild, passed with env.Event.DataChanged. A hand edit passes none.
+env.ChangeReason = Utils_Standard.Strict({
+    Auto = "auto", -- start-up, built-in refills or the menu moving, rebuilt without the combat message
+}, "change reason")
 
 -- Development only: chat output for menu use (what fired) and drag & drop (cursor info). Set to
 -- true here to turn it on; there's no in-game switch.

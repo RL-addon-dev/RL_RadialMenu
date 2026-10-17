@@ -3,6 +3,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Setting_Constructor = env.AX_Modules:Await("@\\Setting\\Constructor")
 local Setting_Options = env.AX_Modules:Import("@\\Setting\\Options")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting = env.AX_Modules:New("@\\Setting")
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
@@ -83,11 +84,12 @@ local function KeepPopupsOnTop()
     end
 end
 
---- Where the settings are shown right now: "options" (Options -> AddOns), "window" (the own
---- window), or nil while closed. "Setting.HostChanged" fires on change.
+--- Where the settings are shown right now, or nil while closed. Setting_Enum.Event.HostChanged
+--- fires on change.
+---@return string? host a Setting_Enum.Host value
 function Setting.GetHost()
     if not currentHost then return nil end
-    return currentHost == SettingFrameAnchor and "options" or "window"
+    return (currentHost == SettingFrameAnchor and Setting_Enum.Host.Options) or Setting_Enum.Host.Window
 end
 
 --- Moves the settings frame into `host` and fills it.
@@ -111,16 +113,16 @@ local function AttachTo(host)
         -- The host may have a different size: relayout, then pull values changed elsewhere
         -- (e.g. Edit Mode). Not forced: a forced refresh reuses the cached value.
         RenderUI()
-        CallbackRegistry.Trigger("Setting.Refresh")
+        CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
     end
-    if changed then CallbackRegistry.Trigger("Setting.HostChanged", Setting.GetHost()) end
+    if changed then CallbackRegistry.Trigger(Setting_Enum.Event.HostChanged, Setting.GetHost()) end
 end
 
 local function DetachFrom(host)
     if currentHost ~= host then return end
     currentHost = nil
     SettingFrame:Hide()
-    CallbackRegistry.Trigger("Setting.HostChanged", nil)
+    CallbackRegistry.Trigger(Setting_Enum.Event.HostChanged, nil)
 end
 
 

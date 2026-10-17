@@ -1,6 +1,8 @@
 --[[
-    Saved variables: their names and defaults, loading them when the addon loads (then
-    "Preload.DatabaseReady"), and how the settings UI (AX_Settings) reads and writes them.
+    Saved variables. This file names them, sets their defaults and loads them when the addon loads
+    (then fires env.Event.DatabaseReady). It also defines the settings' keys and accessors
+    (Config.Key, Config.Get, Config.Set, Config.OnChange), and how the settings UI (AX_Settings)
+    reads and writes them.
 
     Loads after Preload.lua (enums) and before libs\AX_Settings\AX_Settings.xml, which
     reads env.AX_SettingsOptions while it loads.
@@ -16,6 +18,7 @@ local env = select(2, ...)
 
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 
 local Config = {}; env.Config = Config
 
@@ -71,23 +74,33 @@ local NAME_LOCAL = "RL_RadialMenuDB_Local"
 local NAME_LOCAL_PERSISTENT = "RL_RadialMenuDB_Local_Persistent"
 
 local DB_GLOBAL_DEFAULTS = {
-    DisplayOpenAt = Enum.OpenAt.Cursor,
-    DisplayScale  = 100, -- percent
-    ShowActionNames = true, -- the highlighted action's name in the in-game menu
-    ShowActionTooltips = false, -- its tooltip, at the HUD Tooltip position
-    SelectFrom    = Enum.SelectFrom.Menu, -- fixed position: where angles are measured from
-    CursorGuide   = false, -- fixed position: outline of the gesture at the cursor
-    CursorGuideColor = { r = 1, g = 1, b = 1 },
-    MenuStyle     = Enum.MenuStyle.Quick,
-    FlickToSelect = false, -- a controller's menu: letting go of the aimed right stick uses the action (Ring_Secure)
-    RevealDelay   = 0.15, -- seconds
-    Deadzone      = 24,   -- px
-    ProbeSize     = 12,   -- px from the key-down spot (the square is twice this wide)
-    RightClickDismiss = true, -- right click closes a held menu (Ring_Secure)
+    DisplayOpenAt        = Enum.OpenAt.Cursor,
+    DisplayScale         = 100,                             -- percent
+    ShowActionNames      = true,                            -- the highlighted action's name in the in-game menu
+    ShowActionTooltips   = false,                           -- its tooltip, at the HUD Tooltip position
+    SelectFrom           = Enum.SelectFrom.Menu,            -- with a fixed position, where angles are measured from
+    CursorGuide          = false,                           -- with a fixed position, the gesture's outline
+                                                            -- drawn at the cursor
+    CursorGuideColor     = { r = 1, g = 1, b = 1 },
+    MenuStyle            = Enum.MenuStyle.Quick,
+    FlickToSelect        = false,                           -- with a controller, letting go of the aimed right
+                                                            -- stick uses the action (Ring_Secure)
+    RevealDelay          = 0.15,                            -- seconds
+    Deadzone             = 24,                              -- px
+    ProbeSize            = 12,                              -- px from the key-down spot (the square is twice this wide)
+    RightClickDismiss    = true,                            -- right click closes a held menu (Ring_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
-    TargetMarkerUnit = Enum.TargetMarkerUnit.Cursor, -- like the ping menu
-    PreviewHideHidden = false, -- settings preview: leave out actions hidden in game right now (eye toggle)
+    TargetMarkerUnit     = Enum.TargetMarkerUnit.Cursor,    -- like the ping menu
+    PreviewHideHidden    = false,                           -- the settings preview leaves out actions hidden
+                                                            -- in game right now (the eye toggle)
 }
+
+-- The keys settings are saved under in the global database, one per default above. Pass them to
+-- Config.Get / Set / OnChange (below) and the schema's `key`: Config.Get(Config.Key.MenuStyle).
+local Key = {}
+for name in pairs(DB_GLOBAL_DEFAULTS) do Key[name] = name end
+Config.Key = Utils_Standard.Strict(Key, "setting key")
+
 local DB_GLOBAL_PERSISTENT_DEFAULTS = {}
 local DB_LOCAL_DEFAULTS = {}
 local DB_LOCAL_PERSISTENT_DEFAULTS = {} -- menus' own data (Code\Ring\Data\Store.lua)
@@ -103,7 +116,30 @@ function Config.LoadDB()
     Config.DBLocal = SavedVariables.RegisterDatabase(NAME_LOCAL).defaults(DB_LOCAL_DEFAULTS)
     Config.DBLocalPersistent = SavedVariables.RegisterDatabase(NAME_LOCAL_PERSISTENT).defaults(DB_LOCAL_PERSISTENT_DEFAULTS)
 
-    CallbackRegistry.Trigger("Preload.DatabaseReady")
+    CallbackRegistry.Trigger(env.Event.DatabaseReady)
+end
+
+--- A setting's value, or its default. Only after env.Event.DatabaseReady.
+---@param key string a Config.Key value
+---@return any
+function Config.Get(key)
+    return Config.DBGlobal:GetVariable(key)
+end
+
+--- Saves a setting. If the value changed, its Config.OnChange callbacks run.
+---@param key string a Config.Key value
+---@param value any
+function Config.Set(key, value)
+    Config.DBGlobal:SetVariable(key, value)
+end
+
+--- Calls `callback(event, value)` whenever a setting is changed (by Config.Set or the settings).
+--- Can be registered at load time. A settings reset doesn't call it, so listen to
+--- env.Event.ConfigReset as well when that matters.
+---@param key string a Config.Key value
+---@param callback fun(event: string, value: any)
+function Config.OnChange(key, callback)
+    SavedVariables.OnChange(NAME_GLOBAL, key, callback)
 end
 
 -- Saved variables exist once the addon has loaded.
@@ -116,8 +152,8 @@ env.AX_SettingsOptions = {
     prefix  = "RLRM",
     title   = env.NAME,
     storage = {
-        get = function(key) return Config.DBGlobal:GetVariable(key) end,
-        set = function(key, value) Config.DBGlobal:SetVariable(key, value) end,
+        get = Config.Get,
+        set = Config.Set,
     },
     windowPosition = {
         get = function()

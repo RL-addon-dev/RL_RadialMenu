@@ -1,7 +1,7 @@
 --[[
-    Ring data: startup. Runs once the saved variables are ready ("Preload.DatabaseReady"):
+    Ring data: startup. Runs once the saved variables are ready (env.Event.DatabaseReady):
     runs the migrations that haven't run yet, normalizes every ring, creates the first-run menus,
-    makes sure the built-in menus exist, then fires "Ring.DataReady" (Ring_Secure, Ring_Auto).
+    makes sure the built-in menus exist, then fires env.Event.DataReady (Ring_Secure, Ring_Auto).
 
     Migrations: one file per change to the saved data, in Migrations\ (listed in order in
     Migrations.xml, which explains the format). Each registers itself here and runs once,
@@ -72,12 +72,12 @@ local function Initialize()
 
     isReady = true
     Private.ForgetOpenableRings()
-    CallbackRegistry.Trigger("Ring.DataReady")
+    CallbackRegistry.Trigger(env.Event.DataReady)
 end
 
---- Whether the menus are loaded and set up ("Ring.DataReady" has fired).
+--- Whether the menus are loaded and set up (env.Event.DataReady has fired).
 function Ring_Data.IsReady()
     return isReady
 end
 
-CallbackRegistry.Add("Preload.DatabaseReady", Initialize)
+CallbackRegistry.Add(env.Event.DatabaseReady, Initialize)

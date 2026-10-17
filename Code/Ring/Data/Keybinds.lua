@@ -80,7 +80,7 @@ end
 -- (Ring_Auto), it only changes with menus, submenus and keybinds.
 local openableRings, openableSet
 
---- Forgets the openable menus. Called just before "Ring.DataChanged" / "Ring.DataReady" fire, so
+--- Forgets the openable menus. Called just before env.Event.DataChanged / env.Event.DataReady fire, so
 --- their listeners already get the new answer.
 function Private.ForgetOpenableRings()
     openableRings, openableSet = nil, nil

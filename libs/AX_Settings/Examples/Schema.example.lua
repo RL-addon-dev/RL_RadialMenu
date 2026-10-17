@@ -149,7 +149,7 @@ Setting_Schema.SCHEMA = {
                                 options      = {
                                     { text = "Reset", callback = function()
                                         -- reset your stored values here, then:
-                                        CallbackRegistry.Trigger("Setting.Refresh")
+                                        CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
                                     end },
                                     { text = "Cancel" },
                                 },

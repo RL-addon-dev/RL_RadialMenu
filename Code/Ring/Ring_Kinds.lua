@@ -88,6 +88,9 @@ function Ring_Kinds.IsSymbol(icon)
     return type(icon) == "string" and icon:sub(1, #SYMBOL_PATH) == SYMBOL_PATH
 end
 
+--- Registers an action kind (see the header). Not registered when it isn't for this game.
+---@param definition KindDefinition
+---@return KindDefinition? definition nil when it isn't for this game
 function Ring_Kinds.Register(definition)
     assert(type(definition.kind) == "string", "action kind needs a name")
     if not env.IsForThisGame(definition.versions) then return nil end

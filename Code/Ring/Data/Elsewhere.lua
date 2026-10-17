@@ -53,7 +53,7 @@ local function SaveSnapshot()
     }
 end
 
-CallbackRegistry.Add("Ring.DataReady", SaveSnapshot)
+CallbackRegistry.Add(env.Event.DataReady, SaveSnapshot)
 do
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("PLAYER_LOGOUT")

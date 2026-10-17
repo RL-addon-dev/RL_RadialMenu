@@ -14,7 +14,8 @@
         3. rebuilds when any action's visibility changed (Ring_Actions.IsSliceAvailable: the
            in-game menus leave out actions with nothing to fire), an action bar's buttons too.
 
-    Rebuilds go through "Ring.DataChanged" with reason "auto": quiet, and after combat if needed.
+    Rebuilds go through env.Event.DataChanged with reason env.ChangeReason.Auto, so they're quiet
+    and wait for combat to end if needed.
     In combat nothing can be rebuilt, so the update waits: events meanwhile are remembered, and one
     update runs when combat ends.
 ]]
@@ -25,6 +26,7 @@ local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Auto = env.AX_Modules:New("@\\Ring\\Auto")
 local Perf = env.AX_Modules:Import("@\\Perf")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting = env.AX_Modules:Await("@\\Setting")
 
 local UPDATE_DELAY = 0.25 -- coalesces bursts of bag / quest log / spell events
@@ -212,18 +214,18 @@ do
     end
 end
 
-CallbackRegistry.Add("Ring.DataReady", ScheduleFullUpdate)
+CallbackRegistry.Add(env.Event.DataReady, ScheduleFullUpdate)
 -- Hand edits (a slice added, a menu created): refill in case they touched a built-in's order.
-CallbackRegistry.Add("Ring.DataChanged", function(_, reason)
-    if reason ~= "auto" then ScheduleFullUpdate() end
+CallbackRegistry.Add(env.Event.DataChanged, function(_, reason)
+    if reason ~= env.ChangeReason.Auto then ScheduleFullUpdate() end
 end)
 -- Settings opened: refill the built-in menus left waiting (RefillBuiltIns), so the Library and
 -- the preview show what they hold now.
-CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function(_, host)
     if host and next(dirtyKeys) then ScheduleUpdate() end
 end)
 -- Every rebuild uses the visibility of that moment; remember it so only real changes rebuild.
-CallbackRegistry.Add("Ring.Rebuilt", function()
+CallbackRegistry.Add(env.Event.Rebuilt, function()
     ReadAvailability()
     availabilityRead = true
 end)
