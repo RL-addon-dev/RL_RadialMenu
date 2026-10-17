@@ -56,6 +56,8 @@ local HEARTHSTONE_TOYS = {
     263933, -- Preyseeker's Hearthstone
     264367, -- Mycomancer's Hearthspore
     265100, -- Corewarden's Hearthstone
+    281136, -- Hiveborne Hearthstone
+    281615, -- Shadeweaver's Hearthstone
     140192, -- Dalaran Hearthstone
     110560, -- Garrison Hearthstone
 }
