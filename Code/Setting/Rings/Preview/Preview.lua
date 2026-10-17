@@ -136,7 +136,7 @@ local function StoredCallbacks(preview, callbacks)
 end
 
 local function IsHidingHidden()
-    return Config.DBGlobal and Config.DBGlobal:GetVariable("PreviewHideHidden") and true or false
+    return Config.DBGlobal and Config.Get(Config.Key.PreviewHideHidden) and true or false
 end
 
 --- X on an icon's top-right corner. `onClick` defaults to removing the wedge's slice.
@@ -368,7 +368,7 @@ function Rings_Preview.Create(host, callbacks)
     eye:SetScript("OnLeave", function() GameTooltip:Hide() end)
     eye:SetScript("OnClick", function(self)
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-        Config.DBGlobal:SetVariable("PreviewHideHidden", not IsHidingHidden())
+        Config.Set(Config.Key.PreviewHideHidden, not IsHidingHidden())
         preview:SetRing(preview.ring)
         if GameTooltip:GetOwner() == self then self:GetScript("OnEnter")(self) end
     end)

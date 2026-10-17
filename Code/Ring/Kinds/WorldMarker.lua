@@ -54,7 +54,7 @@ Ring_Kinds.Register({
             -- circle: the secure button's own world marker action, like the raid manager's buttons
             -- (/wm without a target only errors when run from a button). With a controller (WoW
             -- Forever's gamepad UI) always the targeting circle, placed with the reticle.
-            if Config.DBGlobal:GetVariable("WorldMarkerPlacement") == env.Enum.WorldMarkerPlacement.Click
+            if Config.Get(Config.Key.WorldMarkerPlacement) == env.Enum.WorldMarkerPlacement.Click
                 or env.IsGamepadUI() then
                 Ring_Kinds.SetAttribute(button, "type", suffix, "worldmarker")
                 Ring_Kinds.SetAttribute(button, "action", suffix, "set")

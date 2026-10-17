@@ -20,6 +20,18 @@ function Utils_Standard.ReverseTable(tbl)
     return reversed
 end
 
+--- Makes reading a key `tbl` doesn't have an error instead of nil, so a misspelled constant
+--- (`Event.DataChaged`) fails where it's written rather than silently doing nothing.
+---@generic T: table
+---@param tbl T
+---@param label string what the keys are, for the error ("event", "setting key")
+---@return T tbl
+function Utils_Standard.Strict(tbl, label)
+    return setmetatable(tbl, {
+        __index = function(_, key) error("unknown " .. label .. ": " .. tostring(key), 2) end,
+    })
+end
+
 local nextUniqueID = 0
 
 function Utils_Standard.GetUniqueID()

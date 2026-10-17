@@ -20,6 +20,7 @@ local UICCommon = env.AX_Modules:Import("ax_modules\\uic-common")
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Setting_Widgets = env.AX_Modules:Import("@\\Setting\\Widgets")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting = env.AX_Modules:Await("@\\Setting")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
@@ -284,7 +285,7 @@ end
 --- Sizes the results list for where the settings are shown. Returns true if it changed (the page
 --- needs a re-render).
 function AddSliceMixin:UpdateResultsHeight()
-    local rows = Setting.GetHost() == "window" and VISIBLE_ROWS_WINDOW or VISIBLE_ROWS_OPTIONS
+    local rows = Setting.GetHost() == Setting_Enum.Host.Window and VISIBLE_ROWS_WINDOW or VISIBLE_ROWS_OPTIONS
     if rows == self.visibleRows then return false end
     self.visibleRows = rows
     self.Results:size(UIKit.UI.P_FILL, ResultsHeight(rows))
@@ -325,11 +326,11 @@ function AddSliceMixin:Setup(getRing, onDone)
     self.DoneButton:SetText(L["Config - Rings - Search - Done"])
     self.DoneButton:HookClick(function() onDone() end)
 
-    CallbackRegistry.Add("Ring.SearchSourcesChanged", function()
+    CallbackRegistry.Add(env.Event.SearchSourcesChanged, function()
         if self:IsVisible() then self:Update() end
     end)
     -- Settings closed: let go of the last results too, with the search lists (Ring_Search).
-    CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+    CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function(_, host)
         if not host then self.results = nil end
     end)
 end

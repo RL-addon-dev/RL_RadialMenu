@@ -31,7 +31,7 @@ Private.pendingBindings = pendingBindings
 --- Mark Target Markers On: the unit under the mouse (Cursor or Cursor + Focus), and whether menus
 --- of only target markers steal your focus for it (Cursor + Focus).
 local function GetMarkerMode()
-    local value = Config.DBGlobal:GetVariable("TargetMarkerUnit")
+    local value = Config.Get(Config.Key.TargetMarkerUnit)
     local steal = value == env.Enum.TargetMarkerUnit.CursorFocus
     return steal or value == env.Enum.TargetMarkerUnit.Cursor, steal
 end
@@ -232,12 +232,12 @@ local function SetupRing(ring)
     -- the menu while open: pressed again, it reaches the menu (which closes).
     local keyBase = binding and (Ring_Crossbar.GetPlainButton(binding) or binding:match("[^%-]+$") or binding)
     button:SetAttribute("ring-keybase", keyBase or nil)
-    button:SetAttribute("ring-rightclick", Config.DBGlobal:GetVariable("RightClickDismiss") and true or nil)
+    button:SetAttribute("ring-rightclick", Config.Get(Config.Key.RightClickDismiss) and true or nil)
     -- Menu Style; always Relaxed in WoW Forever's gamepad UI (A picks, B closes). Menus rebuild
     -- when the UI switches (Rebuild.lua).
-    local relaxed = env.IsGamepadUI() or Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed
+    local relaxed = env.IsGamepadUI() or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed
     button:SetAttribute("ring-relaxed", relaxed or nil)
-    button:SetAttribute("ring-flick", Config.DBGlobal:GetVariable("FlickToSelect") and true or nil)
+    button:SetAttribute("ring-flick", Config.Get(Config.Key.FlickToSelect) and true or nil)
     -- A crossbar slot isn't a key: its macro on the crossbar opens the menu (Ring_Crossbar).
     if binding and not Ring_Crossbar.IsSlot(binding) and (count > 0 or live.quickSlice) then
         pendingBindings[#pendingBindings + 1] = { key = binding, button = button:GetName(), scope = scope }

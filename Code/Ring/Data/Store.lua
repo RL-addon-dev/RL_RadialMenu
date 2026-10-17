@@ -38,7 +38,7 @@
         ProbeSize:    "Distance to Cancel Quick Action": px from the key-down spot (a square twice
                       as wide); leaving it switches the center from quick action to cancel
 
-    Every mutation triggers "Ring.DataChanged".
+    Every mutation triggers env.Event.DataChanged.
 ]]
 
 local env = select(2, ...)
@@ -87,11 +87,11 @@ Ring_Data.MIN_PROBE_DISTANCE = 1
 -- Ring behavior (global)
 
 function Ring_Data.GetRevealDelay()
-    return Config.DBGlobal:GetVariable("RevealDelay")
+    return Config.Get(Config.Key.RevealDelay)
 end
 
 function Ring_Data.GetDeadzone()
-    return Config.DBGlobal:GetVariable("Deadzone")
+    return Config.Get(Config.Key.Deadzone)
 end
 
 --- Side of the square ("Distance to Cancel Quick Action" is its half: the distance you move from
@@ -99,7 +99,7 @@ end
 --- reach past it: once you've been out picking a slice, coming back to the center cancels. With
 --- Select From = Menu Center the two are measured from different spots, so there's no cap.
 function Ring_Data.GetProbeSize()
-    local distance = max(Config.DBGlobal:GetVariable("ProbeSize"), Ring_Data.MIN_PROBE_DISTANCE)
+    local distance = max(Config.Get(Config.Key.ProbeSize), Ring_Data.MIN_PROBE_DISTANCE)
     if not Ring_Display.IsSelectFromMenu() then distance = math.min(distance, Ring_Data.GetDeadzone()) end
     return 2 * distance
 end
@@ -135,7 +135,7 @@ local GetScopeTable = Private.GetScopeTable
 
 function Private.Changed()
     Private.ForgetOpenableRings()
-    CallbackRegistry.Trigger("Ring.DataChanged")
+    CallbackRegistry.Trigger(env.Event.DataChanged)
 end
 local Changed = Private.Changed
 
@@ -275,7 +275,7 @@ function Ring_Data.GetScrollIndex(ringId, sliceIndex)
     return stored[tostring(ringId) .. ":" .. sliceIndex] or 1
 end
 
---- Not a ring edit: doesn't fire "Ring.DataChanged".
+--- This isn't a menu edit, so it doesn't fire env.Event.DataChanged.
 function Ring_Data.SetScrollIndex(ringId, sliceIndex, childIndex)
     local stored = GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
     stored[tostring(ringId) .. ":" .. sliceIndex] = childIndex

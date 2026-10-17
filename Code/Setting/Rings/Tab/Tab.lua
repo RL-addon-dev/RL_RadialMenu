@@ -21,8 +21,8 @@
                       menus), Removed Actions (Rings_Removed.lua; built-in menus, when some are
                       removed), and Delete
 
-    Everything edits Ring_Data; both parts rebuild on "Ring.DataChanged" while the settings are
-    shown (and on "Setting.Refresh" when they're shown again, see OnSettingRefresh).
+    Everything edits Ring_Data; both parts rebuild on env.Event.DataChanged while the settings are
+    shown (and on Setting_Enum.Event.Refresh when they're shown again, see OnSettingRefresh).
 
     Files (one module, Rings_Tab; the page's methods in PageMixin, shared through
     "@\\Setting\\Rings\\Tab\\Private"):
@@ -47,6 +47,7 @@ local Rings_Keybind = env.AX_Modules:Import("@\\Setting\\Rings\\Keybind")
 local Rings_Share = env.AX_Modules:Import("@\\Setting\\Rings\\Share")
 local Rings_Removed = env.AX_Modules:Import("@\\Setting\\Rings\\Removed")
 local Rings_Import = env.AX_Modules:Import("@\\Setting\\Rings\\Import")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Rings_Tab = env.AX_Modules:New("@\\Setting\\Rings\\Tab")
 local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
 
@@ -514,7 +515,7 @@ function Rings_Tab.Build(parent, tab)
     page.AddSlice:Setup(function() return page:GetSelectedRing() end, function() page:ShowPreview() end)
     -- Moving between Options and our window changes how many results fit: re-render if open.
     -- Deferred a frame: the host change happens inside a UIKit render pass.
-    CallbackRegistry.Add("Setting.HostChanged", function()
+    CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function()
         if not page.isAddingSlice then return end
         C_Timer.After(0, function()
             if page.AddSlice:UpdateResultsHeight() then page.tab:_Render() end
@@ -572,11 +573,11 @@ function Rings_Tab.Build(parent, tab)
 
     -- Only while the settings are shown: automatic refills (bags, quests) happen all the time, and
     -- reopening the settings refreshes anyway (OnSettingRefresh).
-    CallbackRegistry.Add("Ring.DataChanged", function()
+    CallbackRegistry.Add(env.Event.DataChanged, function()
         if SettingFrame:IsVisible() then page:Refresh() end
     end)
     -- The preview center shows the last used slice for "Last Used Slice" rings.
-    CallbackRegistry.Add("Ring.LastUsedChanged", function()
+    CallbackRegistry.Add(env.Event.LastUsedChanged, function()
         if SettingFrame:IsVisible() then page.preview:SetRing(page:GetSelectedRing()) end
     end)
     page:Refresh()

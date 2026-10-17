@@ -1,12 +1,12 @@
 --[[
     Ring_Secure (see Snippets.lua): rebuilding every menu's button and keybind (Setup.lua, Keys.lua)
-    after "Ring.DataChanged" and settings changes. Rebuilds happen out of combat, and never while a
+    after env.Event.DataChanged and settings changes. Rebuilds happen out of combat, and never while a
     menu is held open: the attributes the release is about to use must match what's shown.
 ]]
 
 local env = select(2, ...)
+local Config = env.Config
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
-local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Crossbar = env.AX_Modules:Import("@\\Ring\\Crossbar")
@@ -60,7 +60,7 @@ local function Rebuild()
     Private.BindMenuKeys()
     -- Crossbar combo macros: renamed with their menu, deleted with their combo (Ring_Crossbar).
     Ring_Crossbar.Reconcile()
-    CallbackRegistry.Trigger("Ring.Rebuilt")
+    CallbackRegistry.Trigger(env.Event.Rebuilt)
 end
 
 --- Runs a queued rebuild if it can run now; otherwise it runs when combat ends (combatWaiter) or
@@ -77,9 +77,10 @@ end
 
 --- Asks for a rebuild next frame, so several changes at once (built-in menus refilled together, a
 --- settings reset) cause one.
---- @param reason string|nil "auto" for automatic updates (quest items, zone ability): no message
+---@param reason string? env.ChangeReason.Auto for automatic updates (quest items, zone ability),
+--- which skip the combat message
 local function RequestRebuild(_, reason)
-    if not rebuildQueued and reason ~= "auto" and InCombatLockdown() and Ring_Data.IsReady() then
+    if not rebuildQueued and reason ~= env.ChangeReason.Auto and InCombatLockdown() and Ring_Data.IsReady() then
         env.Print("menu changes will apply after combat")
     end
     rebuildQueued = true
@@ -96,30 +97,30 @@ combatWaiter:SetScript("OnEvent", function(self)
     QueueRebuild()
 end)
 
-CallbackRegistry.Add("Ring.DataReady", function() RequestRebuild(nil, "auto") end)
-CallbackRegistry.Add("Ring.DataChanged", RequestRebuild)
+CallbackRegistry.Add(env.Event.DataReady, function() RequestRebuild(nil, env.ChangeReason.Auto) end)
+CallbackRegistry.Add(env.Event.DataChanged, RequestRebuild)
 -- Dead zone and center nudge live in secure attributes; reveal delay is read by the view on open.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "Deadzone", RequestRebuild)
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "ProbeSize", RequestRebuild)
+Config.OnChange(Config.Key.Deadzone, RequestRebuild)
+Config.OnChange(Config.Key.ProbeSize, RequestRebuild)
 -- World marker actions' macro depends on Place World Markers.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "WorldMarkerPlacement", RequestRebuild)
+Config.OnChange(Config.Key.WorldMarkerPlacement, RequestRebuild)
 -- Target markers' tap copies depend on Mark Target Markers On.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "TargetMarkerUnit", RequestRebuild)
+Config.OnChange(Config.Key.TargetMarkerUnit, RequestRebuild)
 -- Right-Click to Cancel decides whether held menus bind right click.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", RequestRebuild)
+Config.OnChange(Config.Key.RightClickDismiss, RequestRebuild)
 -- Menu Style decides what the release and the mouse do.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "MenuStyle", RequestRebuild)
+Config.OnChange(Config.Key.MenuStyle, RequestRebuild)
 -- Switching between WoW Forever's gamepad and keyboard and mouse UI: world markers' placement.
 do
     local styleWatcher = CreateFrame("Frame")
     if pcall(styleWatcher.RegisterEvent, styleWatcher, "INPUT_DEVICE_INTERFACE_TRANSITION") then
-        styleWatcher:SetScript("OnEvent", function() RequestRebuild(nil, "auto") end)
+        styleWatcher:SetScript("OnEvent", function() RequestRebuild(nil, env.ChangeReason.Auto) end)
     end
 end
 -- Flick to Select decides what the stick's release does.
-SavedVariables.OnChange("RL_RadialMenuDB_Global", "FlickToSelect", RequestRebuild)
-CallbackRegistry.Add("Config.Reset", RequestRebuild)
+Config.OnChange(Config.Key.FlickToSelect, RequestRebuild)
+CallbackRegistry.Add(env.Event.ConfigReset, RequestRebuild)
 -- Open At, Select From = Menu Center, and the fixed menu's center live in secure attributes too.
-CallbackRegistry.Add("Ring.DisplayMoved", function() RequestRebuild(nil, "auto") end)
+CallbackRegistry.Add(env.Event.DisplayMoved, function() RequestRebuild(nil, env.ChangeReason.Auto) end)
 
 Private.QueueRebuild = QueueRebuild

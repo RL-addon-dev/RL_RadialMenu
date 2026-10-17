@@ -55,7 +55,7 @@ function WidgetMixin:OnLoad(widgetInfo, root, tab)
 
     tinsert(root.__children, self)
 
-    CallbackRegistry.Add("Setting.Refresh", function(event, force)
+    CallbackRegistry.Add(Setting_Enum.Event.Refresh, function(event, force)
         self:Refresh(force)
     end)
 
@@ -154,7 +154,7 @@ function WidgetMixin:PushLocalValueToDBKey()
     if self.__currentValue == nil then return end
 
     Setting_Options.storage.set(self.__key, self.__currentValue)
-    CallbackRegistry.Trigger("Setting.Refresh")
+    CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
 end
 
 function WidgetMixin:PullDBKeyToLocalValue()
@@ -624,7 +624,7 @@ end
 do -- Custom
     --[[
         Hand-built UI inside a tab. `widgetCustom_build(parent, tab)` returns a UIKit frame
-        (already parented). If the frame has `OnSettingRefresh`, it is called on "Setting.Refresh".
+        (already parented). If the frame has `OnSettingRefresh`, it is called on Setting_Enum.Event.Refresh.
         After changing its own size, the frame should call `tab:_Render()` to relayout the tab.
     ]]
     function Build.Custom(widgetInfo, parent, root, tab)
@@ -634,7 +634,7 @@ do -- Custom
         local widget = build(parent, tab)
         assert(widget, "Custom widgetCustom_build must return a frame!")
 
-        CallbackRegistry.Add("Setting.Refresh", function()
+        CallbackRegistry.Add(Setting_Enum.Event.Refresh, function()
             if widget.OnSettingRefresh then widget:OnSettingRefresh() end
         end)
 
@@ -696,5 +696,5 @@ function Setting_Constructor:Build(origin)
 end
 
 function Setting_Constructor:Refresh(force)
-    CallbackRegistry.Trigger("Setting.Refresh", force)
+    CallbackRegistry.Trigger(Setting_Enum.Event.Refresh, force)
 end

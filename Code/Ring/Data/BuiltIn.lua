@@ -59,6 +59,8 @@ Ring_Data.LibraryCategoryOrder = {
     Ring_Data.LibraryCategory.Travel
 }
 
+--- Registers a built-in menu (see the header). Called by each Code\Ring\BuiltIns\ file.
+---@param definition BuiltInDefinition
 function Ring_Data.RegisterBuiltIn(definition)
     assert(type(definition.key) == "string" and type(definition.scan) == "function", "built-in menu needs a key and a scan")
     assert(definition.category == nil or tIndexOf(Ring_Data.LibraryCategoryOrder, definition.category),
@@ -93,7 +95,7 @@ function Ring_Data.IsBuiltIn(ring)
     return ring ~= nil and ring.builtin ~= nil
 end
 
---- Ring_Auto's refill of a built-in ring. Fires "Ring.DataChanged" with reason "auto", so the
+--- Ring_Auto's refill of a built-in ring. Fires env.Event.DataChanged with reason env.ChangeReason.Auto, so the
 --- secure rebuild it causes (after combat, if needed) doesn't announce itself.
 --- Whatever refers to a slice by position (a quick action dragged onto the center) follows that
 --- slice to its new position, or is dropped if the slice is gone. A submenu slice keeps its
@@ -123,13 +125,13 @@ function Ring_Data.SetAutoSlices(id, slices)
     ring.slices = slices
     Private.NormalizeRing(ring)
     Private.ForgetOpenableRings() -- its submenus may have changed (Consumables)
-    CallbackRegistry.Trigger("Ring.DataChanged", "auto")
+    CallbackRegistry.Trigger(env.Event.DataChanged, env.ChangeReason.Auto)
     return true
 end
 
 --- Something the rings show changed outside the ring data (the zone ability): rebuild quietly.
 function Ring_Data.NotifyDynamicChange()
-    CallbackRegistry.Trigger("Ring.DataChanged", "auto")
+    CallbackRegistry.Trigger(env.Event.DataChanged, env.ChangeReason.Auto)
 end
 
 

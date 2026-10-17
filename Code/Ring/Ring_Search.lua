@@ -15,6 +15,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Ring_Search = env.AX_Modules:New("@\\Ring\\Search")
 
 local lower, find, sub, format = string.lower, string.find, string.sub, string.format
@@ -87,10 +88,10 @@ do
     end
     frame:SetScript("OnEvent", function(_, event)
         for _, kind in ipairs(kindsByEvent[event]) do Ring_Search.Invalidate(kind) end
-        CallbackRegistry.Trigger("Ring.SearchSourcesChanged")
+        CallbackRegistry.Trigger(env.Event.SearchSourcesChanged)
     end)
 
-    CallbackRegistry.Add("Setting.HostChanged", function(_, host)
+    CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function(_, host)
         if host then
             for event in pairs(kindsByEvent) do frame:RegisterEvent(event) end
         else
