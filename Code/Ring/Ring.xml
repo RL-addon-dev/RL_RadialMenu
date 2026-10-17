@@ -13,5 +13,6 @@
     <Script file="Ring_CursorGuide.lua"/>
     <Script file="Ring_Stick.lua"/>
     <Script file="Ring_View.lua"/>
+    <Script file="Ring_Crossbar.lua"/>
     <Include file="Secure\Secure.xml"/>
 </Ui>

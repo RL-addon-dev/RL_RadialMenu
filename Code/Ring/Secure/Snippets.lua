@@ -70,9 +70,10 @@
     down, close and dismiss. All snippets share the controller's restricted environment
     (OPEN_RING, OPEN_BUTTON, RELAXED_OPEN, START_X/Y).
 
-    Controller (WoW Forever's gamepad UI only): a controller's open (GAMEPAD_OPEN): a keybind on
-    a controller button (sends "PadKey": GetBindingClick; follows the Menu Style) or a macro (/click RLRM_Ring_<id> Gamepad 1, then
-    without the 1 for the release; works like Relaxed whatever the Menu Style). While it's up the
+    Controller (WoW Forever's gamepad UI only): a controller's open (GAMEPAD_OPEN) is a click sent
+    as "Gamepad": from a keybind on a controller button (GetBindingClick), a crossbar macro or a
+    stick's dispatcher (/click RLRM_Ring_<id> Gamepad 1, then without the 1 for the release).
+    Menus work like Relaxed in that UI ("ring-relaxed", Setup.lua). While it's up the
     helper binds B (PAD2) and R3 (PADRSTICK) to close, D-pad up / down to scroll the aimed
     wedge's scroll submenu, the right stick's directions (as keys: SetStickKeys) to the menu's
     button ("Aim"), which keep the pick it leaves ("ring-sticky", which Ring_View shows), and A
@@ -95,9 +96,8 @@ local PRE_CLICK = [[
     local probe = owner:GetFrameRef("probe")
     local helper = owner:GetFrameRef("helper")
     local ringId = self:GetAttribute("ring-id")
-    -- Relaxed: the Menu Style setting, or a controller macro's click ("Gamepad": a macro can't hold
-    -- the key, so that open always works like Relaxed). A controller keybind's ("PadKey") follows
-    -- the setting.
+    -- Relaxed: the Menu Style setting (always, in WoW Forever's gamepad UI), or a controller's
+    -- click ("Gamepad": a macro can't hold the key).
     local relaxed = self:GetAttribute("ring-relaxed") or button == "Gamepad"
     -- Relaxed: a left click on the open menu ("RelaxedSelect", bound below) picks, on its release.
     local isPick = button == "RelaxedSelect"
@@ -207,7 +207,7 @@ local PRE_CLICK = [[
         OPEN_BUTTON = self
         RELAXED_OPEN = nil
         FOCUS_STOLEN = nil
-        GAMEPAD_OPEN = button == "Gamepad" or button == "PadKey"
+        GAMEPAD_OPEN = button == "Gamepad"
 
         local probeSize = self:GetAttribute("ring-probe")
         probe:ClearAllPoints()
@@ -449,5 +449,23 @@ local HELPER_CLICK = [[
     return false
 ]]
 
+-- Stick dispatcher (WoW Forever's gamepad UI): L3 / R3 bound to it once a menu uses that stick
+-- (Ring_Crossbar; Keys.lua). Its key down reads which crossbar modifiers are held (GetGamePadState,
+-- by the button indices "modifier-LEFT" / "-RIGHT"), and opens that side's menu ("menu-TOP" for
+-- the plain stick, "-LEFT", "-RIGHT", "-BOTH") like a crossbar macro: a press and release (menus
+-- work like Relaxed in that UI).
+local STICK_CLICK = [[
+    local state = GetGamePadState()
+    local buttons = state and state.buttons
+    local leftIndex, rightIndex = self:GetAttribute("modifier-LEFT"), self:GetAttribute("modifier-RIGHT")
+    local left = buttons and leftIndex and buttons[leftIndex]
+    local right = buttons and rightIndex and buttons[rightIndex]
+    local side = (left and right and "BOTH") or (left and "LEFT") or (right and "RIGHT") or "TOP"
+    local target = self:GetAttribute("menu-" .. side)
+    if not target then return false end
+    self:SetAttribute("macrotext", "/click " .. target .. " Gamepad 1\n/click " .. target .. " Gamepad")
+]]
+
 Private.PRE_CLICK = PRE_CLICK
 Private.HELPER_CLICK = HELPER_CLICK
+Private.STICK_CLICK = STICK_CLICK
