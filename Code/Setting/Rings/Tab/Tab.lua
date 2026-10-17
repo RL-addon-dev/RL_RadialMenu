@@ -247,7 +247,7 @@ end
 --- up on each use: the settings can be built before the saved variables are loaded.
 local function SavedCollapsedGroups()
     local function Stored(create)
-        local db = _G[Config.DBGlobalPersistent.databaseName]
+        local db = Config.DBGlobalPersistent:GetData()
         if not db then return nil end
         if create and type(db.MenuListCollapsed) ~= "table" then db.MenuListCollapsed = {} end
         return type(db.MenuListCollapsed) == "table" and db.MenuListCollapsed or nil

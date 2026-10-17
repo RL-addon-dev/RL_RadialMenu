@@ -1,27 +1,40 @@
 --[[
-    Ring data: startup. Runs once the saved variables are ready (env.Event.DatabaseReady):
-    runs the migrations that haven't run yet, normalizes every ring, creates the first-run menus,
-    makes sure the built-in menus exist, then fires env.Event.DataReady (Ring_Secure, Ring_Auto).
+    Ring data: start-up. Runs once the saved variables are ready (env.Event.DatabaseReady), in this
+    order.
+        1. The migrations that haven't run yet.
+        2. Normalizing every menu.
+        3. The first-run menus.
+        4. Making sure the built-in menus exist.
+        5. Firing env.Event.DataReady (Ring_Secure and Ring_Auto listen).
 
-    Migrations: one file per change to the saved data, in Migrations\ (listed in order in
-    Migrations.xml, which explains the format). Each registers itself here and runs once,
-    remembered by its own flag in the saved variables it changes (`db` = "account" or
-    "character", so a per character change runs once on every character).
+    Migrations are one file per change to the saved data, in Migrations\ (listed in order in
+    Migrations.xml, which explains the format). Each registers itself here and runs once. It's
+    remembered by its own flag in the saved variables it changes, so a per character change runs
+    once on every character.
 ]]
 
 local env = select(2, ...)
 local Config = env.Config
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 
+-- Which saved variables a migration changes (its `db`).
+Private.MigrationDB = Utils_Standard.Strict({
+    Account   = "account",   -- RL_RadialMenuDB_Global_Persistent, once per account
+    Character = "character", -- RL_RadialMenuDB_Local_Persistent, once per character
+}, "migration db")
+
 local MIGRATIONS = {} -- in the order Migrations.xml loads them
 
---- Registers a saved-data migration (one file in Migrations\). Runs once, at startup.
---- @param migration table { flag = string, db = "account" | "character", run = function(stored) }
+--- Registers a saved-data migration (one file in Migrations\). It runs once, at start-up.
+---@param migration { flag: string, db: string, run: fun(stored: table) } db is a Private.MigrationDB value
 function Private.RegisterMigration(migration)
+    local db = migration.db
     assert(type(migration.flag) == "string" and type(migration.run) == "function"
-        and (migration.db == "account" or migration.db == "character"), "migration needs a flag, a db and run")
+        and (db == Private.MigrationDB.Account or db == Private.MigrationDB.Character),
+        "migration needs a flag, a db and run")
     for _, existing in ipairs(MIGRATIONS) do
         assert(existing.flag ~= migration.flag, "migration flag used twice: " .. migration.flag)
     end
@@ -30,8 +43,8 @@ end
 
 local function RunMigrations()
     local stores = {
-        account   = _G[Config.DBGlobalPersistent.databaseName],
-        character = _G[Config.DBLocalPersistent.databaseName],
+        [Private.MigrationDB.Account]   = Config.DBGlobalPersistent:GetData(),
+        [Private.MigrationDB.Character] = Config.DBLocalPersistent:GetData(),
     }
 
     for _, migration in ipairs(MIGRATIONS) do
@@ -43,21 +56,22 @@ local function RunMigrations()
     end
 end
 
--- Menus created on the very first run, as account menus: ring templates ({ name, binding,
--- quickAction, slices }). None for now: new users start with the built-in menus.
+-- Menus created on the very first run, as account menus. Each is a menu template with a name, and
+-- optionally a binding, quickAction and slices. There are none for now, so new users start with
+-- the built-in menus.
 local FIRST_RUN_MENUS = {}
 
 local isReady = false
 
---- Runs once the saved variables are loaded (not tied to combat: only the secure rebuild is).
+--- Runs once the saved variables are loaded. It isn't tied to combat, only the secure rebuild is.
 local function Initialize()
-    -- Migrations first: they convert old data, which normalizing then checks like any other.
+    -- Migrations first. They convert old data, which normalizing then checks like any other.
     RunMigrations()
     for _, ring in ipairs(Ring_Data.GetRings()) do
         Private.NormalizeRing(ring)
     end
 
-    local persistent = _G[Config.DBGlobalPersistent.databaseName]
+    local persistent = Config.DBGlobalPersistent:GetData()
     if not persistent.Seeded then
         persistent.Seeded = true
         if #Ring_Data.GetRings() == 0 then
@@ -76,6 +90,7 @@ local function Initialize()
 end
 
 --- Whether the menus are loaded and set up (env.Event.DataReady has fired).
+---@return boolean
 function Ring_Data.IsReady()
     return isReady
 end

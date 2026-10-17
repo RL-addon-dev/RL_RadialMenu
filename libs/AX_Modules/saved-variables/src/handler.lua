@@ -8,6 +8,9 @@ local pairs = pairs
 
 local registeredDatabases = {}
 
+--- The database's saved table itself (created if the game hasn't made it yet). Use it for data
+--- that isn't a variable with a default, like lists the addon manages on its own.
+---@return table
 local function GetStoredData(self)
     local storedData = _G[self.databaseName]
     if storedData == nil then
@@ -122,6 +125,7 @@ function SavedVariables_Handler.RegisterDatabase(databaseName)
         GetVariable    = GetVariable,
         ResetVariable  = ResetVariable,
         Wipe           = WipeDatabase,
+        GetData        = GetStoredData,
         databaseName   = databaseName,
         defaultValues  = {},
         callbackPrefix = callbackPrefix

@@ -1,7 +1,7 @@
 --[[
-    Last Used is stored by slice identity (Ring_Data.GetSliceKey), not position. Older saves stored
-    the index of the slice last used in each ring: it becomes that slice's key, or is dropped when
-    the slice is gone.
+    Last Used is saved by action identity (Ring_Data.GetSliceKey), not position. Older saves held
+    the index of the action last used in each menu. It becomes that action's key, or is dropped
+    when the action is gone.
 ]]
 
 local env = select(2, ...)
@@ -10,7 +10,7 @@ local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 
 Private.RegisterMigration({
     flag = "LastUsedByKey",
-    db   = "character",
+    db   = Private.MigrationDB.Character,
     run  = function(stored)
         local lastUsed = stored.LastUsedSlice
         if type(lastUsed) ~= "table" then return end

@@ -1,41 +1,43 @@
 --[[
-    Ring data: sharing menus as text (Import / Share in the Menus tab).
+    Ring data: sharing menus as text (Import and Share in the Menus tab). It's used like this:
 
-        local text, summary = Ring_Data.BuildShare({ ringId, ... })   -- ticked menus
+        local text, summary = Ring_Data.BuildShare({ ringId, ... })   -- the ticked menus
         local plan, reason, header = Ring_Data.ReadShare(text)          -- nothing changes yet
         local ok, reason = Ring_Data.ApplyShare(plan, Ring_Data.Scope.Account)
 
-    A share holds the ticked menus and every submenu they contain. A built-in submenu travels
-    as its key only (it fills itself): on import it links to the importer's own built-in menu.
-    Not shared: keybinds, scope, a submenu's spread / scroll mode. The string is
-    ax_modules\\share-string's, header { addon = "RLRM", version, game }: only strings of this
-    game import.
+    A share holds the ticked menus and every submenu they contain. A built-in submenu travels as
+    its key only, because it fills itself, and on import it links to the importer's own built-in
+    menu. Keybinds, scope and a submenu's spread or scroll setting aren't shared. The string is
+    made by ax_modules\\share-string, with the header { addon = "RLRM", version, game }, and only
+    strings of this game import.
 
-    Payload (FORMAT_VERSION 1):
-        menus   array of { name, slices, quickAction = "custom", quickSlice }
-                (older strings' quickAction, an index into slices or "last", is ignored: the menu
-                imports without one)
-                a submenu slice is { kind = "ring", ring = <index in menus> }, or for a
-                built-in one { kind = "ring", builtin = <key> }
+    The payload (FORMAT_VERSION 1) has two parts.
+        menus   an array of { name, slices, quickAction = "custom", quickSlice }. A submenu action
+                is { kind = "ring", ring = <index in menus> }, or { kind = "ring", builtin = <key> }
+                for a built-in one. Older strings' quickAction (an index into slices, or "last") is
+                ignored, so the menu imports without one.
         macros  [name] = { icon, body }, for the macro actions
 
-    Each action kind decides how it travels (Ring_Kinds `share`): by default as it is, checked
-    by its `validate` on import. Macros carry their text and are created on import (account
-    macros); battle pets don't travel (a pet belongs to its account) except a random favorite.
+    Each action kind decides how it travels (Ring_Kinds `share`). By default it travels as it is,
+    checked by its `validate` on import. Macros carry their text and are created on import (as
+    account macros). Battle pets don't travel, because a pet belongs to its account, except a
+    random favorite.
 
-    ReadShare builds a plan: the menus with their final names ("Name (2)" on a clash), the
-    macros it will create, and what it skipped and why (Ring_Data.ShareSkip). The Import page
-    shows it; ApplyShare carries it out. Nothing from the string is ever run, but a new macro
-    can be: the page shows its text before importing.
+    ReadShare builds a plan with the menus' final names ("Name (2)" on a clash), the macros it will
+    create, and what it skipped and why (Ring_Data.ShareSkip). The Import page shows it, and
+    ApplyShare carries it out. Nothing from the string is ever run, but a new macro can be, so the
+    page shows its text before importing.
 ]]
 
 local env = select(2, ...)
+local L = env.L
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local ShareString = env.AX_Modules:Import("ax_modules\\share-string")
 local Utils_General = env.AX_Modules:Import("ax_modules\\utils\\general")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 
 local type, ipairs, pairs, tostring = type, ipairs, pairs, tostring
 
@@ -48,27 +50,40 @@ local MAX_MACRO_NAME = 16      -- the game's limit
 local MAX_MACRO_BODY = 255     -- the game's limit
 local MAX_ACCOUNT_MACROS = MAX_ACCOUNT_MACROS or 120
 
---- Why an action was left out (counted per reason in a share summary or an import plan).
-Ring_Data.ShareSkip = {
+-- Why an action was left out, counted per reason in a share summary or an import plan.
+Ring_Data.ShareSkip = Utils_Standard.Strict({
     BattlePet    = "battlepet",     -- a pet belongs to the account that has it
-    BuiltIn      = "builtin",       -- importing: a built-in submenu this game doesn't have
-    MissingMacro = "missing-macro", -- sharing: the macro no longer exists
-    MacroSlots   = "macro-slots",   -- importing: no free account macro slots
-    Invalid      = "invalid",       -- not an action of this game, or failed its checks
-    Empty        = "empty",         -- sharing: a submenu with nothing left in it
-}
+    BuiltIn      = "builtin",       -- when importing, a built-in submenu this game doesn't have
+    MissingMacro = "missing-macro", -- when sharing, the macro no longer exists
+    MacroSlots   = "macro-slots",   -- when importing, no free account macro slots
+    Invalid      = "invalid",       -- not an action of this game, or it failed its checks
+    Empty        = "empty",         -- when sharing, a submenu with nothing left in it
+}, "share skip reason")
 local Skip = Ring_Data.ShareSkip
 
+-- Why a whole import was refused (besides ShareString.Error, for a string it can't read).
+Ring_Data.ShareError = Utils_Standard.Strict({
+    Combat  = "combat",  -- macros (and menus) aren't created in combat
+    Nothing = "nothing", -- every menu in the string ends up empty
+}, "share error")
+
+-- BreakLoops' marks while it walks the submenus.
+local VISITING, VISITED = 1, 2
+
+--- Counts one more action left out for `reason`.
+---@param skipped table<string, integer> counts by Ring_Data.ShareSkip reason
+---@param reason string? Invalid when nil
 local function CountSkip(skipped, reason)
     reason = reason or Skip.Invalid
     skipped[reason] = (skipped[reason] or 0) + 1
 end
 
---- Drops the menus with nothing in them (no actions, no tap-only quick action) and the
---- submenu links to them, again while that empties a menu, then renumbers the links. Works on
---- shared menus and on a plan's (both link a submenu as { kind = "ring", ring = <index> }).
---- @return table kept the menus left, in order
---- @return table dropped { [old index] = true }
+--- Drops the menus with nothing in them (no actions and no quick action) and the submenu links
+--- to them. That can empty more menus, so it repeats, then renumbers the links. It works on shared
+--- menus and on a plan's, which both link a submenu as { kind = "ring", ring = <index> }.
+---@param menus table[]
+---@return table[] kept the menus left, in order
+---@return table<integer, boolean> dropped the old indexes of the dropped menus
 local function DropEmptyMenus(menus)
     local dropped = {}
     repeat
@@ -110,7 +125,12 @@ end
 
 -- Share
 
---- What travels for `slice`: its kind's `share.pack`, else a copy (nil, reason: left out).
+--- What travels for `slice`, from its kind's `share.pack` or else a copy. Nil and a reason when
+--- it's left out.
+---@param slice Slice
+---@param macros table the share's macros, which `share.pack` adds to
+---@return Slice? packed
+---@return string? reason a Ring_Data.ShareSkip value
 local function PackSlice(slice, macros)
     local definition = Ring_Kinds.Get(slice.kind)
     if not definition then return nil, Skip.Invalid end
@@ -118,14 +138,16 @@ local function PackSlice(slice, macros)
     return CopyTable(slice)
 end
 
---- @param ringIds table the ticked menus' ids; their submenus are added
---- @return string text "" when nothing's left to share (every menu empty)
---- @return table summary { submenus = { name, ... } (the shared ones), macros = { name, ... }
----     (their text travels too), skippedNames = { [reason] = { label, ... } } (left out) }
+--- Builds a share string from the ticked menus, adding their submenus.
+---@param ringIds (string|number)[] the ticked menus' ids
+---@return string text "" when nothing's left to share (every menu is empty)
+---@return table summary { submenus, macros, skippedNames }. `submenus` lists the shared
+---     submenus' names, `macros` the macros whose text travels too, and `skippedNames` what was
+---     left out ({ [Ring_Data.ShareSkip] = { label, ... } }).
 function Ring_Data.BuildShare(ringIds)
     -- The ticked menus, then every submenu they reach (depth first), each once. Any of them can
-    -- live elsewhere (another class's or character's, Elsewhere.lua): shared from their saved
-    -- copy, so a menu travels whole wherever its submenus live.
+    -- live elsewhere (another class's or character's, Elsewhere.lua). Those are shared from their
+    -- saved copy, so a menu travels whole wherever its submenus live.
     local rings, indexOf = {}, {}
     local function Add(id)
         local ring = Ring_Data.GetRing(id) or (Ring_Data.GetElsewhereRing(id))
@@ -139,7 +161,7 @@ function Ring_Data.BuildShare(ringIds)
     for _, id in ipairs(ringIds) do Add(id) end
 
     local menus, macros, skippedNames = {}, {}, {}
-    -- What's left out, by reason (the Share box lists it), each name once.
+    -- What's left out, by reason, each name once. The Share box lists it.
     local function AddSkip(reason, label)
         reason = reason or Skip.Invalid
         local names = skippedNames[reason] or {}
@@ -150,8 +172,8 @@ function Ring_Data.BuildShare(ringIds)
         local menu, newIndex = { name = ring.name, slices = {} }, {}
         for index, slice in ipairs(ring.slices) do
             local packed, reason
-            -- A submenu found nowhere (no saved copy: a character that hasn't logged in since)
-            -- is left out, and not listed as skipped.
+            -- A submenu found nowhere is left out, and not listed as skipped. That's one with no
+            -- saved copy, from a character that hasn't logged in since.
             local child = slice.kind == "ring" and indexOf[tostring(slice.ring)]
             local elsewhere = not child and Ring_Data.IsElsewhere(slice)
             if elsewhere then
@@ -181,7 +203,7 @@ function Ring_Data.BuildShare(ringIds)
         if center then
             local packed, reason = PackSlice(center, macros)
             if packed then
-                menu.quickAction, menu.quickSlice = "custom", packed
+                menu.quickAction, menu.quickSlice = Ring_Data.QuickAction.Custom, packed
             else
                 AddSkip(reason, Ring_Actions.GetLabel(center))
             end
@@ -189,8 +211,8 @@ function Ring_Data.BuildShare(ringIds)
         menus[menuIndex] = menu
     end
 
-    -- Menus with nothing left in them aren't shared, nor the links to them. A dropped submenu
-    -- is listed (Empty); an empty menu that was asked for leaves nothing to share.
+    -- Menus with nothing left in them aren't shared, and neither are the links to them. A dropped
+    -- submenu is listed as Empty. An empty menu that was ticked leaves nothing to share.
     local roots = {}
     for _, id in ipairs(ringIds) do
         if indexOf[tostring(id)] then roots[indexOf[tostring(id)]] = true end
@@ -220,11 +242,12 @@ end
 
 local PlanMixin = {}
 
---- A macro action's macro (kinds' `share.unpack`): the name it will have after the import.
---- The same macro (name and text) already there is used; else one is created, as "Name (2)"
---- when the name is taken. Nil, reason when there's no room or no such macro in the string.
---- @return string|nil name
---- @return string|nil reason Ring_Data.ShareSkip
+--- The name a macro action's macro will have after the import, for kinds' `share.unpack`. The
+--- same macro (name and text) already there is used. Otherwise one is created, as "Name (2)" when
+--- the name is taken. Nil and a reason when there's no room, or no such macro in the string.
+---@param name string the macro's name in the string
+---@return string? name
+---@return string? reason a Ring_Data.ShareSkip value
 function PlanMixin:ResolveMacro(name)
     if self.macroNames[name] then return self.macroNames[name] end
     local data = type(name) == "string" and self.macroData[name]
@@ -248,14 +271,17 @@ function PlanMixin:ResolveMacro(name)
     self.reservedMacros[newName] = true
     self.macros[#self.macros + 1] = {
         name = newName, sourceName = name, body = data.body,
-        icon = (type(data.icon) == "number" or type(data.icon) == "string") and data.icon or 134400,
+        icon = ((type(data.icon) == "number" or type(data.icon) == "string") and data.icon) or Ring_Kinds.QUESTION_MARK_ICON,
     }
     self.macroNames[name] = newName
     return newName
 end
 
---- An action from the string as it will be stored: its kind's `share.unpack`, then its
---- `validate`. Submenus are handled by ReadShare. Nil, reason: skipped.
+--- An action from the string as it will be saved, through its kind's `share.unpack` and then its
+--- `validate`. ReadShare handles submenus. Nil and a reason when it's skipped.
+---@param slice any
+---@return Slice? slice
+---@return string? reason a Ring_Data.ShareSkip value
 function PlanMixin:UnpackSlice(slice)
     if type(slice) ~= "table" or type(slice.kind) ~= "string" or slice.kind == "ring" then return nil, Skip.Invalid end
     local definition = Ring_Kinds.Get(slice.kind)
@@ -269,16 +295,17 @@ function PlanMixin:UnpackSlice(slice)
     return unpacked
 end
 
---- Drops submenu slices that would make menus contain each other in a loop.
+--- Drops submenu actions that would make menus contain each other in a loop.
+---@param entries table[] the plan's menus
 local function BreakLoops(entries)
-    local state = {} -- index -> "visiting" | "done"
+    local state = {} -- [index] = VISITING or VISITED
     local function Visit(index)
-        state[index] = "visiting"
+        state[index] = VISITING
         local entry = entries[index]
         for i = #entry.slices, 1, -1 do
             local slice = entry.slices[i]
             if slice.kind == "ring" and not slice.builtin then -- built-ins hold no submenus
-                if state[slice.ring] == "visiting" then
+                if state[slice.ring] == VISITING then
                     table.remove(entry.slices, i)
                     CountSkip(entry.skipped, Skip.Invalid)
                 elseif not state[slice.ring] then
@@ -286,7 +313,7 @@ local function BreakLoops(entries)
                 end
             end
         end
-        state[index] = "done"
+        state[index] = VISITED
     end
     for index in ipairs(entries) do
         if not state[index] then Visit(index) end
@@ -294,12 +321,14 @@ local function BreakLoops(entries)
 end
 
 --- Reads a share string into an import plan. Nothing changes until ApplyShare.
---- @return table|nil plan {
----     menus   = { { name, sourceName, slices, quickAction, quickSlice, parent = index?,
----                   skipped = { [Ring_Data.ShareSkip] = count } }, ... },
----     macros  = { { name, sourceName, body, icon }, ... } }  -- to create
---- @return string|nil reason a ShareString.Error, or Ring_Data.ShareError.Nothing, when refused
---- @return table|nil header when refused after it could be read (header.game: the other game)
+---
+--- The plan has `menus`, each { name, sourceName, slices, quickAction, quickSlice, parent?,
+--- skipped }, where `skipped` counts what was left out by Ring_Data.ShareSkip reason. It also has
+--- `macros` to create, each { name, sourceName, body, icon }.
+---@param text string
+---@return table? plan
+---@return string? reason a ShareString.Error, or Ring_Data.ShareError.Nothing, when refused
+---@return table? header when refused after the header could be read (header.game is the other game)
 function Ring_Data.ReadShare(text)
     local payload, headerOrError, refusedHeader = ShareString.Decode(text, {
         addon = ADDON, maxVersion = FORMAT_VERSION, game = env.GAME_VERSION,
@@ -318,7 +347,7 @@ function Ring_Data.ReadShare(text)
             return nil, ShareString.Error.Invalid
         end
         local sourceName = type(menu.name) == "string" and strtrim(menu.name) or ""
-        if sourceName == "" then sourceName = "Menu" end
+        if sourceName == "" then sourceName = L["Config - Rings - NewRing - DefaultName"] end
 
         local entry = { sourceName = sourceName, slices = {}, skipped = {} }
         for _, slice in ipairs(menu.slices) do
@@ -329,7 +358,7 @@ function Ring_Data.ReadShare(text)
                 if type(child) == "number" and menus[child] and child ~= menuIndex then
                     unpacked = { kind = "ring", ring = child }
                 elseif builtIn then
-                    -- This character's own built-in menu: linked as is (stored id, not an index).
+                    -- This character's own built-in menu, linked by its saved id (not an index).
                     unpacked = { kind = "ring", ring = builtIn.id, builtin = true }
                 else
                     reason = type(slice.builtin) == "string" and Skip.BuiltIn or Skip.Invalid
@@ -344,7 +373,7 @@ function Ring_Data.ReadShare(text)
             end
         end
 
-        if menu.quickAction == "custom" then
+        if menu.quickAction == Ring_Data.QuickAction.Custom then
             local quickSlice, reason = plan:UnpackSlice(menu.quickSlice)
             if quickSlice then
                 entry.quickAction, entry.quickSlice = Ring_Data.QuickAction.Custom, quickSlice
@@ -356,7 +385,7 @@ function Ring_Data.ReadShare(text)
     end
 
     BreakLoops(plan.menus)
-    -- Nothing left in a menu (all its actions skipped): it isn't created.
+    -- A menu with nothing left in it (all its actions skipped) isn't created.
     plan.menus = DropEmptyMenus(plan.menus)
     if #plan.menus == 0 then return nil, Ring_Data.ShareError.Nothing end
 
@@ -367,7 +396,7 @@ function Ring_Data.ReadShare(text)
         takenNames[entry.name] = true
     end
 
-    -- Submenus: shown under the menu that contains them (the first one found).
+    -- Each submenu is shown under the first menu found that contains it.
     for index, entry in ipairs(plan.menus) do
         for _, slice in ipairs(entry.slices) do
             if slice.kind == "ring" and not slice.builtin and not plan.menus[slice.ring].parent then
@@ -382,14 +411,11 @@ end
 
 -- Import: carrying it out
 
-Ring_Data.ShareError = {
-    Combat  = "combat",  -- macros (and menus) aren't created in combat
-    Nothing = "nothing", -- reading: every menu in the string ends up empty
-}
-
---- Creates the plan's macros and menus (new ones, nothing is replaced) in `scope`.
---- @return boolean ok
---- @return string|table reasonOrRings Ring_Data.ShareError, or the menus created (plan order)
+--- Creates the plan's macros and menus in `scope`. They're all new, nothing is replaced.
+---@param plan table from Ring_Data.ReadShare
+---@param scope string a Ring_Data.Scope value
+---@return boolean ok
+---@return string|Ring[] reasonOrRings a Ring_Data.ShareError value, or the menus created in plan order
 function Ring_Data.ApplyShare(plan, scope)
     if InCombatLockdown() then return false, Ring_Data.ShareError.Combat end
 
@@ -397,7 +423,7 @@ function Ring_Data.ApplyShare(plan, scope)
         CreateMacro(macro.name, macro.icon, macro.body, false) -- account macro
     end
 
-    -- Every menu first, so submenu slices can point at their new ids.
+    -- Every menu first, so submenu actions can point at their new ids.
     local rings = {}
     for index, entry in ipairs(plan.menus) do
         rings[index] = Ring_Data.CreateRing(entry.name, scope)

@@ -92,7 +92,7 @@ local function UpdateAnchorSize()
 end
 
 local function GetSavedPositions()
-    local stored = _G[Config.DBGlobalPersistent.databaseName]
+    local stored = Config.DBGlobalPersistent:GetData()
     if type(stored.EditModePositions) ~= "table" then stored.EditModePositions = {} end
     return stored.EditModePositions
 end
