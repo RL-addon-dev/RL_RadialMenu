@@ -42,6 +42,9 @@ env.AX_SettingsOptions = {
     getSchema = function()        -- required: called once, when the UI is first shown
         return env.AX_Modules:Import("@\\Setting\\Schema").SCHEMA
     end,
+    showInOptions = function()    -- optional: return false to leave the settings out of
+        return true               --   Options -> AddOns; asked once, at load (Blizzard's
+    end,                          --   settings can't remove a category later)
 }
 ```
 
@@ -98,7 +101,7 @@ loaded by the library).
 | `Range` | `widgetRange_min`, `_max`, `_step` (required; numbers or functions, re-read on refresh when both min and max are functions), `widgetRange_textFormatting` (`"%s%%"`) or `widgetRange_textFormattingFunc(value)` | number (`key` required) | `set(slider, value, userInput)` |
 | `Button` | `widgetButton_text` (required), `widgetButton_refreshOnClick` | — | `set(button)` on click |
 | `CheckButton` | — | boolean | `set(widget, checked)` |
-| `SelectionMenu` | `widgetSelectionMenu_data` (list of labels, or a function returning it) | index into the list | `set(menu, index)` |
+| `SelectionMenu` | `widgetSelectionMenu_data` (list of labels, or a function returning it: re-read on every refresh) | index into the list | `set(menu, index)` |
 | `ColorInput` | — | `{ r, g, b }` (0–1) | `set(colorInput, color)` |
 | `Input` | `widgetInput_placeholder` | string | `set(input, text)` (typing only) |
 | `Custom` | `widgetCustom_build(parent, tab) -> frame` (required) | — | — |

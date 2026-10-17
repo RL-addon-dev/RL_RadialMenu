@@ -11,6 +11,7 @@
     <Script file="Ring_Display.lua"/>
     <Include file="Layout\Layout.xml"/>
     <Script file="Ring_CursorGuide.lua"/>
+    <Script file="Ring_Stick.lua"/>
     <Script file="Ring_View.lua"/>
-    <Script file="Ring_Secure.lua"/>
+    <Include file="Secure\Secure.xml"/>
 </Ui>

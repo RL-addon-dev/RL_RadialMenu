@@ -16,6 +16,11 @@ Included libraries:
 - libs\LibEditMode  by Adrian L Lange (p3lim), unmodified, under its own licence
                     (libs\LibEditMode\LICENSE.txt), included as a separate work
 
+Techniques adapted from other addons (no code included):
+- Code\Ring\Ring_Stick.lua  keeping the right stick from turning the camera follows the technique
+                            in ConsolePort by Sebastian Lindfors (Controller\Radial.lua), under the
+                            Artistic License 2.0
+
 Included artwork:
 - Art\Symbols       emote symbols from game-icons.net (https://game-icons.net) by Lorc,
                     Delapouite, Caro Asercion and Cathelineau, under the Creative Commons

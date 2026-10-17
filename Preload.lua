@@ -40,6 +40,18 @@ function env.IsForThisGame(versions)
     return false
 end
 
+--- Whether WoW Forever's gamepad UI is on (always false on retail). Every controller feature
+--- checks this: controller support only exists in that UI. It changes with
+--- "INPUT_DEVICE_INTERFACE_TRANSITION" (Forever only).
+do
+    local C_InputInterfaceStyle = _G["C_InputInterfaceStyle"]
+    local InterfaceType = Enum and Enum["InputDeviceInterfaceType"]
+    function env.IsGamepadUI()
+        return C_InputInterfaceStyle ~= nil and InterfaceType ~= nil
+            and C_InputInterfaceStyle.GetCurrentStyle() == InterfaceType.Gamepad
+    end
+end
+
 --- Whether this client has `event`: registering one it doesn't have is an error, and the game
 --- versions don't share every event (WoW Forever lacks some of retail's).
 function env.IsEventValid(event)

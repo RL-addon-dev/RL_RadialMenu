@@ -16,6 +16,9 @@
                 set = function(position) end,
             },
             getSchema      = function() end,     -- the schema (called when the UI is first built)
+            showInOptions  = function() end,     -- optional: false to leave the settings out of
+                                                 --   Options -> AddOns (asked once, at load;
+                                                 --   Blizzard's settings can't remove it later)
         }
 ]]
 
@@ -42,3 +45,4 @@ Setting_Options.title = options.title or options.prefix
 Setting_Options.storage = options.storage
 Setting_Options.windowPosition = options.windowPosition
 Setting_Options.getSchema = options.getSchema
+Setting_Options.showInOptions = options.showInOptions

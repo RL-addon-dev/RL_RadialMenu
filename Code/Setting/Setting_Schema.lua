@@ -32,11 +32,22 @@ end
 local function IsFixed() return Ring_Display.IsFixed() end
 local function UsesCursorGuide() return Ring_Display.IsFixed() and not Ring_Display.IsSelectFromMenu() end
 local function IsRelaxed() return Config.DBGlobal:GetVariable("MenuStyle") == env.Enum.MenuStyle.Relaxed end
+-- Playing with a controller (WoW Forever's gamepad UI): settings about the mouse are hidden (their
+-- values still apply to menus opened with the keyboard or mouse), and controller ones shown.
+local function IsController() return env.IsGamepadUI() end
+local function IsMouse() return not env.IsGamepadUI() end
 
 -- Menu Style decides whether Reveal Delay shows, and its own description.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "MenuStyle", function() CallbackRegistry.Trigger("Setting.Refresh") end)
 -- Right-Click to Cancel changes how the Menu Style description says the menu cancels or closes.
 SavedVariables.OnChange("RL_RadialMenuDB_Global", "RightClickDismiss", function() CallbackRegistry.Trigger("Setting.Refresh") end)
+-- Switching between the gamepad and the keyboard and mouse UI (WoW Forever) shows other settings.
+do
+    local styleWatcher = CreateFrame("Frame")
+    if pcall(styleWatcher.RegisterEvent, styleWatcher, "INPUT_DEVICE_INTERFACE_TRANSITION") then
+        styleWatcher:SetScript("OnEvent", function() CallbackRegistry.Trigger("Setting.Refresh") end)
+    end
+end
 
 --- Behavior settings describe distances from where they're measured: the key-down spot, or the
 --- fixed menu's center with Select From = Menu Center.
@@ -76,10 +87,15 @@ do -- Schema
                         {
                             widgetName               = L["Config - Behavior - MenuStyle"],
                             widgetDescription        = Setting_Define.Descriptor{ description = function()
-                                -- The chosen style's own description; how it cancels or closes
-                                -- depends on Right-Click to Cancel.
+                                -- The chosen style's own description: with a controller, its
+                                -- buttons; else how it cancels or closes, which depends on
+                                -- Right-Click to Cancel.
                                 local key = "Config - Behavior - MenuStyle - Description - " .. (IsRelaxed() and "Relaxed" or "Quick")
-                                if Config.DBGlobal:GetVariable("RightClickDismiss") then key = key .. " - RightClick" end
+                                if IsController() then
+                                    key = key .. " - Controller"
+                                elseif Config.DBGlobal:GetVariable("RightClickDismiss") then
+                                    key = key .. " - RightClick"
+                                end
                                 return L[key]
                             end },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
@@ -88,6 +104,13 @@ do -- Schema
                                 L["Config - Behavior - MenuStyle - Relaxed"]
                             },
                             key                      = "MenuStyle"
+                        },
+                        {
+                            widgetName        = L["Config - Behavior - FlickToSelect"],
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - Behavior - FlickToSelect - Description"] },
+                            widgetType        = Setting_Enum.WidgetType.CheckButton,
+                            key               = "FlickToSelect",
+                            showWhen          = IsController
                         },
                         {
                             widgetName                     = L["Config - Behavior - RevealDelay"],
@@ -105,14 +128,16 @@ do -- Schema
                             widgetName        = L["Config - Behavior - RightClickDismiss"],
                             widgetDescription = Setting_Define.Descriptor{ description = L["Config - Behavior - RightClickDismiss - Description"] },
                             widgetType        = Setting_Enum.WidgetType.CheckButton,
-                            key               = "RightClickDismiss"
+                            key               = "RightClickDismiss",
+                            showWhen          = IsMouse
                         }
                     }
                 },
-                -- How far the mouse moves to pick an action.
+                -- How far the mouse moves to pick an action (the right stick's tilt is fixed).
                 {
                     widgetName = L["Config - General - Selection"],
                     widgetType = Setting_Enum.WidgetType.Container,
+                    showWhen   = IsMouse,
                     children   = {
                         {
                             widgetName                 = L["Config - Behavior - Deadzone"],
@@ -159,7 +184,8 @@ do -- Schema
                                 L["Config - Display - SelectFrom - Menu"]
                             },
                             key                      = "SelectFrom",
-                            showWhen          = IsFixed
+                            -- The right stick picks by its own direction, wherever the menu is.
+                            showWhen                 = function() return IsFixed() and IsMouse() end
                         },
                         {
                             widgetName        = L["Config - Display - EditMode"],
@@ -210,15 +236,16 @@ do -- Schema
                             widgetDescription = Setting_Define.Descriptor{ description = L["Config - Display - CursorGuide - Description"] },
                             widgetType        = Setting_Enum.WidgetType.CheckButton,
                             key               = "CursorGuide",
-                            -- Not with Select From = Menu Center: there you point at the menu itself.
-                            showWhen          = UsesCursorGuide
+                            -- Not with Select From = Menu Center: there you point at the menu
+                            -- itself. Nor with a controller: there's no mouse gesture to outline.
+                            showWhen          = function() return UsesCursorGuide() and IsMouse() end
                         },
                         {
                             widgetName        = L["Config - Display - CursorGuideColor"],
                             widgetDescription = Setting_Define.Descriptor{ description = L["Config - Display - CursorGuideColor - Description"] },
                             widgetType        = Setting_Enum.WidgetType.ColorInput,
                             key               = "CursorGuideColor",
-                            showWhen          = function() return UsesCursorGuide() and Config.DBGlobal:GetVariable("CursorGuide") end
+                            showWhen          = function() return UsesCursorGuide() and IsMouse() and Config.DBGlobal:GetVariable("CursorGuide") end
                         }
                     }
                 },
@@ -239,24 +266,34 @@ do -- Schema
                                 L["Config - Behavior - WorldMarkerPlacement - Mouse"],
                                 L["Config - Behavior - WorldMarkerPlacement - Click"]
                             },
-                            key                      = "WorldMarkerPlacement"
+                            key                      = "WorldMarkerPlacement",
+                            -- With a controller, world markers are always placed with the reticle
+                            -- (Kinds\WorldMarker.lua): there's no mouse to place them under.
+                            showWhen                 = IsMouse
                         },
                         {
                             widgetName               = L["Config - Behavior - TargetMarkerUnit"],
                             widgetDescription        = Setting_Define.Descriptor{ description = function()
                                 -- The chosen option's own description (the Cursor ones: their limits, in yellow).
+                                -- With a controller, the cursor is the reticle.
                                 local value = Config.DBGlobal:GetVariable("TargetMarkerUnit")
+                                local suffix = IsController() and " - Controller" or ""
                                 for name, enumValue in pairs(env.Enum.TargetMarkerUnit) do
-                                    if enumValue == value then return L["Config - Behavior - TargetMarkerUnit - Description - " .. name] end
+                                    if enumValue == value and name ~= "Target" then
+                                        return L["Config - Behavior - TargetMarkerUnit - Description - " .. name .. suffix]
+                                    end
                                 end
                                 return L["Config - Behavior - TargetMarkerUnit - Description - Target"]
                             end },
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
-                            widgetSelectionMenu_data = { -- in env.Enum.TargetMarkerUnit's order (Config.lua)
-                                L["Config - Behavior - TargetMarkerUnit - Target"],
-                                L["Config - Behavior - TargetMarkerUnit - Cursor"],
-                                L["Config - Behavior - TargetMarkerUnit - CursorFocus"]
-                            },
+                            widgetSelectionMenu_data = function() -- in env.Enum.TargetMarkerUnit's order (Config.lua)
+                                local suffix = IsController() and " - Controller" or ""
+                                return {
+                                    L["Config - Behavior - TargetMarkerUnit - Target"],
+                                    L["Config - Behavior - TargetMarkerUnit - Cursor" .. suffix],
+                                    L["Config - Behavior - TargetMarkerUnit - CursorFocus" .. suffix]
+                                }
+                            end,
                             key                      = "TargetMarkerUnit"
                         }
                     }
@@ -311,6 +348,14 @@ do -- Schema
                             widgetName        = L["Config - About - Inspirations - Opie"],
                             widgetType        = Setting_Enum.WidgetType.Text,
                             widgetDescription = Setting_Define.Descriptor{ description = L["Config - About - Inspirations - Opie - Description"] },
+                            widgetTransparent = true
+                        },
+                        {
+                            -- Its technique keeps the right stick off the camera (Ring_Stick.lua);
+                            -- also credited in README and NOTICE.
+                            widgetName        = L["Config - About - Inspirations - ConsolePort"],
+                            widgetType        = Setting_Enum.WidgetType.Text,
+                            widgetDescription = Setting_Define.Descriptor{ description = L["Config - About - Inspirations - ConsolePort - Description"] },
                             widgetTransparent = true
                         },
                     }

@@ -22,6 +22,11 @@ local KEYBIND_SAVED = {
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
+--- How to set a keybind: controller buttons only while they can be captured (env.IsGamepadUI).
+local function KeybindDescription()
+    return L[env.IsGamepadUI() and "Config - Rings - Keybind - Description - Controller" or "Config - Rings - Keybind - Description"]
+end
+
 
 
 --- Fills the rows for `ring` (called by RefreshSettings). `isUpdating` keeps the rows' change
@@ -122,7 +127,7 @@ function PageMixin:RefreshKeybindRow(ring)
     -- keybinding (the menu's override wins while bound).
     local _, scope = Ring_Data.GetRing(ring.id)
     local description = format(L[KEYBIND_SAVED[scope] or KEYBIND_SAVED.account], Ring_Data.GetScopeWhere(scope))
-        .. " " .. L["Config - Rings - Keybind - Description"]
+        .. " " .. KeybindDescription()
     local conflict = key and Rings_Keybind.GetBlizzardConflict(key)
     if conflict then
         description = description .. "\n|cffffd100" .. format(L["Config - Rings - Keybind - Conflict"], conflict) .. "|r"
@@ -230,7 +235,7 @@ function Private.SetupSettingRows(page)
     end)
     nameInput:HookScript("OnEditFocusLost", function() page:CommitName() end)
 
-    page.KeybindRow:SetInfo(L["Config - Rings - Keybind"], L["Config - Rings - Keybind - Description"])
+    page.KeybindRow:SetInfo(L["Config - Rings - Keybind"], KeybindDescription())
     local keybindButton = page.KeybindRow:GetButton()
     -- Remember which mouse button pressed it: right-click clears instead of capturing.
     keybindButton:HookScript("OnMouseDown", function(_, mouseButton) keybindButton.lastMouseButton = mouseButton end)

@@ -216,7 +216,8 @@ function PreviewMixin:SetRing(ring)
     end
     local hasTapOnly = ring ~= nil and Ring_Data.GetQuickActionSlice(ring) ~= nil
     wheel:SetSlices(displaySlices, nil, hasTapOnly)
-    wheel:SetScrollBadges(slices)
+    -- Scroll submenus show what scrolls them in game: the D-pad when playing with a controller.
+    wheel:SetScrollBadges(slices, nil, env.IsGamepadUI())
     wheel:SetConditionBadges(slices)
     for i = 1, #wheel.Wedges do
         local wedge = wheel.Wedges[i]
