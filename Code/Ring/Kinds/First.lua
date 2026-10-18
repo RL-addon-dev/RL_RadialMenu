@@ -35,7 +35,7 @@ Ring_Kinds.Register({
 
     apply = function(button, suffix)
         Ring_Kinds.ClearAction(button, suffix)
-        Ring_Kinds.SetAttribute(button, "first", suffix, true)
+        Ring_Kinds.SetAttribute(button, Ring_Kinds.ActionAttribute.First, suffix, true)
     end,
 
     icon  = function() return ICON_PATH:format(Path.Root) end,

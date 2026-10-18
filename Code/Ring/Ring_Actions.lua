@@ -16,11 +16,13 @@ local Ring_Actions = env.AX_Modules:New("@\\Ring\\Actions")
 -- Every secure attribute a kind may set. They're cleared before applying an action, so nothing is
 -- left over from what this suffix held before a rebuild (another action, or another mode of the
 -- same one).
-local SLICE_ATTRIBUTES = { "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton",
-    "pagedbutton", -- Action Bar 1 buttons follow the bar's page (Kinds\ActionBar.lua)
-    "close",       -- a Close action, where picking it is a cancel (Kinds\Close.lua)
-    "lastused",    -- a Last Used action, which fires the menu's last used action (Kinds\LastUsed.lua)
-    "first" }      -- a First Action, which fires the menu's first wedge (Kinds\First.lua)
+local SLICE_ATTRIBUTES = {
+    -- The game's own.
+    "type", "spell", "item", "toy", "macro", "macrotext", "action", "marker", "unit", "clickbutton",
+    -- The addon's own (Ring_Kinds.ActionAttribute).
+    Ring_Kinds.ActionAttribute.PagedButton, Ring_Kinds.ActionAttribute.Close,
+    Ring_Kinds.ActionAttribute.LastUsed, Ring_Kinds.ActionAttribute.First,
+}
 
 --- Sets the attributes for `slice` under button suffix `suffix` ("*type-<suffix>", ...). Call it
 --- out of combat.

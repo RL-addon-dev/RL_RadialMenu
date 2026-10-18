@@ -15,7 +15,7 @@ Ring_Kinds.Register({
 
     apply = function(button, suffix)
         Ring_Kinds.ClearAction(button, suffix)
-        Ring_Kinds.SetAttribute(button, "lastused", suffix, true)
+        Ring_Kinds.SetAttribute(button, Ring_Kinds.ActionAttribute.LastUsed, suffix, true)
     end,
 
     icon  = function() return Ring_Kinds.QUESTION_MARK_ICON end,
