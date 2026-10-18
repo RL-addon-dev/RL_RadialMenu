@@ -59,7 +59,7 @@ Ring_Kinds.Register({
         label   = "ring",
         dynamic = true, -- the menus' ids
         scan    = function(add)
-            for _, key in ipairs(Ring_Kinds.EQUIP_MENU_KEYS or {}) do
+            for _, key in ipairs(Ring_Data.EQUIP_MENU_KEYS or {}) do
                 local ring = Ring_Data.GetBuiltInRing(key)
                 if ring then add({ kind = Ring_Kinds.Kind.Ring, ring = ring.id }, ring.name) end
             end

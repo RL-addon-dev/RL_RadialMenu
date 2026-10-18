@@ -1,5 +1,5 @@
 --[[
-    Specializations: every spec of your class; your current one is hidden (its kind's visibility
+    Specializations: every spec of your class. Your current one is hidden (its kind's visibility
     rule), so the menu offers the specs you can switch to.
 ]]
 
@@ -15,8 +15,8 @@ Ring_Data.RegisterBuiltIn({
     versions = { env.GameVersion.Retail },
     events   = { "PLAYER_SPECIALIZATION_CHANGED" },
     scan     = function()
-        local slices = {}
-        Utils_Spec.ForEachSpec(function(_, specID) slices[#slices + 1] = { kind = Ring_Kinds.Kind.Spec, id = specID } end)
-        return slices
+        local specIDs = {}
+        Utils_Spec.ForEachSpec(function(_, specID) specIDs[#specIDs + 1] = specID end)
+        return Ring_Data.MakeSlices(Ring_Kinds.Kind.Spec, specIDs)
     end,
 })

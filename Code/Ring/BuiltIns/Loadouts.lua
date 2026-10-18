@@ -1,6 +1,6 @@
 --[[
-    Talent Loadouts: your current spec's saved loadouts; the active one is hidden (its kind's
-    visibility rule). Refills when you switch spec or save, rename or delete a loadout.
+    Talent Loadouts: your current spec's saved loadouts. The active one is hidden (its kind's
+    visibility rule). The menu refills when you switch spec, or save, rename or delete a loadout.
 ]]
 
 local env = select(2, ...)
@@ -15,11 +15,8 @@ Ring_Data.RegisterBuiltIn({
     versions = { env.GameVersion.Retail },
     events   = { "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_LIST_UPDATED", "TRAIT_CONFIG_UPDATED" },
     scan     = function()
-        local slices = {}
         local _, specID = Utils_Spec.GetCurrentSpec()
-        for _, configID in ipairs(specID and C_ClassTalents.GetConfigIDsBySpecID(specID) or {}) do
-            slices[#slices + 1] = { kind = Ring_Kinds.Kind.Loadout, id = configID, spec = specID }
-        end
-        return slices
+        local configIDs = (specID and C_ClassTalents.GetConfigIDsBySpecID(specID)) or {}
+        return Ring_Data.MakeSlices(Ring_Kinds.Kind.Loadout, configIDs, nil, { spec = specID })
     end,
 })

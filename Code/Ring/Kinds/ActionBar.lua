@@ -178,7 +178,7 @@ Ring_Kinds.Register({
         dynamic = true, -- the menus' ids
         scan    = function(add)
             for bar = 1, NUM_BARS do
-                local ring = Ring_Data.GetBuiltInRing("actionbar" .. bar)
+                local ring = Ring_Data.GetActionBarRing(bar)
                 local candidate = ring and add({ kind = Ring_Kinds.Kind.Ring, ring = ring.id }, ring.name)
                 if candidate then
                     candidate.note = (bar == 1 and L["Config - Rings - ActionBar - Note - Paged"])

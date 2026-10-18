@@ -1,5 +1,5 @@
 --[[
-    Equipment Sets: your Equipment Manager sets; the one you're wearing is hidden (its kind's
+    Equipment Sets: your Equipment Manager sets. The one you're wearing is hidden (its kind's
     visibility rule), so the menu offers the sets you can switch to.
 ]]
 
@@ -9,13 +9,13 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 Ring_Data.RegisterBuiltIn({
-    key    = "equipsets",
+    key      = "equipsets",
     category = Ring_Data.LibraryCategory.Equipment,
-    name   = "Config - Rings - EquipSetRing - Name",
-    events = { "EQUIPMENT_SETS_CHANGED" },
-    scan   = function()
-        local slices = {}
-        Utils_Item.ForEachEquipmentSet(function(name) slices[#slices + 1] = { kind = Ring_Kinds.Kind.EquipSet, name = name } end)
-        return slices
+    name     = "Config - Rings - EquipSetRing - Name",
+    events   = { "EQUIPMENT_SETS_CHANGED" },
+    scan     = function()
+        local names = {}
+        Utils_Item.ForEachEquipmentSet(function(name) names[#names + 1] = name end)
+        return Ring_Data.MakeSlices(Ring_Kinds.Kind.EquipSet, names, "name")
     end,
 })

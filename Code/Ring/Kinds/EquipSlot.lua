@@ -13,6 +13,7 @@ local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 -- Every gear slot except the shirt, in paper doll order. The Gear built-in menu uses it too.
 local SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 }
+Ring_Kinds.GEAR_SLOTS = SLOTS
 
 --- Whether the item equipped in `slot` has a use effect.
 ---@param slot integer
@@ -24,7 +25,6 @@ end
 
 Ring_Kinds.Register({
     kind  = Ring_Kinds.Kind.EquipSlot,
-    slots = SLOTS,
 
     ---@param slice EquipSlotSlice
     validate = function(slice)

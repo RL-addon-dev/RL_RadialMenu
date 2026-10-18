@@ -1,5 +1,5 @@
 --[[
-    Zone and Extra: the Extra Action Button and the zone ability. Both are always in the menu and
+    Zone and Extra: the Extra Action Button and the zone ability. Both are always in the menu, and
     hide while there's none (their kinds' visibility rules).
 ]]
 
@@ -8,11 +8,11 @@ local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
-    key  = "special",
+    key      = "special",
     category = Ring_Data.LibraryCategory.Situational,
-    name = "Config - Rings - SpecialRing - Name",
+    name     = "Config - Rings - SpecialRing - Name",
     versions = { env.GameVersion.Retail },
-    scan = function()
+    scan     = function()
         return { { kind = Ring_Kinds.Kind.Extra }, { kind = Ring_Kinds.Kind.Zone } }
     end,
 })

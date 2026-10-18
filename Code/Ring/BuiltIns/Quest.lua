@@ -1,48 +1,42 @@
 --[[
-    Quest Items: the items the quest log offers (the objective tracker's item buttons), plus
-    usable quest items and quest starters in the bags. Each hides while you don't have it.
+    Quest Items: the items the quest log offers (the objective tracker's item buttons), plus usable
+    quest items and quest starters in the bags. Each hides while you don't have it.
 
-    WoW Forever has the older quest log API (GetQuestLogTitle) and no quest log item buttons:
-    there, only the bags are searched. Each call below uses whichever the client has.
+    The quest log part uses whichever quest log API the client has (C_QuestLog, or the older
+    GetQuestLogTitle). Without quest log item buttons (GetQuestLogSpecialItemInfo), only the bags
+    are searched.
 ]]
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 local GetNumEntries = (C_QuestLog and C_QuestLog.GetNumQuestLogEntries) or GetNumQuestLogEntries
-local GetItemSpell = (C_Item and C_Item.GetItemSpell) or GetItemSpell
-local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
-local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
-local GetContainerItemQuestInfo = (C_Container and C_Container.GetContainerItemQuestInfo) or GetContainerItemQuestInfo
-local LAST_BAG = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4
 
---- Quest log entry `index`: its quest id and whether it's complete, or nil for a header.
+--- Quest log entry `index`, its quest id and whether it's complete. Nil for a header.
+---@param index integer
+---@return number? questID
+---@return boolean? isComplete
 local function GetQuestEntry(index)
     if C_QuestLog and C_QuestLog.GetInfo then
         local info = C_QuestLog.GetInfo(index)
         if not info or info.isHeader or not info.questID then return nil end
         return info.questID, C_QuestLog.IsComplete(info.questID)
     end
-    -- Older API: title, level, suggestedGroup, isHeader, isCollapsed, isComplete (1 / -1 / nil), frequency, questID
+    -- The older API returns title, level, suggestedGroup, isHeader, isCollapsed, isComplete
+    -- (1, -1 or nil), frequency and questID.
     local title, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(index)
     if not title or isHeader then return nil end
     return questID, isComplete == 1
 end
 
---- What a bag slot's item is to quests. The older API returns values instead of a table.
---- @return boolean|nil isQuestItem, number|nil questID, boolean|nil isActive
-local function GetBagItemQuestInfo(bag, slot)
-    local info, questID, isActive = GetContainerItemQuestInfo(bag, slot)
-    if type(info) == "table" then return info.isQuestItem, info.questID, info.isActive end
-    return info, questID, isActive
-end
-
--- Item ids found to be neither a quest item nor a quest starter: that never changes for an item,
+-- Item ids found to be neither a quest item nor a quest starter. That never changes for an item,
 -- so later scans skip the quest lookup for them (most of the bags).
 local notQuest = {}
 
---- Item ids, in quest log order, then bag order.
+--- The quest items to offer, in quest log order, then bag order.
+---@return number[] itemIDs
 local function ScanQuestItems()
     local itemIDs, seen = {}, {}
     local function Add(itemID)
@@ -52,7 +46,7 @@ local function ScanQuestItems()
         end
     end
 
-    -- Quest log items (what the objective tracker shows a button for).
+    -- Quest log items, which the objective tracker shows a button for.
     if GetQuestLogSpecialItemInfo then
         for index = 1, GetNumEntries() do
             local questID, isComplete = GetQuestEntry(index)
@@ -65,34 +59,26 @@ local function ScanQuestItems()
         end
     end
 
-    -- Bags: usable quest items, and items that start a quest you don't have yet.
-    for bag = 0, LAST_BAG do
-        for slot = 1, GetContainerNumSlots(bag) or 0 do
-            local itemID = GetContainerItemID(bag, slot)
-            if itemID and not notQuest[itemID] then
-                local isQuestItem, questID, isActive = GetBagItemQuestInfo(bag, slot)
-                if not isQuestItem and not questID then
-                    notQuest[itemID] = true
-                elseif (isQuestItem and GetItemSpell(itemID)) or (questID and not isActive) then
-                    Add(itemID)
-                end
-            end
+    -- Usable quest items in the bags, and items that start a quest you don't have yet.
+    Utils_Item.ForEachBagItem(function(bag, slot, itemID)
+        if notQuest[itemID] then return end
+        local info = C_Container.GetContainerItemQuestInfo(bag, slot)
+        if not info.isQuestItem and not info.questID then
+            notQuest[itemID] = true
+        elseif (info.isQuestItem and C_Item.GetItemSpell(itemID)) or (info.questID and not info.isActive) then
+            Add(itemID)
         end
-    end
+    end)
 
     return itemIDs
 end
 
 Ring_Data.RegisterBuiltIn({
-    key    = "quest",
+    key      = "quest",
     category = Ring_Data.LibraryCategory.Situational,
-    name   = "Config - Rings - QuestRing - Name",
+    name     = "Config - Rings - QuestRing - Name",
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     -- Events a client doesn't have are skipped (Ring_Auto).
-    events = { "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED" },
-    scan   = function()
-        local slices = {}
-        for i, itemID in ipairs(ScanQuestItems()) do slices[i] = { kind = Ring_Kinds.Kind.Item, id = itemID } end
-        return slices
-    end,
+    events   = { "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED" },
+    scan     = function() return Ring_Data.MakeSlices(Ring_Kinds.Kind.Item, ScanQuestItems()) end,
 })

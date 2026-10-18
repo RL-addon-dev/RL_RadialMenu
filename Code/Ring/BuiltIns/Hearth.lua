@@ -1,6 +1,6 @@
 --[[
-    Hearthstones: the Hearthstone (while it's in your bags), every hearthstone toy you own, then
-    housing: Teleport Home to each neighborhood you have a house in, and Return.
+    Hearthstones: the Hearthstone (while it's in your bags) and every hearthstone toy you own. Then
+    come the housing actions, Teleport Home to each neighborhood you have a house in, and Return.
 ]]
 
 local env = select(2, ...)
@@ -11,12 +11,13 @@ local Utils_Housing = env.AX_Modules:Import("@\\Utils\\Housing")
 local HEARTHSTONE_ITEM = 6948
 
 -- Hearthstone toys (item ids), in the order the menu lists them. The game has no "this is a
--- hearthstone" flag, so new ones need adding here; ids you don't own (or that don't exist on
--- this client) are skipped. Dalaran and Garrison Hearthstones last: they go somewhere else.
+-- hearthstone" flag, so new ones need adding here. Ids you don't own (or that don't exist on this
+-- client) are skipped. The Dalaran and Garrison Hearthstones come last, because they go somewhere
+-- else.
 --
--- Keeping it up to date: Wowhead's spells whose description says they return you to your
--- hearthstone, https://www.wowhead.com/spells/name-extended:%22return+you+to+your+hearthstone%22
--- Open each new spell's "Used by item" and add that item if its tooltip says Toy (not quest
+-- To keep it up to date, look through Wowhead's spells whose description says they return you to
+-- your hearthstone, https://www.wowhead.com/spells/name-extended:%22return+you+to+your+hearthstone%22
+-- Open each new spell's "Used by item", and add that item if its tooltip says Toy (not quest
 -- items, gear you equip, or consumables). Last checked October 2026.
 local HEARTHSTONE_TOYS = {
     54452,  -- Ethereal Portal
@@ -64,13 +65,13 @@ local HEARTHSTONE_TOYS = {
 }
 
 Ring_Data.RegisterBuiltIn({
-    key    = "hearth",
+    key      = "hearth",
     category = Ring_Data.LibraryCategory.Travel,
-    name   = "Config - Rings - HearthRing - Name",
+    name     = "Config - Rings - HearthRing - Name",
     versions = { env.GameVersion.Retail },
     -- Toys load after login (TOYS_UPDATED).
-    events = { "BAG_UPDATE_DELAYED", "TOYS_UPDATED", "NEW_TOY_ADDED", "PLAYER_HOUSE_LIST_UPDATED" },
-    scan   = function()
+    events   = { "BAG_UPDATE_DELAYED", "TOYS_UPDATED", "NEW_TOY_ADDED", "PLAYER_HOUSE_LIST_UPDATED" },
+    scan     = function()
         local slices = {}
         if C_Item.GetItemCount(HEARTHSTONE_ITEM) > 0 then
             slices[1] = { kind = Ring_Kinds.Kind.Item, id = HEARTHSTONE_ITEM }
@@ -78,10 +79,11 @@ Ring_Data.RegisterBuiltIn({
         for _, toyID in ipairs(HEARTHSTONE_TOYS) do
             if PlayerHasToy(toyID) then slices[#slices + 1] = { kind = Ring_Kinds.Kind.Toy, id = toyID } end
         end
-        for _, home in ipairs({ "alliance", "horde" }) do
+        for _, home in ipairs({ Utils_Housing.Home.Alliance, Utils_Housing.Home.Horde }) do
             if Utils_Housing.HasHouse(home) then slices[#slices + 1] = { kind = Ring_Kinds.Kind.House, home = home } end
         end
-        slices[#slices + 1] = { kind = Ring_Kinds.Kind.House, home = "return" } -- hidden while it can't be used
+        -- Return is always there, and hidden while it can't be used.
+        slices[#slices + 1] = { kind = Ring_Kinds.Kind.House, home = Utils_Housing.Home.Return }
         return slices
     end,
 })

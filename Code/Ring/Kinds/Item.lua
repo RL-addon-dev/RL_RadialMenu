@@ -41,17 +41,13 @@ Ring_Kinds.Register({
         -- Usable items in the bags, once each.
         scan   = function(add)
             local seen = {}
-            for bag = 0, NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5 do
-                for slot = 1, C_Container.GetContainerNumSlots(bag) do
-                    local info = C_Container.GetContainerItemInfo(bag, slot)
-                    local itemID = info and info.itemID
-                    if itemID and not seen[itemID] and C_Item.GetItemSpell(itemID) and not C_ToyBox.GetToyInfo(itemID) then
-                        seen[itemID] = true
-                        local name = info.itemName or C_Item.GetItemNameByID(itemID)
-                        add({ kind = Ring_Kinds.Kind.Item, id = itemID }, name, info.iconFileID)
-                    end
-                end
-            end
+            Utils_Item.ForEachBagItem(function(bag, slot, itemID)
+                if seen[itemID] or not C_Item.GetItemSpell(itemID) or C_ToyBox.GetToyInfo(itemID) then return end
+                seen[itemID] = true
+                local info = C_Container.GetContainerItemInfo(bag, slot)
+                local name = (info and info.itemName) or C_Item.GetItemNameByID(itemID)
+                add({ kind = Ring_Kinds.Kind.Item, id = itemID }, name, info and info.iconFileID)
+            end)
         end,
     },
 

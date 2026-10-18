@@ -102,6 +102,24 @@ function Ring_Data.IsBuiltIn(ring)
     return ring ~= nil and ring.builtin ~= nil
 end
 
+--- One action of `kind` per value, for a built-in menu's scan. Each value goes in `field` (`id`
+--- by default), and `fields` adds the same extra fields to every action. For example,
+--- MakeSlices(Ring_Kinds.Kind.Spell, spellIDs, nil, { byId = true }).
+---@param kind string a Ring_Kinds.Kind value
+---@param values any[]
+---@param field string? the action's field for the value (`id` by default)
+---@param fields table? fields every action gets
+---@return Slice[]
+function Ring_Data.MakeSlices(kind, values, field, fields)
+    local slices = {}
+    for index, value in ipairs(values) do
+        local slice = { kind = kind, [field or "id"] = value }
+        for key, extra in pairs(fields or {}) do slice[key] = extra end
+        slices[index] = slice
+    end
+    return slices
+end
+
 --- Ring_Auto's refill of a built-in menu. It fires env.Event.DataChanged with
 --- env.ChangeReason.Auto, so the secure rebuild it causes (after combat, if needed) doesn't
 --- announce itself. What refers to an action by position, like a remembered scroll position,
