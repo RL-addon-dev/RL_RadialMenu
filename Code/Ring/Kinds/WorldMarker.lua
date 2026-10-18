@@ -40,11 +40,11 @@ local CLEAR_COLOR = { 0.85, 0.85, 0.85 }
 -- Offered in Add Action, and the World Markers built-in menu's order. It's the same order of icons
 -- as Target Markers, with Skull at the top.
 local MARKERS = { 8, 4, 1, 7, 2, 3, 6, 5, CLEAR }
+Ring_Kinds.WORLD_MARKERS = MARKERS
 
 Ring_Kinds.Register({
     kind = Ring_Kinds.Kind.WorldMarker,
     noIconBorder = true, -- the marker art on its own, not a spell
-    MARKERS = MARKERS,
 
     validate = function(slice)
         return type(slice.id) == "number" and slice.id >= CLEAR and slice.id <= MAX_MARKER,

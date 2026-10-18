@@ -2,14 +2,14 @@
     Season Teleports: the Mythic+ dungeon teleports ("Path of ..." spells) you know for the
     current season's dungeons, sorted by dungeon name. A timed +10 earns a dungeon's teleport.
 
-    The season's dungeons are the CURRENT_SEASON list below. Each new season: put its dungeons
-    there and comment out the old ones. Below it: earlier seasons (back to Shadowlands, from
-    Raider.IO's season data), then every other dungeon with a teleport, by expansion; a spell id
-    may appear in more than one section.
+    The season's dungeons are the CURRENT_SEASON list below. Each new season, put its dungeons
+    there and comment out the old ones. Below it are earlier seasons (back to Shadowlands, from
+    Raider.IO's season data), then every other dungeon with a teleport, by expansion. A spell id
+    can appear in more than one section.
 
-    Each entry: { map = challenge map id, spell = teleport spell id (or a list, one per faction),
-    name = English name (the client's own name is used when it knows the map) }.
-    Map ids: Raider.IO's static data; spell ids as in LibOpenRaid, cross-checked with other addons.
+    Each entry is { map = challenge map id, spell = teleport spell id (or a list, one per faction),
+    name = English name }. The client's own name is used when it knows the map. Map ids come from
+    Raider.IO's static data, and spell ids from LibOpenRaid, cross-checked with other addons.
 ]]
 
 local env = select(2, ...)
@@ -157,7 +157,8 @@ local CURRENT_SEASON = {
 -- { map = 381, spell = 354466, name = "Spires of Ascension" },
 -- { map = 376, spell = 354462, name = "The Necrotic Wake" },
 -- { map = 382, spell = 354467, name = "Theater of Pain" },
--- Other dungeons with a teleport, by expansion (a spell list = one per faction)
+
+-- Other dungeons with a teleport, by expansion (a spell list has one spell per faction)
 
 -- Cataclysm
 -- { map = 438, spell = 410080, name = "The Vortex Pinnacle" },
@@ -243,20 +244,21 @@ local CURRENT_SEASON = {
 -- { map = 525, spell = 1216786, name = "Operation: Floodgate" },
 -- { map = 542, spell = 1237215, name = "Eco-Dome Al'dani" },
 
-local IsKnown = C_SpellBook.IsSpellKnown
-
---- The spell (or the one of a faction's spells) you know, or nil.
+--- The spell you know, of one spell or a list of faction spells, or nil.
+---@param spell number|number[]
+---@return number?
 local function KnownSpell(spell)
     if type(spell) == "table" then
         for _, id in ipairs(spell) do
-            if IsKnown(id) then return id end
+            if C_SpellBook.IsSpellKnown(id) then return id end
         end
         return nil
     end
-    return spell and IsKnown(spell) and spell or nil
+    return (spell and C_SpellBook.IsSpellKnown(spell) and spell) or nil
 end
 
---- Teleport spell ids you know for the current season's dungeons, sorted by dungeon name.
+--- The teleport spell ids you know for the current season's dungeons, sorted by dungeon name.
+---@return number[]
 local function GetSeasonTeleports()
     local entries, seen = {}, {}
     for _, dungeon in ipairs(CURRENT_SEASON) do
@@ -275,14 +277,10 @@ local function GetSeasonTeleports()
 end
 
 Ring_Data.RegisterBuiltIn({
-    key    = "season",
+    key      = "season",
     category = Ring_Data.LibraryCategory.Travel,
-    name   = "Config - Rings - SeasonRing - Name",
+    name     = "Config - Rings - SeasonRing - Name",
     versions = { env.GameVersion.Retail },
-    events = { "SPELLS_CHANGED" }, -- a teleport learned
-    scan   = function()
-        local slices = {}
-        for i, spellID in ipairs(GetSeasonTeleports()) do slices[i] = { kind = Ring_Kinds.Kind.Spell, id = spellID } end
-        return slices
-    end,
+    events   = { "SPELLS_CHANGED" }, -- a teleport learned
+    scan     = function() return Ring_Data.MakeSlices(Ring_Kinds.Kind.Spell, GetSeasonTeleports()) end,
 })

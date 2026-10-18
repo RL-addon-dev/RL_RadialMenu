@@ -27,7 +27,7 @@ end
 local function Run(stored)
     Private.EnsureBuiltInRings()
     local barMenus = {}
-    for bar = 1, 8 do barMenus[bar] = Ring_Data.GetBuiltInRing("actionbar" .. bar) end
+    for bar = 1, 8 do barMenus[bar] = Ring_Data.GetActionBarRing(bar) end
 
     ConvertRings(stored.Rings, barMenus)
     -- Class menus are account-wide, so this converts every class's, not only this character's.

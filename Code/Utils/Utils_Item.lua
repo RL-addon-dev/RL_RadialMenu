@@ -6,10 +6,22 @@ local env = select(2, ...)
 local L = env.L
 local Utils_Item = env.AX_Modules:New("@\\Utils\\Item")
 
-local GetItemInfoInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-
 local IS_RETAIL = env.GAME_VERSION == env.GameVersion.Retail
 local MAIN_HAND, OFF_HAND = 16, 17
+
+-- The last bag to look in. The backpack is bag 0, followed by the equipped bags and the reagent bag.
+Utils_Item.LAST_BAG = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4
+
+--- Calls `callback(bag, slot, itemID)` for every item in your bags, backpack first.
+---@param callback fun(bag: integer, slot: integer, itemID: number)
+function Utils_Item.ForEachBagItem(callback)
+    for bag = 0, Utils_Item.LAST_BAG do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
+            local itemID = C_Container.GetContainerItemID(bag, slot)
+            if itemID then callback(bag, slot, itemID) end
+        end
+    end
+end
 
 --- Whether item `itemID` is a toy you own.
 ---@param itemID number
@@ -150,22 +162,18 @@ function Utils_Item.GetBagItemsBySlot()
     local bySlot, seen = {}, {}
     for _, slot in ipairs(EQUIP_SLOTS) do bySlot[slot] = {} end
     local dualWield = CanDualWield ~= nil and CanDualWield()
-    for bag = 0, NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4 do
-        for bagSlot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
-            local id = C_Container.GetContainerItemID(bag, bagSlot)
-            local equipLoc = id and select(4, GetItemInfoInstant(id))
-            local link = equipLoc and EQUIPPABLE[equipLoc] and C_Container.GetContainerItemLink(bag, bagSlot)
-            if link and not seen[link] and CanUse(id) then
-                seen[link] = true
-                local item = { id = id, link = link, name = link:match("|h%[(.-)%]|h") or "" }
-                for _, slot in ipairs(EQUIP_SLOTS) do
-                    if SLOT_TYPES[slot][equipLoc] or (slot == OFF_HAND and dualWield and equipLoc == "INVTYPE_WEAPON") then
-                        table.insert(bySlot[slot], item)
-                    end
-                end
+    Utils_Item.ForEachBagItem(function(bag, bagSlot, id)
+        local equipLoc = select(4, C_Item.GetItemInfoInstant(id))
+        local link = equipLoc and EQUIPPABLE[equipLoc] and C_Container.GetContainerItemLink(bag, bagSlot)
+        if not link or seen[link] or not CanUse(id) then return end
+        seen[link] = true
+        local item = { id = id, link = link, name = link:match("|h%[(.-)%]|h") or "" }
+        for _, slot in ipairs(EQUIP_SLOTS) do
+            if SLOT_TYPES[slot][equipLoc] or (slot == OFF_HAND and dualWield and equipLoc == "INVTYPE_WEAPON") then
+                table.insert(bySlot[slot], item)
             end
         end
-    end
+    end)
     for _, items in pairs(bySlot) do
         table.sort(items, function(a, b)
             if a.name ~= b.name then return a.name < b.name end

@@ -1,7 +1,7 @@
 --[[
-    Professions: the spells of your professions (Utils_Spell.GetProfessionSpells): each profession
-    itself (opens its window) and its extra spells (Disenchant, Prospecting, Survey, Fishing, ...).
-    Cast by id (spell `byId`), see GetProfessionSpells.
+    Professions: the spells of your professions (Utils_Spell.GetProfessionSpells). That's each
+    profession itself, which opens its window, and its extra spells (Disenchant, Prospecting,
+    Survey, Fishing, ...). They're cast by id (the spell kind's `byId`, see GetProfessionSpells).
 ]]
 
 local env = select(2, ...)
@@ -16,10 +16,6 @@ Ring_Data.RegisterBuiltIn({
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     events   = { "SKILL_LINES_CHANGED", "SPELLS_CHANGED" },
     scan     = function()
-        local slices = {}
-        for i, spellID in ipairs(Utils_Spell.GetProfessionSpells()) do
-            slices[i] = { kind = Ring_Kinds.Kind.Spell, id = spellID, byId = true }
-        end
-        return slices
+        return Ring_Data.MakeSlices(Ring_Kinds.Kind.Spell, Utils_Spell.GetProfessionSpells(), nil, { byId = true })
     end,
 })

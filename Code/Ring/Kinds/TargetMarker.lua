@@ -27,6 +27,7 @@ local MAX_MARKER = 8
 
 -- Offered in Add Action, and the Target Markers built-in menu's order, with Skull at the top.
 local MARKERS = { 8, 7, 6, 5, 4, 3, 2, 1, CLEAR }
+Ring_Kinds.TARGET_MARKERS = MARKERS
 
 --- The /tm line for marker `id` on `unit`. Nil means your target, and "mouseover" the unit under
 --- the mouse as it fires (your target when there's nothing there).
@@ -48,7 +49,6 @@ end
 Ring_Kinds.Register({
     kind = Ring_Kinds.Kind.TargetMarker,
     noIconBorder = true, -- the marker art on its own, not a spell
-    MARKERS = MARKERS,
 
     validate = function(slice)
         return type(slice.id) == "number" and slice.id >= CLEAR and slice.id <= MAX_MARKER,
