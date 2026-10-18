@@ -6,6 +6,7 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Housing = env.AX_Modules:Import("@\\Utils\\Housing")
 
 local HEARTHSTONE_ITEM = 6948
 
@@ -72,15 +73,15 @@ Ring_Data.RegisterBuiltIn({
     scan   = function()
         local slices = {}
         if C_Item.GetItemCount(HEARTHSTONE_ITEM) > 0 then
-            slices[1] = { kind = "item", id = HEARTHSTONE_ITEM }
+            slices[1] = { kind = Ring_Kinds.Kind.Item, id = HEARTHSTONE_ITEM }
         end
         for _, toyID in ipairs(HEARTHSTONE_TOYS) do
-            if PlayerHasToy(toyID) then slices[#slices + 1] = { kind = "toy", id = toyID } end
+            if PlayerHasToy(toyID) then slices[#slices + 1] = { kind = Ring_Kinds.Kind.Toy, id = toyID } end
         end
         for _, home in ipairs({ "alliance", "horde" }) do
-            if Ring_Kinds.HasHouse(home) then slices[#slices + 1] = { kind = "house", home = home } end
+            if Utils_Housing.HasHouse(home) then slices[#slices + 1] = { kind = Ring_Kinds.Kind.House, home = home } end
         end
-        slices[#slices + 1] = { kind = "house", home = "return" } -- hidden while it can't be used
+        slices[#slices + 1] = { kind = Ring_Kinds.Kind.House, home = "return" } -- hidden while it can't be used
         return slices
     end,
 })

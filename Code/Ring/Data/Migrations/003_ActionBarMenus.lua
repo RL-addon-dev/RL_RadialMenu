@@ -9,13 +9,17 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+
+-- The retired kind this converts. It's no longer registered, so it isn't in Ring_Kinds.Kind.
+local OLD_ACTION_BAR_KIND = "actionbar"
 
 local function ConvertRings(rings, barMenus)
     if type(rings) ~= "table" then return end
     for _, ring in pairs(rings) do
         for index, slice in ipairs(type(ring) == "table" and type(ring.slices) == "table" and ring.slices or {}) do
-            local menu = type(slice) == "table" and slice.kind == "actionbar" and barMenus[slice.bar]
-            if menu then ring.slices[index] = { kind = "ring", ring = menu.id, expand = true } end
+            local menu = type(slice) == "table" and slice.kind == OLD_ACTION_BAR_KIND and barMenus[slice.bar]
+            if menu then ring.slices[index] = { kind = Ring_Kinds.Kind.Ring, ring = menu.id, expand = true } end
         end
     end
 end

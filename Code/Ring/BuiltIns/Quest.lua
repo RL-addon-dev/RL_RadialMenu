@@ -8,6 +8,7 @@
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local GetNumEntries = (C_QuestLog and C_QuestLog.GetNumQuestLogEntries) or GetNumQuestLogEntries
 local GetItemSpell = (C_Item and C_Item.GetItemSpell) or GetItemSpell
@@ -91,7 +92,7 @@ Ring_Data.RegisterBuiltIn({
     events = { "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED" },
     scan   = function()
         local slices = {}
-        for i, itemID in ipairs(ScanQuestItems()) do slices[i] = { kind = "item", id = itemID } end
+        for i, itemID in ipairs(ScanQuestItems()) do slices[i] = { kind = Ring_Kinds.Kind.Item, id = itemID } end
         return slices
     end,
 })

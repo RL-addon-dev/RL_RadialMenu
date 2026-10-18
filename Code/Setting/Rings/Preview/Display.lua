@@ -12,6 +12,7 @@ local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
 local Ring_Live = env.AX_Modules:Await("@\\Ring\\Live")
 local Rings_Preview = env.AX_Modules:Import("@\\Setting\\Rings\\Preview")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
+local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 
 local atan2, cos, sin, pi = math.atan2, math.cos, math.sin, math.pi
 local PreviewMixin = Private.PreviewMixin
@@ -232,11 +233,11 @@ function PreviewMixin:SetTooltipIndex(index)
         GameTooltip:AddLine(text, r, g, b, true)
     end
     local control = L["Config - Rings - Preview - Control"]
-    if slice.kind == "ring" then
+    if slice.kind == Ring_Kinds.Kind.Ring then
         control = control .. " " .. (slice.expand and L["Config - Rings - Preview - Control - ToScroll"] or L["Config - Rings - Preview - Control - ToExpand"])
     end
     Group(L["Config - Rings - Tooltip - Control"] .. " " .. control)
-    if slice.kind == "ring" then
+    if slice.kind == Ring_Kinds.Kind.Ring then
         local nest = slice.expand and L["Config - Rings - Nest - Expand"] or L["Config - Rings - Nest - Description"]
         -- A scroll list is flat: say so when this submenu has submenus of its own.
         if not slice.expand and Ring_Live.HasSubmenus(slice.ring) then
@@ -246,7 +247,7 @@ function PreviewMixin:SetTooltipIndex(index)
     end
     AddVisibilityGroup(slice)
     -- A class or character menu says whose it is, last, in orange like the other notes.
-    local owner = slice.kind == "ring" and Ring_Data.GetOwnerLabel(slice.ring)
+    local owner = slice.kind == Ring_Kinds.Kind.Ring and Ring_Data.GetOwnerLabel(slice.ring)
     if owner then GameTooltip:AddLine(owner, 1, 0.5, 0.25, true) end
     GameTooltip:Show()
 end
@@ -266,7 +267,7 @@ function PreviewMixin:ShowCenterTooltip()
 
     local slice = Ring_Data.GetQuickActionSlice(ring)
     -- An empty center closes the menu, like a Close action: named the same.
-    local title = Ring_Actions.GetLabel(slice or { kind = "close" })
+    local title = Ring_Actions.GetLabel(slice or { kind = Ring_Kinds.Kind.Close })
     GameTooltip:SetText(format(L["Config - Rings - Tooltip - QuickTitle"], title), 1, 1, 1)
 
     if slice then
@@ -274,7 +275,7 @@ function PreviewMixin:ShowCenterTooltip()
     end
     GameTooltip:AddLine(" ")
     local control
-    if slice and slice.kind ~= "lastused" and slice.kind ~= "first" then
+    if slice and slice.kind ~= Ring_Kinds.Kind.LastUsed and slice.kind ~= Ring_Kinds.Kind.First then
         -- A double-click only cycles empty, Last Used and First Action; this one goes with the X.
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickSetReadOnly"] or L["Config - Rings - Preview - Control - QuickSet"]
     else

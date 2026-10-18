@@ -31,6 +31,8 @@
 ---@field name string? a name to show while the game can't give one (not cached yet, or elsewhere)
 ---@field ring string? for submenus (kind "ring"), the submenu's Ring id
 ---@field expand boolean? for submenus, spread into the parent menu instead of scrolled
+---@field icon (number|string)? an icon instead of its kind's (Ring_Actions)
+---@field label string? a name instead of its kind's (Ring_Actions)
 
 --- An action removed from a built-in menu, with what's needed to show it until it's restored.
 ---@class RemovedAction
@@ -70,8 +72,8 @@
 ---@field apply fun(button: Button, suffix: string, slice: Slice)? sets secure attributes (out of combat)
 ---@field icon (fun(slice: Slice, depth: integer?): number|string)?
 ---@field label (fun(slice: Slice): string)?
----@field cooldown (fun(slice: Slice): string, number)? "spell", "item" or "inventory", and its id
----@field state (fun(slice: Slice): string, number)? like cooldown, for the icon's states in game
+---@field cooldown (fun(slice: Slice): string?, (number|string)?)? a Ring_Kinds.Source value, and its id
+---@field state (fun(slice: Slice): string?, (number|string)?)? like cooldown, for the icon's states in game
 ---@field condition (string|fun(slice: Slice): string)? the locale key of its visibility rule
 ---@field available (fun(slice: Slice, depth: integer?): boolean)? checked while `condition` is set
 ---@field tooltip (fun(tooltip: GameTooltip, slice: Slice): boolean)?
@@ -83,12 +85,30 @@
 ---@field underlay (fun(slice: Slice): string, table)? a texture and { r, g, b } drawn behind the icon
 ---@field share KindShare?
 
+--- One result row in Add Action (Ring_Search).
+---@class SearchCandidate
+---@field kind string the kind column's label (the kind's search.label, or the kind)
+---@field name string
+---@field lname string the name in lower case, for matching
+---@field icon number|string
+---@field slice Slice the action it adds
+---@field group integer? sorts later within a match rank (gear slots without a use)
+---@field order integer? sorts within the same name (a spell's ranks)
+---@field note string? shown under the name
+---@field kindLabel string? replaces the kind column's text
+---@field blocked string? why it can't be added (shown, but refused)
+
+--- What a kind's search `scan` calls for each action it offers. The name and icon default to the
+--- action's label and icon. It returns the candidate (SearchCandidate, Ring_Search.lua), for the
+--- scan to add a note or ordering to.
+---@alias SearchAdd fun(slice: Slice, name: string?, icon: (number|string)?): SearchCandidate?
+
 --- How a kind is listed in the Add Action panel.
 ---@class KindSearch
 ---@field filter string? the filter entry that lists it (Ring_Search.Kinds)
 ---@field label string? the end of its kind column's locale key (the kind by default)
 ---@field events string[]? game events that make the cached list out of date
----@field scan fun(add: fun(slice: Slice, name: string?, icon: (number|string)?), ringId: string)
+---@field scan fun(add: SearchAdd, ringId: string?) ringId is the menu being edited (for `dynamic` kinds)
 ---@field dynamic boolean? never cached
 
 --- How a kind travels in a share string (Code\Ring\Data\Share.lua).

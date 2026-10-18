@@ -15,8 +15,8 @@ Ring_Data.RegisterBuiltIn({
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     scan = function()
         local slices = {}
-        for _, slot in ipairs(Ring_Kinds.Get("equipslot").slots) do
-            slices[#slices + 1] = { kind = "equipslot", slot = slot }
+        for _, slot in ipairs(Ring_Kinds.Get(Ring_Kinds.Kind.EquipSlot).slots) do
+            slices[#slices + 1] = { kind = Ring_Kinds.Kind.EquipSlot, slot = slot }
         end
         return slices
     end,

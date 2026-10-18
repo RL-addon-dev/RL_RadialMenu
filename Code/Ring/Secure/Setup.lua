@@ -87,10 +87,10 @@ local function SetupMarkerSlot(button, live, suffix, slice)
 
     local steal = live.canStealFocus
     local focusText
-    if steal and slice.kind == "targetmarker" then
+    if steal and slice.kind == Ring_Kinds.Kind.TargetMarker then
         focusText = (isMarker and Ring_Kinds.GetTargetMarkerText(slice.id, "focus") or "/click " .. ClearMarkers:GetName())
             .. "\n" .. FOCUS_CLEAR_TEXT
-    elseif steal and slice.kind == "close" then
+    elseif steal and slice.kind == Ring_Kinds.Kind.Close then
         -- A Close in a scroll submenu is picked like any action (PRE_CLICK only checks wedges for
         -- Close): its copy just clears the focus.
         focusText = FOCUS_CLEAR_TEXT

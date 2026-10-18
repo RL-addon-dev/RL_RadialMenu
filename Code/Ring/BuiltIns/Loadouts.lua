@@ -6,6 +6,7 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Spec = env.AX_Modules:Import("@\\Utils\\Spec")
 
 Ring_Data.RegisterBuiltIn({
     key      = "loadouts",
@@ -15,9 +16,9 @@ Ring_Data.RegisterBuiltIn({
     events   = { "PLAYER_SPECIALIZATION_CHANGED", "TRAIT_CONFIG_LIST_UPDATED", "TRAIT_CONFIG_UPDATED" },
     scan     = function()
         local slices = {}
-        local _, specID = Ring_Kinds.GetCurrentSpec()
+        local _, specID = Utils_Spec.GetCurrentSpec()
         for _, configID in ipairs(specID and C_ClassTalents.GetConfigIDsBySpecID(specID) or {}) do
-            slices[#slices + 1] = { kind = "loadout", id = configID, spec = specID }
+            slices[#slices + 1] = { kind = Ring_Kinds.Kind.Loadout, id = configID, spec = specID }
         end
         return slices
     end,

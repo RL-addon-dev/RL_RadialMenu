@@ -1,16 +1,22 @@
 --[[
-    pet     command: pet command / stance key from PET_COMMANDS below (e.g. "stay"); hidden while
-            you have no pet
+    A pet command or stance (Attack, Stay, Defensive...). It's hidden while you have no pet. Pet
+    abilities are spell actions (Spell.lua).
 ]]
 
-local env = select(2, ...)
-local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+---@class PetSlice : Slice
+---@field command string a PET_COMMANDS key, like "stay" (saved data, never renamed)
 
-local NUM_PET_ACTION_SLOTS = NUM_PET_ACTION_SLOTS or 10
+local env = select(2, ...)
+local L = env.L
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Pet = env.AX_Modules:Import("@\\Utils\\Pet")
+
 local FALLBACK_ICON = "Interface\\Icons\\Ability_Hunter_BeastCall"
 
--- Pet commands and stances: secure slash commands, so they work in combat. `tokens` are the pet
--- bar's action names (GetPetActionInfo) for drag & drop; label / icon name Blizzard's globals.
+-- Pet commands and stances. They're secure slash commands, so they work in combat. `tokens` are
+-- the pet bar's action names (GetPetActionInfo), for drag and drop. `label` and `icon` name
+-- Blizzard's globals. When one is missing, the label comes from the locale string
+-- "Config - Rings - Pet - <key>".
 local PET_COMMANDS = {
     { key = "attack",    slash = "/petattack",    label = "PET_ACTION_ATTACK",  icon = "PET_ATTACK_TEXTURE",    tokens = { "PET_ACTION_ATTACK" } },
     { key = "follow",    slash = "/petfollow",    label = "PET_ACTION_FOLLOW",  icon = "PET_FOLLOW_TEXTURE",    tokens = { "PET_ACTION_FOLLOW" } },
@@ -20,10 +26,6 @@ local PET_COMMANDS = {
     { key = "defensive", slash = "/petdefensive", label = "PET_MODE_DEFENSIVE", icon = "PET_DEFENSIVE_TEXTURE", tokens = { "PET_MODE_DEFENSIVE", "PET_MODE_DEFENSIVEASSIST" } },
     { key = "passive",   slash = "/petpassive",   label = "PET_MODE_PASSIVE",   icon = "PET_PASSIVE_TEXTURE",   tokens = { "PET_MODE_PASSIVE" } },
 }
-local FALLBACK_LABELS = {
-    attack = "Attack", follow = "Follow", stay = "Stay", moveto = "Move To",
-    assist = "Assist", defensive = "Defensive", passive = "Passive"
-}
 
 local byKey, byToken = {}, {}
 for _, command in ipairs(PET_COMMANDS) do
@@ -31,7 +33,9 @@ for _, command in ipairs(PET_COMMANDS) do
     for _, token in ipairs(command.tokens) do byToken[token] = command end
 end
 
---- Pet command for a pet bar action token (e.g. "PET_ACTION_WAIT"), or for its localized name.
+--- The pet command for a pet bar action token (like "PET_ACTION_WAIT"), or for its localized name.
+---@param tokenOrName string
+---@return table?
 local function GetCommandByToken(tokenOrName)
     if byToken[tokenOrName] then return byToken[tokenOrName] end
     for token, command in pairs(byToken) do
@@ -39,11 +43,13 @@ local function GetCommandByToken(tokenOrName)
     end
 end
 
---- Pet command / stance for cursor info from the pet bar (a slot whose action is a token like
---- PET_ACTION_WAIT) or the pet spellbook (an action id; matched by the entry's localized name).
+--- The pet command or stance for cursor info from the pet bar (a slot whose action is a token
+--- like PET_ACTION_WAIT) or the pet spellbook (an action id, matched by the entry's localized
+--- name).
+---@return table?
 local function CommandFromCursor(...)
     local slot = ...
-    if type(slot) == "number" and slot >= 1 and slot <= NUM_PET_ACTION_SLOTS then
+    if type(slot) == "number" and slot >= 1 and slot <= Utils_Pet.NUM_ACTION_SLOTS then
         local name, _, isToken = GetPetActionInfo(slot)
         local command = isToken and name and GetCommandByToken(name)
         if command then return command end
@@ -64,12 +70,14 @@ local function CommandFromCursor(...)
 end
 
 Ring_Kinds.Register({
-    kind = "pet",
+    kind = Ring_Kinds.Kind.Pet,
 
+    ---@param slice PetSlice
     validate = function(slice)
-        return type(slice.command) == "string", "pet command needs a command (e.g. attack)"
+        return type(slice.command) == "string", L["Config - Rings - Edit - Error - Pet"]
     end,
 
+    ---@param slice PetSlice
     apply = function(button, suffix, slice)
         local command = byKey[slice.command]
         if command then
@@ -79,34 +87,37 @@ Ring_Kinds.Register({
         end
     end,
 
+    ---@param slice PetSlice
     icon = function(slice)
         local command = byKey[slice.command]
-        return command and _G[command.icon] or FALLBACK_ICON
+        return (command and _G[command.icon]) or FALLBACK_ICON
     end,
+    ---@param slice PetSlice
     label = function(slice)
         local command = byKey[slice.command]
-        return command and _G[command.label] or FALLBACK_LABELS[slice.command] or tostring(slice.command)
+        local key = tostring(slice.command)
+        return (command and _G[command.label]) or L["Config - Rings - Pet - " .. key] or key
     end,
 
     condition = "pet",
-    available = Ring_Kinds.HasPet,
+    available = Utils_Pet.HasPet,
 
     search = {
         filter = "pet",
         scan   = function(add)
             for _, command in ipairs(PET_COMMANDS) do
-                add({ kind = "pet", command = command.key })
+                add({ kind = Ring_Kinds.Kind.Pet, command = command.key })
             end
         end,
     },
 
     cursor = {
-        -- A command / stance from the pet spellbook or pet bar (abilities: Spell.lua).
+        -- A command or stance from the pet spellbook or pet bar. Abilities are handled in Spell.lua.
         petaction = function(info1, info2, info3)
-            local pickup = Ring_Kinds.ResolvePetPickup()
-            local command = pickup and pickup.name and GetCommandByToken(pickup.name)
+            local pickup = Utils_Pet.ResolvePetPickup()
+            local command = (pickup and pickup.name and GetCommandByToken(pickup.name))
                 or CommandFromCursor(info1, info2, info3)
-            if command then return { kind = "pet", command = command.key } end
+            if command then return { kind = Ring_Kinds.Kind.Pet, command = command.key } end
         end,
     },
 })

@@ -16,11 +16,11 @@ local L = env.L
 local Config = env.Config
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Data = env.AX_Modules:New("@\\Ring\\Data")
 local Private = env.AX_Modules:New("@\\Ring\\Data\\Private")
 
 local type, pairs, ipairs, tonumber = type, pairs, ipairs, tonumber
-local GetOrCreateTable = Utils_Standard.GetOrCreateTable
 
 -- Fields menus no longer have. These are per menu settings that became global ones, and
 -- `contents` (how a menu was filled, now only built-in menus fill themselves, by their `builtin` key).
@@ -35,8 +35,6 @@ Private.EditError = {
     UnknownKind     = L["Config - Rings - Edit - Error - UnknownKind"], -- format with the kind
 }
 
-
-
 -- Saved tables
 
 --- Table `key` in the saved variables of `db` (one of the Config.DB... databases), created when
@@ -45,9 +43,8 @@ Private.EditError = {
 ---@param key string
 ---@return table
 function Private.GetStoredTable(db, key)
-    return GetOrCreateTable(db:GetData(), key)
+    return Utils_Standard.GetOrCreateTable(db:GetData(), key)
 end
-local GetStoredTable = Private.GetStoredTable
 
 --- The player's class file name ("MAGE"). Class menus and their keybinds are saved under it.
 ---@return string
@@ -59,7 +56,8 @@ end
 ---@param key string
 ---@return table
 function Private.GetClassStoredTable(key)
-    return GetOrCreateTable(GetStoredTable(Config.DBGlobalPersistent, key), Private.GetPlayerClass())
+    local byClass = Private.GetStoredTable(Config.DBGlobalPersistent, key)
+    return Utils_Standard.GetOrCreateTable(byClass, Private.GetPlayerClass())
 end
 
 --- The menus saved in `scope`, by id.
@@ -67,14 +65,12 @@ end
 ---@return table<string, Ring>
 function Private.GetScopeTable(scope)
     if scope == Ring_Data.Scope.Character then
-        return GetStoredTable(Config.DBLocalPersistent, "Rings")
+        return Private.GetStoredTable(Config.DBLocalPersistent, "Rings")
     elseif scope == Ring_Data.Scope.Class then
         return Private.GetClassStoredTable("ClassRings")
     end
-    return GetStoredTable(Config.DBGlobalPersistent, "Rings")
+    return Private.GetStoredTable(Config.DBGlobalPersistent, "Rings")
 end
-
-
 
 -- Changes
 
@@ -110,18 +106,16 @@ function Private.NormalizeRing(ring)
     if type(ring.slices) ~= "table" then ring.slices = {} end
     -- Submenus used to have an "open" or "scroll" mode. They always scroll now.
     for _, slice in ipairs(ring.slices) do
-        if slice.kind == "ring" then slice.nest = nil end
+        if slice.kind == Ring_Kinds.Kind.Ring then slice.nest = nil end
     end
     -- quickSlice only exists while quickAction is Custom. Close in the center is saved as an empty
     -- center, because both cancel, and an empty one toggles with Last Used and has no X.
     if ring.quickAction == Ring_Data.QuickAction.Custom
-        and (type(ring.quickSlice) ~= "table" or ring.quickSlice.kind == "close") then
+        and (type(ring.quickSlice) ~= "table" or ring.quickSlice.kind == Ring_Kinds.Kind.Close) then
         ring.quickAction = Ring_Data.QuickAction.None
     end
     if ring.quickAction ~= Ring_Data.QuickAction.Custom then ring.quickSlice = nil end
 end
-
-
 
 -- Remembered scroll positions
 
@@ -130,7 +124,7 @@ end
 ---@param ring Ring
 ---@param map fun(oldIndex: integer): integer? the new index, or nil when that action is gone
 function Private.RemapSliceIndices(ring, map)
-    local scroll = GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
+    local scroll = Private.GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
     local prefix = ring.id .. ":"
     local remembered = {}
     for key, value in pairs(scroll) do
@@ -161,8 +155,6 @@ function Private.ShiftAfterRemove(ring, index)
         return (i > index and i - 1) or i
     end)
 end
-
-
 
 -- Sorting
 

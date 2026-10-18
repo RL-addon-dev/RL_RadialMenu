@@ -21,12 +21,13 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Import("@\\Ring\\Actions")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Live = env.AX_Modules:New("@\\Ring\\Live")
 
 local MAX_DEPTH = 8 -- backstop only; loops are also caught by `visited`
 
 function Ring_Live.IsSubmenu(slice)
-    return slice ~= nil and slice.kind == "ring"
+    return slice ~= nil and slice.kind == Ring_Kinds.Kind.Ring
 end
 
 --- A submenu spread into its parent.

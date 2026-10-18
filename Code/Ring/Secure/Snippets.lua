@@ -46,7 +46,7 @@
     marker slot's copy ("<suffix>M", TAP_SUFFIX) that marks the mouseover as it fires, also
     through Last Used and First Action. For picks on the wheel, when a menu opens out of combat
     its target marker slots' /tm ("*macrotext-<suffix>") is pointed at the unit under the mouse (a
-    token that still names it once the mouse moves: Ring_Kinds.GetUnitUnderMouse), like a ping;
+    token that still names it once the mouse moves: Utils_Unit.GetUnitUnderMouse), like a ping;
     set back just after the release and when combat starts, so in combat they mark your target.
 
     Cursor + Focus: the same, and a menu of only target markers ("ring-stealfocus": Close, Last

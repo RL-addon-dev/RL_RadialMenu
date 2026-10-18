@@ -1,28 +1,30 @@
 --[[
-    toy     id: toy item id
+    A toy, from your Toy Box.
 ]]
 
-local env = select(2, ...)
-local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+---@class ToySlice : Slice
+---@field id number the toy's item id
 
-local IsToy = Ring_Kinds.IsToy
+local env = select(2, ...)
+local L = env.L
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 Ring_Kinds.Register({
-    kind = "toy",
+    kind = Ring_Kinds.Kind.Toy,
 
     validate = function(slice)
-        return type(slice.id) == "number", "toy needs a numeric item id"
+        return type(slice.id) == "number", L["Config - Rings - Edit - Error - Toy"]
     end,
 
     apply = function(button, suffix, slice)
-        Ring_Kinds.SetAttribute(button, "type", suffix, "toy")
-        Ring_Kinds.SetAttribute(button, "toy", suffix, slice.id)
+        Ring_Kinds.SetAction(button, suffix, "toy", slice.id)
     end,
 
     icon  = function(slice) return C_Item.GetItemIconByID(slice.id) end,
-    label = function(slice) return C_Item.GetItemNameByID(slice.id) or ("toy:" .. slice.id) end,
+    label = function(slice) return C_Item.GetItemNameByID(slice.id) end,
 
-    cooldown = function(slice) return "item", slice.id end,
+    cooldown = function(slice) return Ring_Kinds.Source.Item, slice.id end,
 
     tooltip = function(tooltip, slice)
         tooltip:SetToyByItemID(slice.id)
@@ -38,19 +40,19 @@ Ring_Kinds.Register({
                 local itemID = C_ToyBox.GetToyFromIndex(index)
                 if itemID and itemID > 0 and PlayerHasToy(itemID) then
                     local _, name, icon = C_ToyBox.GetToyInfo(itemID)
-                    add({ kind = "toy", id = itemID }, name, icon)
+                    add({ kind = Ring_Kinds.Kind.Toy, id = itemID }, name, icon)
                 end
             end
         end,
     },
 
     lookupId = function(id)
-        if IsToy(id) then return { kind = "toy", id = id } end
+        if Utils_Item.IsToy(id) then return { kind = Ring_Kinds.Kind.Toy, id = id } end
     end,
 
     cursor = {
         item = function(itemID)
-            if IsToy(itemID) then return { kind = "toy", id = itemID } end
+            if Utils_Item.IsToy(itemID) then return { kind = Ring_Kinds.Kind.Toy, id = itemID } end
         end,
     },
 })

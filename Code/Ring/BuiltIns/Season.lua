@@ -14,6 +14,7 @@
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 -- Midnight Season 2
 local CURRENT_SEASON = {
@@ -38,34 +39,34 @@ local CURRENT_SEASON = {
 -- { map = 557, spell = 1254400, name = "Windrunner Spire" },
 
 -- The War Within Season 3
--- { map = 503, spell = 445417, name = "Ara-Kara, City of Echoes" },
+-- { map = 503, spell = 445417,  name = "Ara-Kara, City of Echoes" },
 -- { map = 542, spell = 1237215, name = "Eco-Dome Al'dani" },
--- { map = 378, spell = 354465, name = "Halls of Atonement" },
+-- { map = 378, spell = 354465,  name = "Halls of Atonement" },
 -- { map = 525, spell = 1216786, name = "Operation: Floodgate" },
--- { map = 499, spell = 445444, name = "Priory of the Sacred Flame" },
--- { map = 392, spell = 367416, name = "Tazavesh: So'leah's Gambit" },
--- { map = 391, spell = 367416, name = "Tazavesh: Streets of Wonder" },
--- { map = 505, spell = 445414, name = "The Dawnbreaker" },
+-- { map = 499, spell = 445444,  name = "Priory of the Sacred Flame" },
+-- { map = 392, spell = 367416,  name = "Tazavesh: So'leah's Gambit" },
+-- { map = 391, spell = 367416,  name = "Tazavesh: Streets of Wonder" },
+-- { map = 505, spell = 445414,  name = "The Dawnbreaker" },
 
 -- The War Within Season 2
--- { map = 506, spell = 445440, name = "Cinderbrew Meadery" },
--- { map = 504, spell = 445441, name = "Darkflame Cleft" },
+-- { map = 506, spell = 445440,  name = "Cinderbrew Meadery" },
+-- { map = 504, spell = 445441,  name = "Darkflame Cleft" },
 -- { map = 525, spell = 1216786, name = "Operation: Floodgate" },
--- { map = 370, spell = 373274, name = "Operation: Mechagon - Workshop" },
--- { map = 499, spell = 445444, name = "Priory of the Sacred Flame" },
+-- { map = 370, spell = 373274,  name = "Operation: Mechagon - Workshop" },
+-- { map = 499, spell = 445444,  name = "Priory of the Sacred Flame" },
+-- { map = 500, spell = 445443,  name = "The Rookery" },
+-- { map = 382, spell = 354467,  name = "Theater of Pain" },
 -- { map = 247, spell = { 467553, 467555 }, name = "The MOTHERLODE!!" },
--- { map = 500, spell = 445443, name = "The Rookery" },
--- { map = 382, spell = 354467, name = "Theater of Pain" },
 
 -- The War Within Season 1
 -- { map = 503, spell = 445417, name = "Ara-Kara, City of Echoes" },
 -- { map = 502, spell = 445416, name = "City of Threads" },
 -- { map = 507, spell = 445424, name = "Grim Batol" },
 -- { map = 375, spell = 354464, name = "Mists of Tirna Scithe" },
--- { map = 353, spell = { 445418, 464256 }, name = "Siege of Boralus" },
 -- { map = 505, spell = 445414, name = "The Dawnbreaker" },
 -- { map = 376, spell = 354462, name = "The Necrotic Wake" },
 -- { map = 501, spell = 445269, name = "The Stonevault" },
+-- { map = 353, spell = { 445418, 464256 }, name = "Siege of Boralus" },
 
 -- Dragonflight Season 4
 -- { map = 402, spell = 393273, name = "Algeth'ar Academy" },
@@ -185,26 +186,26 @@ local CURRENT_SEASON = {
 -- { map = 169, spell = 159896, name = "Iron Docks" },
 
 -- Legion
--- { map = 198, spell = 424163, name = "Darkheart Thicket" },
--- { map = 199, spell = 424153, name = "Black Rook Hold" },
--- { map = 200, spell = 393764, name = "Halls of Valor" },
--- { map = 206, spell = 410078, name = "Neltharion's Lair" },
--- { map = 210, spell = 393766, name = "Court of Stars" },
--- { map = 227, spell = 373262, name = "Return to Karazhan: Lower" },
--- { map = 234, spell = 373262, name = "Return to Karazhan: Upper" },
+-- { map = 198, spell = 424163,  name = "Darkheart Thicket" },
+-- { map = 199, spell = 424153,  name = "Black Rook Hold" },
+-- { map = 200, spell = 393764,  name = "Halls of Valor" },
+-- { map = 206, spell = 410078,  name = "Neltharion's Lair" },
+-- { map = 210, spell = 393766,  name = "Court of Stars" },
+-- { map = 227, spell = 373262,  name = "Return to Karazhan: Lower" },
+-- { map = 234, spell = 373262,  name = "Return to Karazhan: Upper" },
 -- { map = 239, spell = 1254551, name = "Seat of the Triumvirate" },
 
 -- Battle for Azeroth
--- { map = 244, spell = 424187, name = "Atal'Dazar" },
--- { map = 245, spell = 410071, name = "Freehold" },
--- { map = 247, spell = { 467553, 467555 }, name = "The MOTHERLODE!!" },
--- { map = 248, spell = 424167, name = "Waycrest Manor" },
+-- { map = 244, spell = 424187,  name = "Atal'Dazar" },
+-- { map = 245, spell = 410071,  name = "Freehold" },
+-- { map = 248, spell = 424167,  name = "Waycrest Manor" },
 -- { map = 249, spell = 1286831, name = "Kings' Rest" },
 -- { map = 250, spell = 1286828, name = "Temple of Sethraliss" },
--- { map = 251, spell = 410074, name = "The Underrot" },
+-- { map = 251, spell = 410074,  name = "The Underrot" },
+-- { map = 369, spell = 373274,  name = "Operation: Mechagon - Junkyard" },
+-- { map = 370, spell = 373274,  name = "Operation: Mechagon - Workshop" },
+-- { map = 247, spell = { 467553, 467555 }, name = "The MOTHERLODE!!" },
 -- { map = 353, spell = { 445418, 464256 }, name = "Siege of Boralus" },
--- { map = 369, spell = 373274, name = "Operation: Mechagon - Junkyard" },
--- { map = 370, spell = 373274, name = "Operation: Mechagon - Workshop" },
 
 -- Shadowlands
 -- { map = 375, spell = 354464, name = "Mists of Tirna Scithe" },
@@ -231,14 +232,14 @@ local CURRENT_SEASON = {
 -- { map = 464, spell = 424197, name = "Dawn of the Infinite: Murozond's Rise" },
 
 -- The War Within
--- { map = 499, spell = 445444, name = "Priory of the Sacred Flame" },
--- { map = 500, spell = 445443, name = "The Rookery" },
--- { map = 501, spell = 445269, name = "The Stonevault" },
--- { map = 502, spell = 445416, name = "City of Threads" },
--- { map = 503, spell = 445417, name = "Ara-Kara, City of Echoes" },
--- { map = 504, spell = 445441, name = "Darkflame Cleft" },
--- { map = 505, spell = 445414, name = "The Dawnbreaker" },
--- { map = 506, spell = 445440, name = "Cinderbrew Meadery" },
+-- { map = 499, spell = 445444,  name = "Priory of the Sacred Flame" },
+-- { map = 500, spell = 445443,  name = "The Rookery" },
+-- { map = 501, spell = 445269,  name = "The Stonevault" },
+-- { map = 502, spell = 445416,  name = "City of Threads" },
+-- { map = 503, spell = 445417,  name = "Ara-Kara, City of Echoes" },
+-- { map = 504, spell = 445441,  name = "Darkflame Cleft" },
+-- { map = 505, spell = 445414,  name = "The Dawnbreaker" },
+-- { map = 506, spell = 445440,  name = "Cinderbrew Meadery" },
 -- { map = 525, spell = 1216786, name = "Operation: Floodgate" },
 -- { map = 542, spell = 1237215, name = "Eco-Dome Al'dani" },
 
@@ -281,7 +282,7 @@ Ring_Data.RegisterBuiltIn({
     events = { "SPELLS_CHANGED" }, -- a teleport learned
     scan   = function()
         local slices = {}
-        for i, spellID in ipairs(GetSeasonTeleports()) do slices[i] = { kind = "spell", id = spellID } end
+        for i, spellID in ipairs(GetSeasonTeleports()) do slices[i] = { kind = Ring_Kinds.Kind.Spell, id = spellID } end
         return slices
     end,
 })

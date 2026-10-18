@@ -1,67 +1,63 @@
 --[[
-    equipslot   slot: inventory slot (13 = trinket 1): uses whatever is equipped there; hidden while
-                that item has no use effect
+    An equipped slot (13 = trinket 1). It uses whatever is equipped there, and it's hidden while
+    that item has no use effect.
 ]]
+
+---@class EquipSlotSlice : Slice
+---@field slot integer the inventory slot
 
 local env = select(2, ...)
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
--- Every gear slot except the shirt, in paper doll order. Also the Gear built-in menu (Ring_Auto).
+-- Every gear slot except the shirt, in paper doll order. The Gear built-in menu uses it too.
 local SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 }
 
--- GetInventorySlotInfo tokens, for an empty slot's icon (every slot: also the equip actions,
--- EquipItem.lua).
-local SLOT_TOKENS = {
-    [1] = "HEADSLOT", [2] = "NECKSLOT", [3] = "SHOULDERSLOT", [4] = "SHIRTSLOT", [5] = "CHESTSLOT",
-    [6] = "WAISTSLOT", [7] = "LEGSSLOT", [8] = "FEETSLOT", [9] = "WRISTSLOT", [10] = "HANDSSLOT",
-    [11] = "FINGER0SLOT", [12] = "FINGER1SLOT", [13] = "TRINKET0SLOT", [14] = "TRINKET1SLOT",
-    [15] = "BACKSLOT", [16] = "MAINHANDSLOT", [17] = "SECONDARYHANDSLOT", [18] = "RANGEDSLOT",
-    [19] = "TABARDSLOT"
-}
-
---- An equipment slot's name ("Trinket 1"), and its empty-slot icon.
-function Ring_Kinds.GetSlotName(slot)
-    return L["Config - Rings - Slot - " .. slot] or format(L["Config - Rings - Slot - Other"], slot)
-end
-function Ring_Kinds.GetSlotIcon(slot)
-    local token = SLOT_TOKENS[slot]
-    return token and select(2, GetInventorySlotInfo(token)) or Ring_Kinds.QUESTION_MARK_ICON
-end
-
+--- Whether the item equipped in `slot` has a use effect.
+---@param slot integer
+---@return boolean
 local function HasUse(slot)
     local itemID = GetInventoryItemID("player", slot)
     return itemID ~= nil and C_Item.GetItemSpell(itemID) ~= nil
 end
 
 Ring_Kinds.Register({
-    kind  = "equipslot",
+    kind  = Ring_Kinds.Kind.EquipSlot,
     slots = SLOTS,
 
+    ---@param slice EquipSlotSlice
     validate = function(slice)
-        return type(slice.slot) == "number", "equipped slot needs a slot number (13 = trinket 1)"
+        return type(slice.slot) == "number", L["Config - Rings - Edit - Error - EquipSlot"]
     end,
 
+    ---@param slice EquipSlotSlice
     apply = function(button, suffix, slice)
         Ring_Kinds.SetMacroText(button, suffix, "/use " .. slice.slot)
     end,
 
+    ---@param slice EquipSlotSlice
     icon = function(slice)
-        return GetInventoryItemTexture("player", slice.slot) or Ring_Kinds.GetSlotIcon(slice.slot)
+        return GetInventoryItemTexture("player", slice.slot) or Utils_Item.GetSlotIcon(slice.slot)
     end,
+    ---@param slice EquipSlotSlice
     label = function(slice)
-        local slotName = Ring_Kinds.GetSlotName(slice.slot)
+        local slotName = Utils_Item.GetSlotName(slice.slot)
         local itemID = GetInventoryItemID("player", slice.slot)
         local itemName = itemID and C_Item.GetItemNameByID(itemID)
-        return itemName and (slotName .. ": " .. itemName) or slotName
+        return (itemName and (slotName .. ": " .. itemName)) or slotName
     end,
 
-    cooldown = function(slice) return "inventory", slice.slot end,
-    state    = function(slice) return "inventory", slice.slot end,
+    ---@param slice EquipSlotSlice
+    cooldown = function(slice) return Ring_Kinds.Source.Inventory, slice.slot end,
+    ---@param slice EquipSlotSlice
+    state    = function(slice) return Ring_Kinds.Source.Inventory, slice.slot end,
 
     condition = "equipslot",
+    ---@param slice EquipSlotSlice
     available = function(slice) return HasUse(slice.slot) end,
 
+    ---@param slice EquipSlotSlice
     tooltip = function(tooltip, slice)
         if not GetInventoryItemID("player", slice.slot) then return false end
         tooltip:SetInventoryItem("player", slice.slot)
@@ -71,16 +67,16 @@ Ring_Kinds.Register({
     search = {
         filter = "misc",
         events = { "PLAYER_EQUIPMENT_CHANGED" },
-        -- Every slot: a slot slice hides until the item there has a use effect, so a slot can be
-        -- added ahead of wearing on-use gear in it. Slots with a use effect sort first; the rest
-        -- say why they'd be hidden right now.
+        -- Every slot. A slot action hides until the item there has a use effect, so a slot can be
+        -- added ahead of wearing on-use gear in it. Slots with a use effect sort first, and the
+        -- rest say why they'd be hidden right now.
         scan   = function(add)
             for _, slot in ipairs(SLOTS) do
-                local candidate = add({ kind = "equipslot", slot = slot })
+                local candidate = add({ kind = Ring_Kinds.Kind.EquipSlot, slot = slot })
                 if candidate and not HasUse(slot) then
                     candidate.group = 1
-                    candidate.note = GetInventoryItemID("player", slot)
-                        and L["Config - Rings - Search - Note - NoUse"] or L["Config - Rings - Search - Note - Empty"]
+                    candidate.note = (GetInventoryItemID("player", slot) and L["Config - Rings - Search - Note - NoUse"])
+                        or L["Config - Rings - Search - Note - Empty"]
                 end
             end
         end,

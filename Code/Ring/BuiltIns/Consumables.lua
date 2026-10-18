@@ -16,6 +16,7 @@
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local GetItemSpell = (C_Item and C_Item.GetItemSpell) or GetItemSpell
 local GetItemInfoInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
@@ -100,7 +101,7 @@ for _, key in ipairs(CATEGORIES) do
         events = { "BAG_UPDATE_DELAYED" },
         scan   = function()
             local slices = {}
-            for i, itemID in ipairs(ScanBags()[key]) do slices[i] = { kind = "item", id = itemID } end
+            for i, itemID in ipairs(ScanBags()[key]) do slices[i] = { kind = Ring_Kinds.Kind.Item, id = itemID } end
             return slices
         end,
     })
@@ -115,7 +116,7 @@ Ring_Data.RegisterBuiltIn({
         local slices = {}
         for _, key in ipairs(CATEGORIES) do
             local ring = Ring_Data.GetBuiltInRing(key)
-            if ring then slices[#slices + 1] = { kind = "ring", ring = ring.id } end
+            if ring then slices[#slices + 1] = { kind = Ring_Kinds.Kind.Ring, ring = ring.id } end
         end
         return slices
     end,
