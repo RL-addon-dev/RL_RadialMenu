@@ -260,9 +260,11 @@ function Private.SetupRing(ring)
     local canSteal = live.canStealFocus
     button:SetAttribute(Ring_Secure.Attribute.StealFocus, canSteal or nil)
     button:SetAttribute(Ring_Secure.Attribute.Aimed, nil)
-    Ring_Kinds.SetAttribute(button, "type", Ring_Secure.Click.FocusSteal, (canSteal and "macro") or nil)
-    Ring_Kinds.SetAttribute(button, "macrotext", Ring_Secure.Click.FocusSteal,
-        (canSteal and Private.FOCUS_STEAL_TEXT) or nil)
+    -- The steal is a focus action on the mouseover (the reticle's unit, with a controller), not a
+    -- macro. A crossbar slot or stick combo opens the menu from a macro, and a macro run from
+    -- inside a macro does nothing.
+    Ring_Kinds.SetAttribute(button, "type", Ring_Secure.Click.FocusSteal, (canSteal and "focus") or nil)
+    Ring_Kinds.SetAttribute(button, "unit", Ring_Secure.Click.FocusSteal, (canSteal and "mouseover") or nil)
     Ring_Kinds.SetAttribute(button, "type", Ring_Secure.Click.FocusClear, (canSteal and "macro") or nil)
     Ring_Kinds.SetAttribute(button, "macrotext", Ring_Secure.Click.FocusClear,
         (canSteal and Private.FOCUS_CLEAR_TEXT) or nil)
