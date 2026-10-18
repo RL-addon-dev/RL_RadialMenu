@@ -18,7 +18,7 @@ for bar = 1, Ring_Kinds.NUM_ACTION_BARS do
         scan   = function()
             local slices = {}
             for button = 1, Ring_Kinds.NUM_ACTION_BUTTONS do
-                slices[button] = { kind = "actionslot", bar = bar, button = button }
+                slices[button] = { kind = Ring_Kinds.Kind.ActionSlot, bar = bar, button = button }
             end
             return slices
         end,

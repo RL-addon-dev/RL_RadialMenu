@@ -10,6 +10,7 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local function Run(stored)
     if type(stored.Rings) ~= "table" then return end
@@ -23,7 +24,7 @@ local function Run(stored)
                     ring.quickAction, ring.quickSlice = Ring_Data.QuickAction.None, nil
                 end
             elseif ring.quickAction == "last" then
-                ring.quickAction, ring.quickSlice = Ring_Data.QuickAction.Custom, { kind = "lastused" }
+                ring.quickAction, ring.quickSlice = Ring_Data.QuickAction.Custom, { kind = Ring_Kinds.Kind.LastUsed }
             end
         end
     end

@@ -12,6 +12,7 @@ local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
 local Ring_Search = env.AX_Modules:Await("@\\Ring\\Search")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
 local Perf = env.AX_Modules:Import("@\\Perf")
+local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 
 local GetCursorPosition, GetCursorInfo, IsMouseButtonDown = GetCursorPosition, GetCursorInfo, IsMouseButtonDown
 local atan2, deg, floor, abs, cos, sin, pi = math.atan2, math.deg, math.floor, math.abs, math.cos, math.sin, math.pi
@@ -19,12 +20,21 @@ local PreviewMixin = Private.PreviewMixin
 
 local HOVER_PADDING = 14 -- px around an icon that still counts as being on it (covers its X)
 local DRAG_THRESHOLD = 6 -- px the mouse must move before a press on an icon becomes a drag
-local CLOSE_SLICE = { kind = "close" } -- what an empty center drags out as (its drag icon)
 local DOUBLE_CLICK_TIME = 0.35 -- s between presses on a nested ring to switch scroll / expand
 local DRAG_SOURCE_ALPHA = 0.35
 -- Share of a slice's angle, either side of its center, that counts as "over" it (the rest of
 -- the angle, near the dividers, counts as "between").
 local OVER_ZONE = 0.3
+
+-- What an empty center drags out as (its drag icon). It's made on first use, because the kind
+-- names (Ring_Kinds) load after the settings.
+local closeSlice
+
+---@return Slice
+local function GetCloseSlice()
+    closeSlice = closeSlice or { kind = Ring_Kinds.Kind.Close }
+    return closeSlice
+end
 
 
 
@@ -191,7 +201,7 @@ function PreviewMixin:UpdateDrag()
         drag.active = true
         self:SetTooltipIndex(nil)
         if drag.from == "quick" then
-            Ring_Layout.SetSliceIcon(self.DragIcon, Ring_Data.GetQuickActionSlice(self.ring) or CLOSE_SLICE)
+            Ring_Layout.SetSliceIcon(self.DragIcon, Ring_Data.GetQuickActionSlice(self.ring) or GetCloseSlice())
             self:GetCenterIcon():SetAlpha(DRAG_SOURCE_ALPHA)
         else
             local slice = self.ring and self:GetShownSlice(drag.from)
@@ -312,7 +322,7 @@ function Private.OnMouseDown(wheel, button)
 
     -- Double-click a nested ring: switch between scrolling and spreading its slices.
     local slice = preview.ring and preview:GetSlice(index)
-    if slice and slice.kind == "ring" and preview.lastPressIndex == index
+    if slice and slice.kind == Ring_Kinds.Kind.Ring and preview.lastPressIndex == index
         and now - preview.lastPressTime <= DOUBLE_CLICK_TIME then
         preview.lastPressIndex = nil
         if preview.callbacks.onToggleExpand then preview.callbacks.onToggleExpand(index) end

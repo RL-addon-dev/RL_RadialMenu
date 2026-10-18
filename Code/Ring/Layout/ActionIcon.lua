@@ -191,21 +191,21 @@ end
 --- Shows `slice`'s cooldown (and charge recharge) on an action icon; clears it for slices without
 --- one. Spells use 12.0 duration objects, which stay usable in combat.
 function Ring_Layout.UpdateIconCooldown(icon, slice)
-    local kind, id = nil, nil
-    if slice then kind, id = Ring_Actions.GetCooldownSource(slice) end
+    local source, id = nil, nil
+    if slice then source, id = Ring_Actions.GetCooldownSource(slice) end
 
-    if kind == "spell" and id then
+    if source == Ring_Kinds.Source.Spell and id then
         local info = C_Spell.GetSpellCooldown(id)
         local charges = C_Spell.GetSpellCharges(id)
         SetCooldownFromDuration(icon.Cooldown, info and info.isActive, C_Spell.GetSpellCooldownDuration(id))
         SetCooldownFromDuration(icon.ChargeCooldown, charges and charges.isActive, C_Spell.GetSpellChargeDuration(id))
         SetSpellCount(icon, id, charges)
-    elseif kind == "item" and id then
+    elseif source == Ring_Kinds.Source.Item and id then
         local start, duration, enable = C_Container.GetItemCooldown(id)
         CooldownFrame_Set(icon.Cooldown, start or 0, duration or 0, enable, false)
         icon.ChargeCooldown:Clear()
         SetItemCount(icon, id)
-    elseif kind == "inventory" and id then
+    elseif source == Ring_Kinds.Source.Inventory and id then
         local start, duration, enable = GetInventoryItemCooldown("player", id)
         CooldownFrame_Set(icon.Cooldown, start or 0, duration or 0, enable, false)
         icon.ChargeCooldown:Clear()
@@ -293,15 +293,17 @@ end
 --- @param fresh boolean|nil the icon was just given `slice` (the menu opened, a wedge changed):
 ---   its glow is set up again, without the burst
 function Ring_Layout.UpdateIconState(icon, slice, fresh)
-    local kind, id = nil, nil
-    if slice then kind, id = Ring_Actions.GetStateSource(slice) end
+    local source, id = nil, nil
+    if slice then source, id = Ring_Actions.GetStateSource(slice) end
 
+    -- The game's answers can be nil, which counts like false.
+    ---@type boolean?, boolean?, boolean?, boolean?, boolean?
     local usable, noResources, inRange, active, glowing = true, false, nil, false, false
-    if kind == "spell" and id then
+    if source == Ring_Kinds.Source.Spell and id then
         usable, noResources, inRange, active, glowing = GetSpellState(id)
-    elseif kind == "item" and id then
+    elseif source == Ring_Kinds.Source.Item and id then
         usable, noResources = IsUsableItem(id)
-    elseif kind == "inventory" and id then
+    elseif source == Ring_Kinds.Source.Inventory and id then
         local itemID = GetInventoryItemID("player", id)
         if itemID then usable, noResources = IsUsableItem(itemID) end
     end

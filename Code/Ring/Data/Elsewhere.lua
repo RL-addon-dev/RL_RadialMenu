@@ -22,8 +22,6 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
 
-local GetStoredTable = Private.GetStoredTable
-
 --- This character's key in the saved copies, "<name>-<realm>".
 ---@return string
 local function CharacterKey()
@@ -33,10 +31,8 @@ end
 --- Every character's saved copy of their menus, by character key.
 ---@return table
 local function GetSnapshots()
-    return GetStoredTable(Config.DBGlobalPersistent, "CharacterMenus")
+    return Private.GetStoredTable(Config.DBGlobalPersistent, "CharacterMenus")
 end
-
-
 
 -- Copies of this character's menus
 
@@ -66,8 +62,6 @@ do
     frame:SetScript("OnEvent", SaveSnapshot)
 end
 
-
-
 -- Reading them
 
 --- Calls `callback(class, rings)` for every other class, with that class's saved menus by id.
@@ -78,7 +72,7 @@ end
 ---@return any, any, any
 local function ForEachOtherClass(callback)
     local current = Private.GetPlayerClass()
-    for class, rings in pairs(GetStoredTable(Config.DBGlobalPersistent, "ClassRings")) do
+    for class, rings in pairs(Private.GetStoredTable(Config.DBGlobalPersistent, "ClassRings")) do
         if class ~= current and type(rings) == "table" then
             local first, second, third = callback(class, rings)
             if first ~= nil then return first, second, third end
@@ -128,7 +122,7 @@ function Ring_Data.GetOtherClassRing(id)
     id = tostring(id)
     return ForEachOtherClass(function(class, rings)
         if type(rings[id]) ~= "table" then return nil end
-        local bindings = GetStoredTable(Config.DBGlobalPersistent, "ClassBindings")[class]
+        local bindings = Private.GetStoredTable(Config.DBGlobalPersistent, "ClassBindings")[class]
         return rings[id], class, (type(bindings) == "table" and bindings[id]) or nil
     end)
 end

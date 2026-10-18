@@ -1,30 +1,31 @@
 --[[
-    item    id: item id; hidden while you have none (toys are their own kind, Toy.lua)
+    An item, used from your bags. It's hidden while you have none. Toys are their own kind (Toy.lua).
 ]]
+
+---@class ItemSlice : Slice
+---@field id number the item id
 
 local env = select(2, ...)
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
-
-local IsToy = Ring_Kinds.IsToy
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 Ring_Kinds.Register({
-    kind = "item",
+    kind = Ring_Kinds.Kind.Item,
 
     validate = function(slice)
-        return type(slice.id) == "number", "item needs a numeric id"
+        return type(slice.id) == "number", L["Config - Rings - Edit - Error - Item"]
     end,
 
     apply = function(button, suffix, slice)
-        Ring_Kinds.SetAttribute(button, "type", suffix, "item")
-        Ring_Kinds.SetAttribute(button, "item", suffix, "item:" .. slice.id)
+        Ring_Kinds.SetAction(button, suffix, "item", "item:" .. slice.id)
     end,
 
     icon  = function(slice) return C_Item.GetItemIconByID(slice.id) end,
-    label = function(slice) return C_Item.GetItemNameByID(slice.id) or ("item:" .. slice.id) end,
+    label = function(slice) return C_Item.GetItemNameByID(slice.id) end,
 
-    cooldown = function(slice) return "item", slice.id end,
-    state    = function(slice) return "item", slice.id end,
+    cooldown = function(slice) return Ring_Kinds.Source.Item, slice.id end,
+    state    = function(slice) return Ring_Kinds.Source.Item, slice.id end,
 
     condition = "item",
     available = function(slice) return C_Item.GetItemCount(slice.id) > 0 end,
@@ -46,7 +47,8 @@ Ring_Kinds.Register({
                     local itemID = info and info.itemID
                     if itemID and not seen[itemID] and C_Item.GetItemSpell(itemID) and not C_ToyBox.GetToyInfo(itemID) then
                         seen[itemID] = true
-                        add({ kind = "item", id = itemID }, info.itemName or C_Item.GetItemNameByID(itemID), info.iconFileID)
+                        local name = info.itemName or C_Item.GetItemNameByID(itemID)
+                        add({ kind = Ring_Kinds.Kind.Item, id = itemID }, name, info.iconFileID)
                     end
                 end
             end
@@ -54,13 +56,14 @@ Ring_Kinds.Register({
     },
 
     lookupId = function(id)
-        if IsToy(id) or not C_Item.GetItemInfoInstant(id) then return nil end
-        return { kind = "item", id = id }, C_Item.GetItemCount(id) == 0 and L["Config - Rings - Search - Note - NoneInBags"] or nil
+        if Utils_Item.IsToy(id) or not C_Item.GetItemInfoInstant(id) then return nil end
+        local note = (C_Item.GetItemCount(id) == 0 and L["Config - Rings - Search - Note - NoneInBags"]) or nil
+        return { kind = Ring_Kinds.Kind.Item, id = id }, note
     end,
 
     cursor = {
         item = function(itemID)
-            if not IsToy(itemID) then return { kind = "item", id = itemID } end
+            if not Utils_Item.IsToy(itemID) then return { kind = Ring_Kinds.Kind.Item, id = itemID } end
         end,
     },
 })

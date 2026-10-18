@@ -12,6 +12,7 @@ local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Live = env.AX_Modules:Import("@\\Ring\\Live")
 local Ring_View = env.AX_Modules:Import("@\\Ring\\View")
 local Private = env.AX_Modules:Import("@\\Ring\\Secure\\Private")
+local Utils_Unit = env.AX_Modules:Import("@\\Utils\\Unit")
 
 local InCombatLockdown = InCombatLockdown
 local Controller, Probe = Private.Controller, Private.Probe
@@ -119,7 +120,7 @@ function Controller:OnRingOpen(ringId, startX, startY, relaxed, gamepad)
     -- Mark Target Markers On = Cursor: the unit hovered now, like a ping. "ring-aimed" tells
     -- the press snippet, which runs on after this, that it needn't steal your focus.
     if #ring.markerSuffixes > 0 and not InCombatLockdown() and GetMarkerMode() then
-        local unit = Ring_Kinds.GetUnitUnderMouse()
+        local unit = Utils_Unit.GetUnitUnderMouse()
         if unit then
             AimMarkers(button, ring, unit)
             button:SetAttribute("ring-aimed", true)
@@ -150,9 +151,9 @@ function Controller:OnRingScroll(ringId, index, current)
     -- in the center.
     if button:GetAttribute("ring-first") == index then
         for other, slice in ipairs(live.slices) do
-            if slice.kind == "first" then Ring_View:SetSliceIcon(other, shown) end
+            if slice.kind == Ring_Kinds.Kind.First then Ring_View:SetSliceIcon(other, shown) end
         end
-        if live.quickSlice and live.quickSlice.kind == "first" then Ring_View:SetQuickSlice(shown) end
+        if live.quickSlice and live.quickSlice.kind == Ring_Kinds.Kind.First then Ring_View:SetQuickSlice(shown) end
     end
 end
 

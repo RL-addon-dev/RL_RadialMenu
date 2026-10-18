@@ -5,6 +5,7 @@
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 Ring_Data.RegisterBuiltIn({
     key  = "special",
@@ -12,6 +13,6 @@ Ring_Data.RegisterBuiltIn({
     name = "Config - Rings - SpecialRing - Name",
     versions = { env.GameVersion.Retail },
     scan = function()
-        return { { kind = "extra" }, { kind = "zone" } }
+        return { { kind = Ring_Kinds.Kind.Extra }, { kind = Ring_Kinds.Kind.Zone } }
     end,
 })

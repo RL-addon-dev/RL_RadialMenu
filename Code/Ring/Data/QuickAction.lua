@@ -13,8 +13,7 @@ local Config = env.Config
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
-
-local Changed, EditError = Private.Changed, Private.EditError
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 --- The identity (Ring_Data.GetSliceKey) of the action last fired from menu `id` on this character,
 --- like "item:6948". It's saved by identity, not position, so it survives hidden actions and
@@ -49,7 +48,7 @@ function Ring_Data.ClearQuickAction(id)
     local ring = Ring_Data.GetRing(id)
     if not ring then return false end
     ring.quickAction, ring.quickSlice = Ring_Data.QuickAction.None, nil
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -69,12 +68,12 @@ end
 ---@return string? error why not, for the chat message
 function Ring_Data.SetQuickSlice(id, slice)
     local ring = Ring_Data.GetRing(id)
-    if not ring then return false, EditError.MenuNotFound end
-    if not Ring_Data.CanBeQuickAction(slice) then return false, EditError.NotQuickAction end
+    if not ring then return false, Private.EditError.MenuNotFound end
+    if not Ring_Data.CanBeQuickAction(slice) then return false, Private.EditError.NotQuickAction end
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end
     SetCenter(ring, slice)
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -86,10 +85,10 @@ end
 function Ring_Data.CopySliceToQuick(id, index)
     local ring = Ring_Data.GetRing(id)
     local slice = ring and ring.slices[index]
-    if not slice then return false, EditError.ActionNotFound end
-    if not Ring_Data.CanBeQuickAction(slice) then return false, EditError.NotQuickAction end
+    if not slice then return false, Private.EditError.ActionNotFound end
+    if not Ring_Data.CanBeQuickAction(slice) then return false, Private.EditError.NotQuickAction end
     SetCenter(ring, CopyTable(slice))
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -105,10 +104,10 @@ end
 function Ring_Data.MoveQuickSliceToWheel(id, index, replace)
     local ring, scopeOrError = Private.GetEditableRing(id)
     if not ring then return false, scopeOrError end
-    local slice = Ring_Data.GetQuickActionSlice(ring) or { kind = "close" }
+    local slice = Ring_Data.GetQuickActionSlice(ring) or { kind = Ring_Kinds.Kind.Close }
     local replaced = replace and ring.slices[index]
-    if replace and not replaced then return false, EditError.ActionNotFound end
-    if replaced and not Ring_Data.CanBeQuickAction(replaced) then return false, EditError.NotQuickAction end
+    if replace and not replaced then return false, Private.EditError.ActionNotFound end
+    if replaced and not Ring_Data.CanBeQuickAction(replaced) then return false, Private.EditError.NotQuickAction end
     -- Checked before the center changes, so a refused move leaves it as it was.
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end

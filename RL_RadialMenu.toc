@@ -21,6 +21,7 @@ Locales\Locales.xml
 libs\AX_Settings\AX_Settings.xml
 
 Code\Perf.lua
+Code\Utils\Utils.xml
 Code\Setting\Setting.xml
 Code\Ring\Ring.xml
 Code\Commands.lua

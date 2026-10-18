@@ -33,7 +33,7 @@ local env = select(2, ...)
 local L = env.L
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
-local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local ShareString = env.AX_Modules:Import("ax_modules\\share-string")
 local Utils_General = env.AX_Modules:Import("ax_modules\\utils\\general")
@@ -59,7 +59,6 @@ Ring_Data.ShareSkip = Utils_Standard.Strict({
     Invalid      = "invalid",       -- not an action of this game, or it failed its checks
     Empty        = "empty",         -- when sharing, a submenu with nothing left in it
 }, "share skip reason")
-local Skip = Ring_Data.ShareSkip
 
 -- Why a whole import was refused (besides ShareString.Error, for a string it can't read).
 Ring_Data.ShareError = Utils_Standard.Strict({
@@ -74,7 +73,7 @@ local VISITING, VISITED = 1, 2
 ---@param skipped table<string, integer> counts by Ring_Data.ShareSkip reason
 ---@param reason string? Invalid when nil
 local function CountSkip(skipped, reason)
-    reason = reason or Skip.Invalid
+    reason = reason or Ring_Data.ShareSkip.Invalid
     skipped[reason] = (skipped[reason] or 0) + 1
 end
 
@@ -97,9 +96,9 @@ local function DropEmptyMenus(menus)
             if changed and not dropped[index] then
                 for i = #menu.slices, 1, -1 do
                     local slice = menu.slices[i]
-                    if slice.kind == "ring" and not slice.builtin and dropped[slice.ring] then
+                    if slice.kind == Ring_Kinds.Kind.Ring and not slice.builtin and dropped[slice.ring] then
                         table.remove(menu.slices, i)
-                        if menu.skipped then CountSkip(menu.skipped, Skip.Empty) end -- an import's menu
+                        if menu.skipped then CountSkip(menu.skipped, Ring_Data.ShareSkip.Empty) end -- an import's menu
                     end
                 end
             end
@@ -115,13 +114,11 @@ local function DropEmptyMenus(menus)
     end
     for _, menu in ipairs(kept) do
         for _, slice in ipairs(menu.slices) do
-            if slice.kind == "ring" and not slice.builtin then slice.ring = newIndex[slice.ring] end
+            if slice.kind == Ring_Kinds.Kind.Ring and not slice.builtin then slice.ring = newIndex[slice.ring] end
         end
     end
     return kept, dropped
 end
-
-
 
 -- Share
 
@@ -133,7 +130,7 @@ end
 ---@return string? reason a Ring_Data.ShareSkip value
 local function PackSlice(slice, macros)
     local definition = Ring_Kinds.Get(slice.kind)
-    if not definition then return nil, Skip.Invalid end
+    if not definition then return nil, Ring_Data.ShareSkip.Invalid end
     if definition.share and definition.share.pack then return definition.share.pack(slice, macros) end
     return CopyTable(slice)
 end
@@ -155,7 +152,7 @@ function Ring_Data.BuildShare(ringIds)
         rings[#rings + 1] = ring
         indexOf[ring.id] = #rings
         for _, slice in ipairs(ring.slices) do
-            if slice.kind == "ring" then Add(slice.ring) end
+            if slice.kind == Ring_Kinds.Kind.Ring then Add(slice.ring) end
         end
     end
     for _, id in ipairs(ringIds) do Add(id) end
@@ -163,7 +160,7 @@ function Ring_Data.BuildShare(ringIds)
     local menus, macros, skippedNames = {}, {}, {}
     -- What's left out, by reason, each name once. The Share box lists it.
     local function AddSkip(reason, label)
-        reason = reason or Skip.Invalid
+        reason = reason or Ring_Data.ShareSkip.Invalid
         local names = skippedNames[reason] or {}
         skippedNames[reason] = names
         if not tContains(names, label) then names[#names + 1] = label end
@@ -174,18 +171,18 @@ function Ring_Data.BuildShare(ringIds)
             local packed, reason
             -- A submenu found nowhere is left out, and not listed as skipped. That's one with no
             -- saved copy, from a character that hasn't logged in since.
-            local child = slice.kind == "ring" and indexOf[tostring(slice.ring)]
+            local child = slice.kind == Ring_Kinds.Kind.Ring and indexOf[tostring(slice.ring)]
             local elsewhere = not child and Ring_Data.IsElsewhere(slice)
             if elsewhere then
                 packed = nil
-            elseif slice.kind == "ring" then
+            elseif slice.kind == Ring_Kinds.Kind.Ring then
                 local childRing = not child and Ring_Data.GetRing(slice.ring)
                 if child then
-                    packed = { kind = "ring", ring = child }
+                    packed = { kind = Ring_Kinds.Kind.Ring, ring = child }
                 elseif childRing and Ring_Data.IsBuiltIn(childRing) then
-                    packed = { kind = "ring", builtin = childRing.builtin }
+                    packed = { kind = Ring_Kinds.Kind.Ring, builtin = childRing.builtin }
                 else
-                    reason = Skip.Invalid
+                    reason = Ring_Data.ShareSkip.Invalid
                 end
             else
                 packed, reason = PackSlice(slice, macros)
@@ -221,7 +218,7 @@ function Ring_Data.BuildShare(ringIds)
     local submenus = {}
     for index, ring in ipairs(rings) do
         if dropped[index] then
-            if not roots[index] then AddSkip(Skip.Empty, ring.name) end
+            if not roots[index] then AddSkip(Ring_Data.ShareSkip.Empty, ring.name) end
         elseif not roots[index] then
             submenus[#submenus + 1] = ring.name
         end
@@ -235,8 +232,6 @@ function Ring_Data.BuildShare(ringIds)
     local header = { addon = ADDON, version = FORMAT_VERSION, game = env.GAME_VERSION }
     return ShareString.Encode(header, { menus = kept, macros = macros }), summary
 end
-
-
 
 -- Import: the plan
 
@@ -252,7 +247,7 @@ function PlanMixin:ResolveMacro(name)
     if self.macroNames[name] then return self.macroNames[name] end
     local data = type(name) == "string" and self.macroData[name]
     if type(data) ~= "table" or type(data.body) ~= "string" or #data.body > MAX_MACRO_BODY then
-        return nil, Skip.Invalid
+        return nil, Ring_Data.ShareSkip.Invalid
     end
 
     local existing = GetMacroIndexByName(name)
@@ -262,7 +257,7 @@ function PlanMixin:ResolveMacro(name)
     end
 
     local accountMacros = GetNumMacros()
-    if accountMacros + #self.macros >= MAX_ACCOUNT_MACROS then return nil, Skip.MacroSlots end
+    if accountMacros + #self.macros >= MAX_ACCOUNT_MACROS then return nil, Ring_Data.ShareSkip.MacroSlots end
 
     local newName = Utils_General.GetUniqueName(name, function(candidate)
         local index = GetMacroIndexByName(candidate)
@@ -283,15 +278,17 @@ end
 ---@return Slice? slice
 ---@return string? reason a Ring_Data.ShareSkip value
 function PlanMixin:UnpackSlice(slice)
-    if type(slice) ~= "table" or type(slice.kind) ~= "string" or slice.kind == "ring" then return nil, Skip.Invalid end
+    if type(slice) ~= "table" or type(slice.kind) ~= "string" or slice.kind == Ring_Kinds.Kind.Ring then
+        return nil, Ring_Data.ShareSkip.Invalid
+    end
     local definition = Ring_Kinds.Get(slice.kind)
-    if not definition then return nil, Skip.Invalid end -- another game's kind
+    if not definition then return nil, Ring_Data.ShareSkip.Invalid end -- another game's kind
     local unpacked, reason = CopyTable(slice), nil
     if definition.share and definition.share.unpack then
         unpacked, reason = definition.share.unpack(unpacked, self)
         if not unpacked then return nil, reason end
     end
-    if not Ring_Data.ValidateSlice(nil, unpacked) then return nil, Skip.Invalid end
+    if not Ring_Data.ValidateSlice(nil, unpacked) then return nil, Ring_Data.ShareSkip.Invalid end
     return unpacked
 end
 
@@ -304,10 +301,10 @@ local function BreakLoops(entries)
         local entry = entries[index]
         for i = #entry.slices, 1, -1 do
             local slice = entry.slices[i]
-            if slice.kind == "ring" and not slice.builtin then -- built-ins hold no submenus
+            if slice.kind == Ring_Kinds.Kind.Ring and not slice.builtin then -- built-ins hold no submenus
                 if state[slice.ring] == VISITING then
                     table.remove(entry.slices, i)
-                    CountSkip(entry.skipped, Skip.Invalid)
+                    CountSkip(entry.skipped, Ring_Data.ShareSkip.Invalid)
                 elseif not state[slice.ring] then
                     Visit(slice.ring)
                 end
@@ -352,16 +349,17 @@ function Ring_Data.ReadShare(text)
         local entry = { sourceName = sourceName, slices = {}, skipped = {} }
         for _, slice in ipairs(menu.slices) do
             local unpacked, reason
-            if type(slice) == "table" and slice.kind == "ring" then
+            if type(slice) == "table" and slice.kind == Ring_Kinds.Kind.Ring then
                 local child = slice.ring
                 local builtIn = type(slice.builtin) == "string" and Ring_Data.GetBuiltInRing(slice.builtin)
                 if type(child) == "number" and menus[child] and child ~= menuIndex then
-                    unpacked = { kind = "ring", ring = child }
+                    unpacked = { kind = Ring_Kinds.Kind.Ring, ring = child }
                 elseif builtIn then
                     -- This character's own built-in menu, linked by its saved id (not an index).
-                    unpacked = { kind = "ring", ring = builtIn.id, builtin = true }
+                    unpacked = { kind = Ring_Kinds.Kind.Ring, ring = builtIn.id, builtin = true }
                 else
-                    reason = type(slice.builtin) == "string" and Skip.BuiltIn or Skip.Invalid
+                    reason = (type(slice.builtin) == "string" and Ring_Data.ShareSkip.BuiltIn)
+                        or Ring_Data.ShareSkip.Invalid
                 end
             else
                 unpacked, reason = plan:UnpackSlice(slice)
@@ -399,15 +397,13 @@ function Ring_Data.ReadShare(text)
     -- Each submenu is shown under the first menu found that contains it.
     for index, entry in ipairs(plan.menus) do
         for _, slice in ipairs(entry.slices) do
-            if slice.kind == "ring" and not slice.builtin and not plan.menus[slice.ring].parent then
+            if slice.kind == Ring_Kinds.Kind.Ring and not slice.builtin and not plan.menus[slice.ring].parent then
                 plan.menus[slice.ring].parent = index
             end
         end
     end
     return plan
 end
-
-
 
 -- Import: carrying it out
 
@@ -433,7 +429,7 @@ function Ring_Data.ApplyShare(plan, scope)
         ring.slices = {}
         for _, slice in ipairs(entry.slices) do
             local stored = CopyTable(slice)
-            if stored.kind == "ring" then
+            if stored.kind == Ring_Kinds.Kind.Ring then
                 if stored.builtin then stored.builtin = nil else stored.ring = rings[stored.ring].id end
             end
             ring.slices[#ring.slices + 1] = stored

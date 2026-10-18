@@ -14,21 +14,19 @@ local env = select(2, ...)
 local Config = env.Config
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
-
-local GetStoredTable, Changed = Private.GetStoredTable, Private.Changed
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 --- The keybinds of the menus in `scope`, by menu id.
 ---@param scope string a Ring_Data.Scope value
 ---@return table<string, string>
 function Private.GetBindingTable(scope)
     if scope == Ring_Data.Scope.Account then
-        return GetStoredTable(Config.DBGlobalPersistent, "Bindings")
+        return Private.GetStoredTable(Config.DBGlobalPersistent, "Bindings")
     elseif scope == Ring_Data.Scope.Class then
         return Private.GetClassStoredTable("ClassBindings")
     end
-    return GetStoredTable(Config.DBLocalPersistent, "Bindings")
+    return Private.GetStoredTable(Config.DBLocalPersistent, "Bindings")
 end
-local GetBindingTable = Private.GetBindingTable
 
 --- Takes `key` away from the other menus in `scope`, so an account menu loses it on all
 --- characters. Menus of other scopes keep it, because the narrowest scope's menu opens either way.
@@ -36,7 +34,7 @@ local GetBindingTable = Private.GetBindingTable
 ---@param exceptId string the menu getting the key
 ---@param scope string a Ring_Data.Scope value
 local function ReleaseKey(key, exceptId, scope)
-    local bindings = GetBindingTable(scope)
+    local bindings = Private.GetBindingTable(scope)
     for id, bound in pairs(bindings) do
         if id ~= exceptId and bound == key then bindings[id] = nil end
     end
@@ -47,11 +45,11 @@ end
 ---@param fromScope string a Ring_Data.Scope value
 ---@param toScope string a Ring_Data.Scope value
 function Private.MoveBinding(id, fromScope, toScope)
-    local key = GetBindingTable(fromScope)[id]
-    GetBindingTable(fromScope)[id] = nil
+    local key = Private.GetBindingTable(fromScope)[id]
+    Private.GetBindingTable(fromScope)[id] = nil
     if key then
         ReleaseKey(key, id, toScope)
-        GetBindingTable(toScope)[id] = key
+        Private.GetBindingTable(toScope)[id] = key
     end
 end
 
@@ -63,7 +61,7 @@ function Ring_Data.GetBinding(id)
     id = tostring(id)
     local ring, scope = Ring_Data.GetRing(id)
     if not ring then return nil end
-    return GetBindingTable(scope)[id], scope
+    return Private.GetBindingTable(scope)[id], scope
 end
 
 --- Whether `scope` is narrower than `other`, so its menu wins a key they share.
@@ -84,7 +82,7 @@ function Ring_Data.GetBindingOverrides(id)
     if not key or not scope then return overrides end
     for _, narrower in ipairs(Ring_Data.ScopeOrder) do
         if Ring_Data.IsNarrowerScope(narrower, scope) then
-            for otherId, otherKey in pairs(GetBindingTable(narrower)) do
+            for otherId, otherKey in pairs(Private.GetBindingTable(narrower)) do
                 local other = otherKey == key and Ring_Data.GetRing(otherId)
                 if other then overrides[#overrides + 1] = { ring = other, scope = narrower } end
             end
@@ -115,7 +113,7 @@ function Ring_Data.GetOpenableRings()
         if not ring or set[ring.id] then return end
         set[ring.id] = true
         for _, slice in ipairs(ring.slices) do
-            if slice.kind == "ring" then Add(Ring_Data.GetRing(slice.ring)) end
+            if slice.kind == Ring_Kinds.Kind.Ring then Add(Ring_Data.GetRing(slice.ring)) end
         end
     end
 
@@ -141,7 +139,7 @@ function Ring_Data.SetBinding(id, key)
     local ring, scope = Ring_Data.GetRing(id)
     if not ring then return false end
     if key then ReleaseKey(key, ring.id, scope) end
-    GetBindingTable(scope)[ring.id] = key
-    Changed()
+    Private.GetBindingTable(scope)[ring.id] = key
+    Private.Changed()
     return true
 end

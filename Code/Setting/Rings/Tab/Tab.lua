@@ -48,6 +48,7 @@ local Rings_Share = env.AX_Modules:Import("@\\Setting\\Rings\\Share")
 local Rings_Removed = env.AX_Modules:Import("@\\Setting\\Rings\\Removed")
 local Rings_Import = env.AX_Modules:Import("@\\Setting\\Rings\\Import")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
+local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 local Rings_Tab = env.AX_Modules:New("@\\Setting\\Rings\\Tab")
 local Private = env.AX_Modules:New("@\\Setting\\Rings\\Tab\\Private")
 
@@ -416,10 +417,10 @@ local function PreviewCallbacks(page)
         onToggleQuick = Edit(function(ring)
             local quick = Ring_Data.GetQuickActionSlice(ring)
             if not quick then
-                Report(Ring_Data.SetQuickSlice(ring.id, { kind = "lastused" }))
-            elseif quick.kind == "lastused" then
-                Report(Ring_Data.SetQuickSlice(ring.id, { kind = "first" }))
-            elseif quick.kind == "first" then
+                Report(Ring_Data.SetQuickSlice(ring.id, { kind = Ring_Kinds.Kind.LastUsed }))
+            elseif quick.kind == Ring_Kinds.Kind.LastUsed then
+                Report(Ring_Data.SetQuickSlice(ring.id, { kind = Ring_Kinds.Kind.First }))
+            elseif quick.kind == Ring_Kinds.Kind.First then
                 Report(Ring_Data.ClearQuickAction(ring.id))
             end
         end),

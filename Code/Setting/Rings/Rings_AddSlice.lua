@@ -200,7 +200,8 @@ function AddSliceMixin:Update()
 
     local hint
     if #results == 0 then
-        hint = (strtrim(query) == "" and self:GetKind() == "all") and L["Config - Rings - Search - Hint"] or L["Config - Rings - Search - NoMatches"]
+        local waiting = strtrim(query) == "" and self:GetKind() == Ring_Search.ALL
+        hint = (waiting and L["Config - Rings - Search - Hint"]) or L["Config - Rings - Search - NoMatches"]
     elseif truncated then
         hint = nil -- the list is full; the user can refine the query
     end

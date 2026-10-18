@@ -5,13 +5,14 @@
     with a double-click.
 
     Slot menus list what's in your bags, once per copy (item link), so what you're wearing isn't
-    there. They refill together from one bag scan (Ring_Kinds.GetBagItemsBySlot) as bags, gear
+    there. They refill together from one bag scan (Utils_Item.GetBagItemsBySlot) as bags, gear
     and your level change.
 ]]
 
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 -- Slot -> the built-in menu's key (saved: never rename) and name.
 local SLOT_KEYS = {
@@ -26,7 +27,7 @@ local SLOT_KEYS = {
 -- (EquipmentSets.lua), then the slots.
 Ring_Kinds.EQUIP_MENU_KEYS = { "equipsets" }
 
-for _, slot in ipairs(Ring_Kinds.EQUIP_SLOTS) do
+for _, slot in ipairs(Utils_Item.EQUIP_SLOTS) do
     local key = SLOT_KEYS[slot]
     table.insert(Ring_Kinds.EQUIP_MENU_KEYS, key)
     Ring_Data.RegisterBuiltIn({
@@ -36,8 +37,8 @@ for _, slot in ipairs(Ring_Kinds.EQUIP_SLOTS) do
         events = { "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP" },
         scan   = function()
             local slices = {}
-            for _, item in ipairs(Ring_Kinds.GetBagItemsBySlot()[slot]) do
-                slices[#slices + 1] = { kind = "equipitem", id = item.id, slot = slot, link = item.link }
+            for _, item in ipairs(Utils_Item.GetBagItemsBySlot()[slot]) do
+                slices[#slices + 1] = { kind = Ring_Kinds.Kind.EquipItem, id = item.id, slot = slot, link = item.link }
             end
             return slices
         end,

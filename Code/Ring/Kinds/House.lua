@@ -1,26 +1,28 @@
 --[[
-    house   home: "alliance" (Founder's Point) | "horde" (Razorwind Shores) | "return"
-            Teleports to your house in that neighborhood (hidden while you don't own one there),
-            or back to where you were before (hidden while the game doesn't offer it).
+    Teleports to your house in a neighborhood (hidden while you don't own one there), or back to
+    where you were before (hidden while the game doesn't offer it).
 
-    Not a spell: the game's secure action types "teleporthome" (with the house's ids) and
-    "returnhome". The ids aren't saved in the menu, they come from your house list
-    (C_Housing.GetPlayerOwnedHouses, answered by PLAYER_HOUSE_LIST_UPDATED), so a menu works on
-    every character and when shared. The menus rebuild when the list arrives
-    (attributesChangeWith). Cooldowns are the Teleport Home / Return spells'.
+    It isn't a spell. It uses the game's secure action types "teleporthome" (with the house's ids)
+    and "returnhome". The ids aren't saved in the menu, they come from your house list
+    (Utils_Housing), so a menu works on every character and when shared. The menus rebuild when the
+    list arrives (attributesChangeWith). Cooldowns are the Teleport Utils_Housing.Home and Return spells'.
 ]]
+
+---@class HouseSlice : Slice
+---@field home string a Utils_Housing.Home value
 
 local env = select(2, ...)
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Housing = env.AX_Modules:Import("@\\Utils\\Housing")
 
-local TELEPORT_SPELL = 1233637 -- Teleport Home
+local TELEPORT_SPELL = 1233637 -- Teleport Utils_Housing.Home
 local RETURN_SPELL = 1270311   -- Return
 
--- Per home: the neighborhood (C_Housing.GetNeighborhoodTextureSuffix) and its zone (area id).
-local HOMES = {
-    alliance = { neighborhood = "elwynn", areaID = 16105, fallback = "Config - Rings - House - Alliance" },
-    horde    = { neighborhood = "durotar", areaID = 15524, fallback = "Config - Rings - House - Horde" },
+-- The neighborhood's name when the game doesn't know its zone yet.
+local FALLBACK_NAMES = {
+    [Utils_Housing.Home.Alliance] = "Config - Rings - House - Alliance",
+    [Utils_Housing.Home.Horde]    = "Config - Rings - House - Horde",
 }
 -- The Housing Dashboard's own teleport buttons (the spells themselves show a generic hearthstone).
 local HOME_ICON = "atlas:dashboard-panel-homestone-teleport-button"
@@ -28,56 +30,29 @@ local RETURN_ICON = "atlas:dashboard-panel-homestone-teleport-out-button"
 
 if env.GAME_VERSION ~= env.GameVersion.Retail then return end
 
--- Your houses by neighborhood ("elwynn" / "durotar"): { neighborhoodGUID, houseGUID, plotID }.
-local houses = {}
-do
-    local frame = CreateFrame("Frame")
-    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    frame:RegisterEvent("PLAYER_HOUSE_LIST_UPDATED")
-    frame:SetScript("OnEvent", function(self, event, list)
-        if event == "PLAYER_ENTERING_WORLD" then
-            self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-            C_Housing.GetPlayerOwnedHouses() -- answered by PLAYER_HOUSE_LIST_UPDATED
-            return
-        end
-        wipe(houses)
-        for _, info in ipairs(list or {}) do
-            local neighborhood = info.neighborhoodGUID and C_Housing.GetNeighborhoodTextureSuffix(info.neighborhoodGUID)
-            if neighborhood then houses[neighborhood] = info end
-        end
-    end)
-end
-
---- Your house for `home` ("alliance" / "horde"), or nil.
-local function GetHouse(home)
-    local definition = HOMES[home]
-    return definition and houses[definition.neighborhood]
-end
-
---- Whether you own a house in `home`'s neighborhood (the Hearthstones menu lists those).
-function Ring_Kinds.HasHouse(home)
-    return GetHouse(home) ~= nil
-end
-
+---@param home string
+---@return string
 local function GetNeighborhoodName(home)
-    local definition = HOMES[home]
-    return C_Map.GetAreaInfo(definition.areaID) or L[definition.fallback]
+    return Utils_Housing.GetNeighborhoodName(home) or L[FALLBACK_NAMES[home]]
 end
 
 Ring_Kinds.Register({
-    kind = "house",
+    kind = Ring_Kinds.Kind.House,
     versions = { env.GameVersion.Retail },
 
+    ---@param slice HouseSlice
     validate = function(slice)
-        return HOMES[slice.home] ~= nil or slice.home == "return", "house needs a home (alliance, horde or return)"
+        local valid = Utils_Housing.IsNeighborhood(slice.home) or slice.home == Utils_Housing.Home.Return
+        return valid, L["Config - Rings - Edit - Error - House"]
     end,
 
+    ---@param slice HouseSlice
     apply = function(button, suffix, slice)
-        if slice.home == "return" then
+        if slice.home == Utils_Housing.Home.Return then
             Ring_Kinds.SetAttribute(button, "type", suffix, "returnhome")
             return
         end
-        local house = GetHouse(slice.home)
+        local house = Utils_Housing.GetHouse(slice.home)
         if not house then
             Ring_Kinds.ClearAction(button, suffix)
             return
@@ -87,36 +62,46 @@ Ring_Kinds.Register({
         Ring_Kinds.SetAttribute(button, "house-guid", suffix, house.houseGUID)
         Ring_Kinds.SetAttribute(button, "house-plot-id", suffix, house.plotID)
     end,
-    -- The attributes carry the house's ids: rebuild once the house list arrives or changes.
+    -- The attributes carry the house's ids, so the menus rebuild once the house list arrives or
+    -- changes.
     attributesChangeWith = function()
-        local alliance, horde = GetHouse("alliance"), GetHouse("horde")
-        return (alliance and alliance.houseGUID or "") .. "/" .. (horde and horde.houseGUID or "")
+        local alliance = Utils_Housing.GetHouse(Utils_Housing.Home.Alliance)
+        local horde = Utils_Housing.GetHouse(Utils_Housing.Home.Horde)
+        return ((alliance and alliance.houseGUID) or "") .. "/" .. ((horde and horde.houseGUID) or "")
     end,
 
+    ---@param slice HouseSlice
     icon = function(slice)
-        return slice.home == "return" and RETURN_ICON or HOME_ICON
+        return (slice.home == Utils_Housing.Home.Return and RETURN_ICON) or HOME_ICON
     end,
+    ---@param slice HouseSlice
     label = function(slice)
-        if slice.home == "return" then
+        if slice.home == Utils_Housing.Home.Return then
             return C_Spell.GetSpellName(RETURN_SPELL) or L["Config - Rings - House - Return"]
         end
         local teleport = C_Spell.GetSpellName(TELEPORT_SPELL) or L["Config - Rings - House - Teleport"]
         return format("%s: %s", teleport, GetNeighborhoodName(slice.home))
     end,
 
+    ---@param slice HouseSlice
     cooldown = function(slice)
-        return "spell", slice.home == "return" and RETURN_SPELL or TELEPORT_SPELL
+        return Ring_Kinds.Source.Spell, (slice.home == Utils_Housing.Home.Return and RETURN_SPELL) or TELEPORT_SPELL
     end,
 
-    condition = function(slice) return slice.home == "return" and "housereturn" or "house" end,
+    ---@param slice HouseSlice
+    condition = function(slice) return (slice.home == Utils_Housing.Home.Return and "housereturn") or "house" end,
+    ---@param slice HouseSlice
     available = function(slice)
-        if slice.home == "return" then return C_HousingNeighborhood.CanReturnAfterVisitingHouse() and true or false end
-        return GetHouse(slice.home) ~= nil
+        if slice.home == Utils_Housing.Home.Return then
+            return C_HousingNeighborhood.CanReturnAfterVisitingHouse() and true or false
+        end
+        return Utils_Housing.HasHouse(slice.home)
     end,
 
+    ---@param slice HouseSlice
     tooltip = function(tooltip, slice)
-        tooltip:SetSpellByID(slice.home == "return" and RETURN_SPELL or TELEPORT_SPELL)
-        if slice.home ~= "return" then tooltip:AddLine(GetNeighborhoodName(slice.home), 1, 1, 1) end
+        tooltip:SetSpellByID((slice.home == Utils_Housing.Home.Return and RETURN_SPELL) or TELEPORT_SPELL)
+        if slice.home ~= Utils_Housing.Home.Return then tooltip:AddLine(GetNeighborhoodName(slice.home), 1, 1, 1) end
         return true
     end,
 
@@ -126,10 +111,10 @@ Ring_Kinds.Register({
         events = { "PLAYER_HOUSE_LIST_UPDATED" },
         -- Your homes, then Return.
         scan   = function(add)
-            for _, home in ipairs({ "alliance", "horde" }) do
-                if GetHouse(home) then add({ kind = "house", home = home }) end
+            for _, home in ipairs({ Utils_Housing.Home.Alliance, Utils_Housing.Home.Horde }) do
+                if Utils_Housing.HasHouse(home) then add({ kind = Ring_Kinds.Kind.House, home = home }) end
             end
-            add({ kind = "house", home = "return" })
+            add({ kind = Ring_Kinds.Kind.House, home = Utils_Housing.Home.Return })
         end,
     },
 })

@@ -6,6 +6,7 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Spec = env.AX_Modules:Import("@\\Utils\\Spec")
 
 Ring_Data.RegisterBuiltIn({
     key      = "specs",
@@ -15,7 +16,7 @@ Ring_Data.RegisterBuiltIn({
     events   = { "PLAYER_SPECIALIZATION_CHANGED" },
     scan     = function()
         local slices = {}
-        Ring_Kinds.ForEachSpec(function(_, specID) slices[#slices + 1] = { kind = "spec", id = specID } end)
+        Utils_Spec.ForEachSpec(function(_, specID) slices[#slices + 1] = { kind = Ring_Kinds.Kind.Spec, id = specID } end)
         return slices
     end,
 })

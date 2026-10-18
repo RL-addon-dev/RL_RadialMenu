@@ -1,14 +1,18 @@
 --[[
-    emote   token: emote token (e.g. "WAVE")
+    An emote, like /wave.
 ]]
 
+---@class EmoteSlice : Slice
+---@field token string the emote token, like "WAVE"
+
 local env = select(2, ...)
+local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 
 local ICON = "Interface\\Icons\\INV_Misc_Note_01" -- an emote without a symbol
 
--- Each offered emote's symbol (Ring_Kinds.GetSymbol: Art\Symbols, from game-icons.net). Similar
--- emotes share one; the comment names that family. Other emotes show the note.
+-- Each offered emote's symbol (Ring_Kinds.GetSymbol, from Art\Symbols and game-icons.net). Similar
+-- emotes share one, and the comment names that family. Other emotes show the note.
 local SYMBOLS = {
     APPLAUD = "gloves",
     BOW     = "prayer",
@@ -34,8 +38,8 @@ local SYMBOLS = {
     WAVE    = "palm",            -- greeting
 }
 
--- Slash commands that aren't emote tokens of their own: /yes is the NOD emote. Saved as the
--- command (its label), fired as the token, and shown with its symbol.
+-- Slash commands that aren't emote tokens of their own, like /yes, which is the NOD emote. Saved as
+-- the command (its label), fired as the token, and shown with its symbol.
 local ALIASES = {
     YES = "NOD",
 }
@@ -47,29 +51,33 @@ local EMOTES = {
 }
 
 Ring_Kinds.Register({
-    kind = "emote",
+    kind = Ring_Kinds.Kind.Emote,
     noIconBorder = true, -- the symbol on its own, not a spell
 
+    ---@param slice EmoteSlice
     validate = function(slice)
-        return type(slice.token) == "string", "emote needs a token (e.g. WAVE)"
+        return type(slice.token) == "string", L["Config - Rings - Edit - Error - Emote"]
     end,
 
+    ---@param slice EmoteSlice
     apply = function(button, suffix, slice)
         local token = slice.token:upper()
         Ring_Kinds.SetMacroText(button, suffix, ("/run DoEmote(%q)"):format(ALIASES[token] or token))
     end,
 
+    ---@param slice EmoteSlice
     icon  = function(slice)
         local token = slice.token:upper()
         local symbol = SYMBOLS[token] or SYMBOLS[ALIASES[token]]
-        return symbol and Ring_Kinds.GetSymbol(symbol) or ICON
+        return (symbol and Ring_Kinds.GetSymbol(symbol)) or ICON
     end,
+    ---@param slice EmoteSlice
     label = function(slice) return "/" .. slice.token:lower() end,
 
     search = {
         filter = "emote",
         scan   = function(add)
-            for _, token in ipairs(EMOTES) do add({ kind = "emote", token = token }) end
+            for _, token in ipairs(EMOTES) do add({ kind = Ring_Kinds.Kind.Emote, token = token }) end
         end,
     },
 })

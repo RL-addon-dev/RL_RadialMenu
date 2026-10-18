@@ -6,6 +6,7 @@
 local env = select(2, ...)
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
 Ring_Data.RegisterBuiltIn({
     key    = "equipsets",
@@ -14,7 +15,7 @@ Ring_Data.RegisterBuiltIn({
     events = { "EQUIPMENT_SETS_CHANGED" },
     scan   = function()
         local slices = {}
-        Ring_Kinds.ForEachEquipmentSet(function(name) slices[#slices + 1] = { kind = "equipset", name = name } end)
+        Utils_Item.ForEachEquipmentSet(function(name) slices[#slices + 1] = { kind = Ring_Kinds.Kind.EquipSet, name = name } end)
         return slices
     end,
 })

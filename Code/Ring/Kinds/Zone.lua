@@ -1,60 +1,61 @@
 --[[
-    zone    (no fields) the current zone ability; hidden while there's none. Its secure attributes
-            name the ability, so the menus rebuild when it changes (attributesChangeWith). Icon,
-            name, cooldown and tooltip follow what it is right now (Dungeon Assistance turning into
-            other spells), like the Zone Ability button; the cast stays on the ability itself.
+    The current zone ability. It has no fields of its own, and it's hidden while there's none. Its
+    secure attributes name the ability, so the menus rebuild when it changes (attributesChangeWith).
+    Its icon, name, cooldown and tooltip follow what it is right now (Dungeon Assistance turning
+    into other spells), like the Zone Ability button, while the cast stays on the ability itself.
 ]]
 
 local env = select(2, ...)
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Spell = env.AX_Modules:Import("@\\Utils\\Spell")
 
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
-local GetZoneAbilitySpell = Ring_Kinds.GetZoneAbilitySpell
-
 --- What the zone ability is right now (its current replacement), or nil.
+---@return number?
 local function GetShownSpell()
-    return select(2, GetZoneAbilitySpell())
+    return select(2, Utils_Spell.GetZoneAbilitySpell())
 end
 
---- The ability shown right now (its cooldown and state follow it).
+--- The ability shown right now, which its cooldown and state follow.
+---@return string? source Ring_Kinds.Source.Spell
+---@return number? spellID
 local function ShownSpellSource()
     local spellID = GetShownSpell()
-    if spellID then return "spell", spellID end
+    if spellID then return Ring_Kinds.Source.Spell, spellID end
 end
 
 Ring_Kinds.Register({
-    kind = "zone",
+    kind = Ring_Kinds.Kind.Zone,
     versions = { env.GameVersion.Retail },
 
-    validate = function() return true end,
-
     apply = function(button, suffix)
-        local spellID = GetZoneAbilitySpell()
+        local spellID = Utils_Spell.GetZoneAbilitySpell()
         if spellID then
             Ring_Kinds.SetSpell(button, suffix, C_Spell.GetSpellName(spellID) or spellID)
         else
             Ring_Kinds.ClearAction(button, suffix)
         end
     end,
-    attributesChangeWith = function() return (GetZoneAbilitySpell()) end,
+    attributesChangeWith = function() return (Utils_Spell.GetZoneAbilitySpell()) end,
 
     icon = function()
         local spellID = GetShownSpell()
-        return spellID and C_Spell.GetSpellTexture(spellID) or ICON
+        return (spellID and C_Spell.GetSpellTexture(spellID)) or ICON
     end,
     label = function()
         local spellID = GetShownSpell()
         local name = spellID and C_Spell.GetSpellName(spellID)
-        return name and format("%s: %s", L["Config - Rings - Special - Zone"], name) or L["Config - Rings - Special - Zone"]
+        local title = L["Config - Rings - Special - Zone"]
+        return (name and format("%s: %s", title, name)) or title
     end,
 
     cooldown = ShownSpellSource,
     state    = ShownSpellSource,
 
     condition = "zone",
-    available = function() return GetZoneAbilitySpell() ~= nil end,
+    available = function() return Utils_Spell.GetZoneAbilitySpell() ~= nil end,
 
     tooltip = function(tooltip)
         local spellID = GetShownSpell()
@@ -67,6 +68,6 @@ Ring_Kinds.Register({
         filter = "misc",
         label  = "special",
         events = { "UPDATE_EXTRA_ACTIONBAR", "ZONE_CHANGED_NEW_AREA" },
-        scan   = function(add) add({ kind = "zone" }) end,
+        scan   = Ring_Kinds.ScanOne(Ring_Kinds.Kind.Zone),
     },
 })

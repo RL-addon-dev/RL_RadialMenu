@@ -36,14 +36,11 @@ local Config = env.Config
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Private = env.AX_Modules:Import("@\\Ring\\Data\\Private")
-local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
+local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
 local Ring_Display = env.AX_Modules:Await("@\\Ring\\Display")
 
 local type, pairs, ipairs, tostring, tonumber = type, pairs, ipairs, tostring, tonumber
 local min, max = math.min, math.max
-local GetStoredTable, GetScopeTable = Private.GetStoredTable, Private.GetScopeTable
-local Changed, NormalizeRing, RemapSliceIndices = Private.Changed, Private.NormalizeRing, Private.RemapSliceIndices
-local EditError = Private.EditError
 
 -- Who a menu applies to (see the header).
 Ring_Data.Scope = Utils_Standard.Strict({
@@ -63,8 +60,6 @@ Ring_Data.QuickAction = Utils_Standard.Strict({
 }, "quick action")
 
 Ring_Data.MIN_PROBE_DISTANCE = 1
-
-
 
 -- Settings every menu shares (General tab)
 
@@ -102,8 +97,6 @@ local function NextRingId()
     return tostring(nextId)
 end
 
-
-
 -- Queries
 
 --- This character's menu `id`, and its scope.
@@ -114,7 +107,7 @@ function Ring_Data.GetRing(id)
     if id == nil then return nil end
     id = tostring(id)
     for _, scope in ipairs(Ring_Data.ScopeOrder) do
-        local ring = GetScopeTable(scope)[id]
+        local ring = Private.GetScopeTable(scope)[id]
         if ring then return ring, scope end
     end
 end
@@ -124,7 +117,7 @@ end
 function Ring_Data.GetRings()
     local rings = {}
     for _, scope in ipairs(Ring_Data.ScopeOrder) do
-        for _, ring in pairs(GetScopeTable(scope)) do
+        for _, ring in pairs(Private.GetScopeTable(scope)) do
             rings[#rings + 1] = ring
         end
     end
@@ -198,7 +191,7 @@ end
 ---@param slice Slice
 ---@return boolean
 function Ring_Data.IsElsewhere(slice)
-    return slice.kind == "ring" and Ring_Data.GetRing(slice.ring) == nil
+    return slice.kind == Ring_Kinds.Kind.Ring and Ring_Data.GetRing(slice.ring) == nil
 end
 
 --- Whether `slice` can be a quick action. Submenus can't, because they hold several actions and a
@@ -206,7 +199,7 @@ end
 ---@param slice Slice
 ---@return boolean
 function Ring_Data.CanBeQuickAction(slice)
-    return slice.kind ~= "ring"
+    return slice.kind ~= Ring_Kinds.Kind.Ring
 end
 
 --- The identity of an action, the same across refills and moves, like "item:6948". Last Used and
@@ -229,7 +222,7 @@ end
 ---@param sliceIndex integer the submenu's index in it
 ---@return integer
 function Ring_Data.GetScrollIndex(ringId, sliceIndex)
-    local stored = GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
+    local stored = Private.GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
     return stored[tostring(ringId) .. ":" .. sliceIndex] or 1
 end
 
@@ -239,7 +232,7 @@ end
 ---@param sliceIndex integer
 ---@param childIndex integer
 function Ring_Data.SetScrollIndex(ringId, sliceIndex, childIndex)
-    local stored = GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
+    local stored = Private.GetStoredTable(Config.DBLocalPersistent, "ScrollIndex")
     stored[tostring(ringId) .. ":" .. sliceIndex] = childIndex
 end
 
@@ -257,7 +250,7 @@ function Ring_Data.WouldCreateCycle(parentId, childId)
         local ring = Ring_Data.GetRing(ringId)
         if not ring then return false end
         for _, slice in ipairs(ring.slices) do
-            if slice.kind == "ring" and Reaches(tostring(slice.ring)) then return true end
+            if slice.kind == Ring_Kinds.Kind.Ring and Reaches(tostring(slice.ring)) then return true end
         end
         return false
     end
@@ -272,12 +265,10 @@ end
 ---@return string? error why not, for the chat message
 function Ring_Data.ValidateSlice(parentId, slice)
     local definition = type(slice) == "table" and Ring_Kinds.Get(slice.kind)
-    if not definition then return false, format(EditError.UnknownKind, tostring(slice and slice.kind)) end
+    if not definition then return false, format(Private.EditError.UnknownKind, tostring(slice and slice.kind)) end
     if not definition.validate then return true end
     return definition.validate(slice, parentId)
 end
-
-
 
 -- Menu edits
 
@@ -291,10 +282,10 @@ function Ring_Data.CreateRing(name, scope, template)
     ring.id = NextRingId()
     ring.name = name or ring.name or L["Config - Rings - NewRing - DefaultName"]
     ring.binding = nil -- keybinds live in the binding tables (Keybinds.lua)
-    NormalizeRing(ring)
+    Private.NormalizeRing(ring)
 
-    GetScopeTable(scope or Ring_Data.Scope.Account)[ring.id] = ring
-    Changed()
+    Private.GetScopeTable(scope or Ring_Data.Scope.Account)[ring.id] = ring
+    Private.Changed()
     return ring
 end
 
@@ -306,21 +297,21 @@ function Ring_Data.DeleteRing(id)
     local ring, scope = Private.GetEditableRing(id)
     if not ring then return false end
 
-    GetScopeTable(scope)[ring.id] = nil
+    Private.GetScopeTable(scope)[ring.id] = nil
     Private.GetBindingTable(scope)[ring.id] = nil
 
     for _, other in ipairs(Ring_Data.GetRings()) do
         for i = #other.slices, 1, -1 do
             local slice = other.slices[i]
-            if slice.kind == "ring" and tostring(slice.ring) == ring.id then
+            if slice.kind == Ring_Kinds.Kind.Ring and tostring(slice.ring) == ring.id then
                 table.remove(other.slices, i)
                 Private.ShiftAfterRemove(other, i)
             end
         end
-        NormalizeRing(other)
+        Private.NormalizeRing(other)
     end
 
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -332,10 +323,10 @@ function Ring_Data.SetScope(id, scope)
     local ring, currentScope = Private.GetEditableRing(id)
     if not ring or currentScope == scope then return false end
 
-    GetScopeTable(currentScope)[ring.id] = nil
-    GetScopeTable(scope)[ring.id] = ring
+    Private.GetScopeTable(currentScope)[ring.id] = nil
+    Private.GetScopeTable(scope)[ring.id] = ring
     Private.MoveBinding(ring.id, currentScope, scope)
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -346,11 +337,9 @@ function Ring_Data.RenameRing(id, name)
     local ring = Private.GetEditableRing(id)
     if not ring then return false end
     ring.name = name
-    Changed()
+    Private.Changed()
     return true
 end
-
-
 
 -- Action edits
 
@@ -372,7 +361,7 @@ function Ring_Data.AddSlice(id, slice, index)
     if index <= count then Private.ShiftAfterInsert(ring, index) end
 
     table.insert(ring.slices, index, slice)
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -389,7 +378,7 @@ function Ring_Data.MoveSlice(id, from, to)
     if from == to then return false end
 
     table.insert(ring.slices, to, table.remove(ring.slices, from))
-    RemapSliceIndices(ring, function(i)
+    Private.RemapSliceIndices(ring, function(i)
         if i == from then return to end
         if from < to and i > from and i <= to then return i - 1 end
         if from > to and i >= to and i < from then return i + 1 end
@@ -397,7 +386,7 @@ function Ring_Data.MoveSlice(id, from, to)
     end)
     Private.RememberAutoOrder(ring)
 
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -411,14 +400,14 @@ function Ring_Data.SwapSlices(id, a, b)
     if not ring or a == b or not ring.slices[a] or not ring.slices[b] then return false end
 
     ring.slices[a], ring.slices[b] = ring.slices[b], ring.slices[a]
-    RemapSliceIndices(ring, function(i)
+    Private.RemapSliceIndices(ring, function(i)
         if i == a then return b end
         if i == b then return a end
         return i
     end)
     Private.RememberAutoOrder(ring)
 
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -432,16 +421,16 @@ end
 function Ring_Data.ReplaceSlice(id, index, slice)
     local ring, scopeOrError = Private.GetEditableRing(id)
     if not ring then return false, scopeOrError end
-    if not ring.slices[index] then return false, EditError.ActionNotFound end
+    if not ring.slices[index] then return false, Private.EditError.ActionNotFound end
 
     local ok, err = Ring_Data.ValidateSlice(ring.id, slice)
     if not ok then return false, err end
 
     ring.slices[index] = slice
-    RemapSliceIndices(ring, function(i) return (i ~= index and i) or nil end)
+    Private.RemapSliceIndices(ring, function(i) return (i ~= index and i) or nil end)
 
-    NormalizeRing(ring)
-    Changed()
+    Private.NormalizeRing(ring)
+    Private.Changed()
     return true
 end
 
@@ -454,9 +443,9 @@ end
 function Ring_Data.SetSliceExpand(id, index, expand)
     local ring = Ring_Data.GetRing(id)
     local slice = ring and ring.slices[index]
-    if not slice or slice.kind ~= "ring" then return false end
+    if not slice or slice.kind ~= Ring_Kinds.Kind.Ring then return false end
     slice.expand = expand and true or nil
-    Changed()
+    Private.Changed()
     return true
 end
 
@@ -474,7 +463,7 @@ function Ring_Data.RemoveSlice(id, index)
     table.remove(ring.slices, index)
     Private.ShiftAfterRemove(ring, index)
 
-    NormalizeRing(ring)
-    Changed()
+    Private.NormalizeRing(ring)
+    Private.Changed()
     return true
 end

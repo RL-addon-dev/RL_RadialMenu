@@ -13,7 +13,7 @@ Ring_Data.RegisterBuiltIn({
     versions = { env.GameVersion.Retail, env.GameVersion.Forever },
     scan = function()
         local slices = {}
-        for _, id in ipairs(Ring_Kinds.Get("worldmarker").MARKERS) do slices[#slices + 1] = { kind = "worldmarker", id = id } end
+        for _, id in ipairs(Ring_Kinds.Get(Ring_Kinds.Kind.WorldMarker).MARKERS) do slices[#slices + 1] = { kind = Ring_Kinds.Kind.WorldMarker, id = id } end
         return slices
     end,
 })
