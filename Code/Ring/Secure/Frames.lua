@@ -64,9 +64,8 @@ local Probe = CreateFrame("Frame", "RLRM_CenterProbe", UIParent, "SecureFrameTem
 Probe:SetSize(4, 4)
 Probe:Hide()
 
--- Cursor + Focus: the macros the focus clicks run (on ring buttons, and on the helper too for
--- FocusClear).
-Private.FOCUS_STEAL_TEXT = "/focus [@mouseover]"
+-- Cursor + Focus: the macro the focus clear click runs (on menu buttons, and on the helper too).
+-- The steal click is a focus action instead (Setup.lua).
 Private.FOCUS_CLEAR_TEXT = "/clearfocus"
 
 local Helper = CreateFrame("Button", "RLRM_RingHelper", UIParent, "SecureActionButtonTemplate") --[[@as Button]]
