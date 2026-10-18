@@ -127,7 +127,9 @@ Ring_Kinds.Register({
     apply = function(button, suffix, slice)
         Ring_Kinds.SetAction(button, suffix, "action", GetSlot(slice.bar, slice.button))
         -- Bar 1: Ring_Secure points it at the current page's slot when it fires.
-        if slice.bar == 1 then Ring_Kinds.SetAttribute(button, "pagedbutton", suffix, slice.button) end
+        if slice.bar == 1 then
+            Ring_Kinds.SetAttribute(button, Ring_Kinds.ActionAttribute.PagedButton, suffix, slice.button)
+        end
     end,
 
     ---@param slice ActionSlotSlice

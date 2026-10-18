@@ -16,6 +16,7 @@ local Ring_Data = env.AX_Modules:Import("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Import("@\\Ring\\Layout")
 local Ring_Stick = env.AX_Modules:Import("@\\Ring\\Stick")
 local Ring_View = env.AX_Modules:New("@\\Ring\\View")
+local Ring_Secure = env.AX_Modules:Await("@\\Ring\\Secure")
 
 local GetCursorPosition, GetTime = GetCursorPosition, GetTime
 local atan2, min, max = math.atan2, math.min, math.max
@@ -135,15 +136,15 @@ local function OnUpdate(self)
     local x, y = GetCursorPosition()
     local dx, dy = x / scale - self.originX, y / scale - self.originY
     local moved = not self.probe:IsShown()
-    -- The right stick, tilted: its direction, as if the cursor were far out that way. Opened by a
-    -- controller: the cursor doesn't count; the stick let go shows the pick it left (the
-    -- button's "ring-sticky", Ring_Secure), else the center (the quick action).
+    -- The right stick, tilted, counts as the cursor far out in its direction. In a menu a
+    -- controller opened, the cursor doesn't count, and the stick let go shows the pick it left
+    -- (Ring_Secure.Attribute.Sticky on the menu's button), else the center (the quick action).
     local stickX, stickY
     if self.padButton then stickX, stickY = Ring_Stick.GetTilted() end
     if stickX then
         dx, dy, moved = stickX * STICK_REACH, stickY * STICK_REACH, true
     elseif self.padButton then
-        local sticky = self.padButton:GetAttribute("ring-sticky")
+        local sticky = self.padButton:GetAttribute(Ring_Secure.Attribute.Sticky)
         if sticky then
             -- Wedges go clockwise from the top: the middle of wedge `sticky`.
             local angle = math.rad(90 - (sticky - 1) * 360 / #self.ring.slices)

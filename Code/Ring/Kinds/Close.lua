@@ -17,7 +17,7 @@ Ring_Kinds.Register({
 
     apply = function(button, suffix)
         Ring_Kinds.ClearAction(button, suffix)
-        Ring_Kinds.SetAttribute(button, "close", suffix, true)
+        Ring_Kinds.SetAttribute(button, Ring_Kinds.ActionAttribute.Close, suffix, true)
     end,
 
     icon  = function() return ICON end,

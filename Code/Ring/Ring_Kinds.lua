@@ -85,6 +85,16 @@ Ring_Kinds.Source = Utils_Standard.Strict({
     Inventory = "inventory", -- an equipped slot
 }, "cooldown source")
 
+-- The addon's own per-action secure attributes, set by kinds next to the game's ("*close-sN"...).
+-- Ring_Secure's PRE_CLICK snippet reads them by these names, spelled out because snippets can't
+-- see Lua constants, so a rename has to change both.
+Ring_Kinds.ActionAttribute = Utils_Standard.Strict({
+    Close       = "close",       -- picking it is a cancel (Kinds\Close.lua)
+    LastUsed    = "lastused",    -- fires the menu's last used action (Kinds\LastUsed.lua)
+    First       = "first",       -- fires the menu's first wedge (Kinds\First.lua)
+    PagedButton = "pagedbutton", -- an Action Bar 1 button, which follows the bar's page (Kinds\ActionBar.lua)
+}, "action attribute")
+
 Ring_Kinds.QUESTION_MARK_ICON = 134400
 
 -- Raid target icons by number (1 Star to 8 Skull), and the raid manager's reset button. Target and

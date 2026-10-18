@@ -447,6 +447,10 @@ L["Config - Behavior - TargetMarkerUnit - Cursor - Controller"] = "Reticle"
 L["Config - Behavior - TargetMarkerUnit - CursorFocus - Controller"] = "Reticle + Focus"
 L["Config - Behavior - ProbeSize - Description - Menu"] = "How far you move the mouse from where you pressed the keybind before dismissing the quick action."
 
+-- Chat messages from the menus
+L["Ring - Rebuild - AfterCombat"] = "menu changes will apply after combat"
+L["Ring - Keys - FoughtOver"] = "another addon keeps taking %s, so the menu stops taking it back until menus change"
+
 -- About
 L["Config - About"] = "About"
 L["Config - About - Inspirations"] = "Addon Inspirations"
