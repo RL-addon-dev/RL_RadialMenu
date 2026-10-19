@@ -8,12 +8,15 @@
 local env = select(2, ...)
 local L = env.L
 local Ring_Kinds = env.AX_Modules:Import("@\\Ring\\Kinds")
+local Utils_Spell = env.AX_Modules:Import("@\\Utils\\Spell")
 
 local RANDOM_FAVORITE = 0
 local RANDOM_FAVORITE_SPELL_ID = 150544 -- only for its icon and name, it can't be cast directly
 -- The mount id the cursor reports for "Summon Random Favorite Mount" (the Mount Journal's random
 -- favorite button). It's saved as RANDOM_FAVORITE.
 local RANDOM_FAVORITE_CURSOR_ID = 268435455
+-- The companion type the cursor reports for a mount's spell (GetCursorInfo's third value).
+local COMPANION_MOUNT = "MOUNT"
 
 --- The mount's summon spell. Nil for the random favorite and for unknown mounts.
 ---@param mountID number
@@ -90,6 +93,14 @@ Ring_Kinds.Register({
             if mountID and C_MountJournal.GetMountInfoByID(mountID) then
                 return { kind = Ring_Kinds.Kind.Mount, id = mountID }
             end
+        end,
+        -- A mount's spell picked up by id (MountsJournal drags mounts this way) shows as
+        -- "companion", <index>, "MOUNT". The index can't be turned into a mount, but the spell can.
+        companion = function(_, companionType)
+            if companionType ~= COMPANION_MOUNT then return nil end
+            local spellID = Utils_Spell.GetLastPickedUpSpell()
+            local mountID = spellID and C_MountJournal.GetMountFromSpell(spellID)
+            if mountID then return { kind = Ring_Kinds.Kind.Mount, id = mountID } end
         end,
     },
 })

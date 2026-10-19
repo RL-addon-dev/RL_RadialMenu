@@ -1,6 +1,6 @@
 --[[
-    Spells and abilities: the player's spellbook, spell ranks, profession spells, the zone ability
-    and the Extra Action Button.
+    Spells and abilities: the player's spellbook, spell ranks, profession spells, the zone ability,
+    the Extra Action Button, and the last spell picked up onto the cursor.
 ]]
 
 local env = select(2, ...)
@@ -142,4 +142,21 @@ function Utils_Spell.GetExtraActionSlot()
     local button = ExtraActionButton1
     local slot = button and (button.action or (button.GetAttribute and button:GetAttribute("action")))
     if type(slot) == "number" and slot > 0 and HasAction(slot) then return slot end
+end
+
+-- The last spell picked up onto the cursor by id. Addons that drag mounts by their spell (like
+-- MountsJournal) leave a "companion" on the cursor, which doesn't say which mount it is.
+---@type number?
+local lastPickedUpSpell
+local function RememberPickup(spell)
+    lastPickedUpSpell = (type(spell) == "number" and spell) or nil
+end
+if C_Spell and C_Spell.PickupSpell then hooksecurefunc(C_Spell, "PickupSpell", RememberPickup) end
+if PickupSpell then hooksecurefunc("PickupSpell", RememberPickup) end
+
+--- The id of the last spell picked up with C_Spell.PickupSpell (or PickupSpell), or nil when it
+--- was picked up by name.
+---@return number?
+function Utils_Spell.GetLastPickedUpSpell()
+    return lastPickedUpSpell
 end
