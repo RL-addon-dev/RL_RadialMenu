@@ -64,7 +64,8 @@
     steals your focus. Close, Last Used, First Action and submenus of markers are allowed in it,
     since any other action couldn't clear the focus. When the press finds a unit under the mouse
     that wasn't aimed at (in combat, or without a nameplate), the press's click fires on its key
-    down ("useOnKeyDown") as "FocusSteal" (/focus [@mouseover]). FOCUS_STOLEN then makes the pick
+    down ("useOnKeyDown") as "FocusSteal", a focus action on the mouseover. It isn't a macro,
+    because a crossbar macro's open would run it from inside a macro. FOCUS_STOLEN then makes the pick
     fire the marker's copy that marks the focus and clears it ("<suffix>F"). A cancel, dismiss or
     Close fires "FocusClear" (/clearfocus) instead of nothing.
 
