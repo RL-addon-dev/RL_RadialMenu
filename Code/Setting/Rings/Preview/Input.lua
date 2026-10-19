@@ -15,7 +15,7 @@ local Perf = env.AX_Modules:Import("@\\Perf")
 local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 
 local GetCursorPosition, GetCursorInfo, IsMouseButtonDown = GetCursorPosition, GetCursorInfo, IsMouseButtonDown
-local atan2, deg, floor, abs, cos, sin, pi = math.atan2, math.deg, math.floor, math.abs, math.cos, math.sin, math.pi
+local atan2, deg, floor, abs = math.atan2, math.deg, math.floor, math.abs
 local PreviewMixin = Private.PreviewMixin
 
 local HOVER_PADDING = 14 -- px around an icon that still counts as being on it (covers its X)
@@ -88,7 +88,7 @@ function PreviewMixin:GetDropTarget(dx, dy)
 
     -- Between slice `after` and the next one clockwise; the divider sits on after's clockwise edge.
     local after = floor(position) % count + 1
-    return { mode = "between", index = after + 1, angle = Ring_Layout.GetSliceAngle(after, count) - pi / count }
+    return { mode = "between", index = after + 1, angle = Ring_Layout.GetBoundaryAngle(after, count) }
 end
 
 

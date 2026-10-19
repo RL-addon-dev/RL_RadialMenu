@@ -1,6 +1,7 @@
 --[[
-    Slice icons: the retail action button look (masked icon, border) with cooldown swipes. Used
-    for the wheel's slices and center, and by the settings preview's drag icon.
+    Ring_Layout: action icons, with the Retail action button look (a masked icon and a border),
+    cooldown swipes, counts and states. The wheel's wedges and center use them, and so does the
+    settings preview's drag icon.
 ]]
 
 local env = select(2, ...)
@@ -11,19 +12,40 @@ local Private = env.AX_Modules:Import("@\\Ring\\Layout\\Private")
 
 local GetAtlasInfo = C_Texture.GetAtlasInfo
 
--- Retail action button look (ActionButtonTemplate: 45x45 button, 46x45 frame art)
-local ATLAS_ICON_BORDER = "UI-HUD-ActionBar-IconFrame"
-local ATLAS_ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"
+-- The Retail action button look (ActionButtonTemplate, a 45x45 button with 46x45 frame art).
+local ATLAS_ICON_BORDER  = "UI-HUD-ActionBar-IconFrame"
+local ATLAS_ICON_MASK    = "UI-HUD-ActionBar-IconFrame-Mask"
 local ATLAS_ICON_CHECKED = "UI-HUD-ActionBar-IconFrame-Mouseover" -- ActionButtonTemplate's CheckedTexture
-local CHECKED_FALLBACK = "Interface\\Buttons\\CheckButtonHilight"
+local CHECKED_FALLBACK   = "Interface\\Buttons\\CheckButtonHilight"
 local ATLAS_OUT_OF_RANGE = "UI-CooldownManager-OORshadow" -- the Cooldown Manager's out of range shade
 local OUT_OF_RANGE_ALPHA = 0.5
 local ACTION_BUTTON_SIZE = 45
 local ICON_BORDER_WIDTH_RATIO = 46 / ACTION_BUTTON_SIZE
 local COOLDOWN_INSET_RATIO = 1 / ACTION_BUTTON_SIZE
-local UNDERLAY_SCALE = 1.75 -- a kind's underlay (world markers' beam) around the icon, kept clear of its neighbors
-Private.COOLDOWN_EVENTS = { -- the wheel refreshes its cooldowns and counts on these
-    "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED" }
+local MASK_FALLBACK_SCALE = 1.5 -- the mask's size for the icon's, when its atlas is missing
+-- A kind's underlay (world markers' beam) around the icon, kept clear of its neighbors.
+local UNDERLAY_SCALE = 1.75
+local COUNT_INSET = 2 -- the count's offset from the bottom-right corner, like the action bars'
+-- The wheel refreshes its cooldowns and counts on these.
+Private.COOLDOWN_EVENTS = {
+    "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED",
+}
+
+--- An icon texture that may hold an addon symbol's tint (Ring_Layout.SetIcon).
+---@class TintedTexture : Texture
+---@field symbolTint number[]?
+
+--- An action icon (Ring_Layout.CreateActionIcon).
+---@class ActionIcon : Frame
+---@field Icon TintedTexture the icon to set (Ring_Layout.SetIcon)
+---@field Underlay Texture a kind's art behind the icon
+---@field OutOfRange Texture? the out of range shade, on clients with its art
+---@field Border Texture
+---@field Checked Texture the active stance or form frame
+---@field Cooldown Cooldown
+---@field ChargeCooldown Cooldown the recharge edge of a spell with charges left
+---@field Count FontString charges or item count
+---@field procGlowing boolean? its proc glow is shown (UpdateIconState)
 
 
 -- Action button icon
@@ -31,10 +53,12 @@ Private.COOLDOWN_EVENTS = { -- the wheel refreshes its cooldowns and counts on t
 local ATLAS_PREFIX = "atlas:"
 local WHITE = { 1, 1, 1 } -- an icon's own colors (no tint)
 
---- Shows an action's icon on `texture`: an icon file / id, or an atlas written "atlas:<name>"
---- (kinds may return either, see Ring_Actions.GetIcon). Clears the atlas's texture coordinates
---- when going back to a file, so the next icon isn't cropped. The addon's symbols
---- (Ring_Kinds.GetSymbol) are tinted; texture.symbolTint keeps it for UpdateIconState.
+--- Shows an action's icon on `texture`. It's an icon file or id, or an atlas written
+--- "atlas:<name>" (kinds may return either, see Ring_Actions.GetIcon). Going back to a file clears
+--- the atlas's texture coordinates, so the next icon isn't cropped. The addon's symbols
+--- (Ring_Kinds.GetSymbol) are tinted, and texture.symbolTint keeps the tint for UpdateIconState.
+---@param texture TintedTexture
+---@param icon number|string|nil
 function Ring_Layout.SetIcon(texture, icon)
     if type(icon) == "string" and icon:sub(1, #ATLAS_PREFIX) == ATLAS_PREFIX then
         texture:SetAtlas(icon:sub(#ATLAS_PREFIX + 1))
@@ -47,15 +71,19 @@ function Ring_Layout.SetIcon(texture, icon)
     texture:SetVertexColor(tint[1], tint[2], tint[3])
 end
 
---- Shows `slice` on an action icon (CreateActionIcon): its icon, and the action button border
---- unless its kind has none (noIconBorder: markers and emotes show their art on its own).
+--- Shows `slice` on an action icon: its icon, and the action button border unless its kind has
+--- none (noIconBorder, for markers and emotes, which show their art on its own).
+---@param iconFrame ActionIcon
+---@param slice Slice?
 function Ring_Layout.SetSliceIcon(iconFrame, slice)
-    Ring_Layout.SetIcon(iconFrame.Icon, slice and Ring_Actions.GetIcon(slice) or 134400)
+    Ring_Layout.SetIcon(iconFrame.Icon, slice and Ring_Actions.GetIcon(slice) or Ring_Kinds.QUESTION_MARK_ICON)
     iconFrame.Border:SetShown(not (slice and Ring_Actions.HasNoIconBorder(slice)))
     Ring_Layout.SetUnderlay(iconFrame, slice)
 end
 
 --- Shows what `slice`'s kind draws behind its icon (a world marker's beam of light), or nothing.
+---@param iconFrame ActionIcon
+---@param slice Slice?
 function Ring_Layout.SetUnderlay(iconFrame, slice)
     local texture, color = nil, nil
     if slice then texture, color = Ring_Actions.GetUnderlay(slice) end
@@ -66,17 +94,19 @@ function Ring_Layout.SetUnderlay(iconFrame, slice)
     iconFrame.Underlay:SetShown(texture ~= nil)
 end
 
---- Icon with the retail action bar mask and border, in its own frame so both scale together.
---- `.Icon` is the texture to set.
+--- An icon with the Retail action bar mask and border, in its own frame so both scale together.
+---@param parent Frame
+---@param size number
+---@return ActionIcon
 function Ring_Layout.CreateActionIcon(parent, size)
-    local frame = CreateFrame("Frame", nil, parent)
+    local frame = CreateFrame("Frame", nil, parent) --[[@as ActionIcon]]
     frame:SetUsingParentLevel(true)
     frame:SetSize(size, size)
 
-    frame.Icon = frame:CreateTexture(nil, "OVERLAY", nil, 3)
+    frame.Icon = frame:CreateTexture(nil, "OVERLAY", nil, 3) --[[@as TintedTexture]]
     frame.Icon:SetAllPoints()
 
-    -- Behind the icon, a little larger and unmasked: a kind's underlay (SetUnderlay).
+    -- A kind's underlay (SetUnderlay), behind the icon, a little larger and unmasked.
     frame.Underlay = frame:CreateTexture(nil, "OVERLAY", nil, 2)
     frame.Underlay:SetSize(size * UNDERLAY_SCALE, size * UNDERLAY_SCALE)
     frame.Underlay:SetPoint("CENTER", frame.Icon)
@@ -92,12 +122,12 @@ function Ring_Layout.CreateActionIcon(parent, size)
     if maskInfo then
         mask:SetSize(maskInfo.width * maskScale, maskInfo.height * maskScale)
     else
-        mask:SetSize(size * 1.5, size * 1.5)
+        mask:SetSize(size * MASK_FALLBACK_SCALE, size * MASK_FALLBACK_SCALE)
     end
     mask:SetPoint("CENTER", frame.Icon)
     frame.Icon:AddMaskTexture(mask)
 
-    -- Out of range: a shadow over the icon besides its red tint, like the Cooldown Manager
+    -- Out of range, a shadow over the icon besides its red tint, like the Cooldown Manager
     -- (UpdateIconState). Clients without its art get the tint only.
     if Private.HasAtlas(ATLAS_OUT_OF_RANGE) then
         frame.OutOfRange = frame:CreateTexture(nil, "OVERLAY", nil, 4)
@@ -113,7 +143,7 @@ function Ring_Layout.CreateActionIcon(parent, size)
     frame.Border:SetSize(size * ICON_BORDER_WIDTH_RATIO, size)
     frame.Border:SetPoint("TOPLEFT")
 
-    -- Active stance, form or current spell: the action bars' checked frame (UpdateIconState).
+    -- The action bars' checked frame, for an active stance, form or current spell (UpdateIconState).
     frame.Checked = frame:CreateTexture(nil, "OVERLAY", nil, 5)
     if Private.HasAtlas(ATLAS_ICON_CHECKED) then
         frame.Checked:SetAtlas(ATLAS_ICON_CHECKED)
@@ -126,17 +156,17 @@ function Ring_Layout.CreateActionIcon(parent, size)
     end
     frame.Checked:Hide()
 
-    -- Cooldown swipe, inset so it stays inside the border, plus the charge recharge edge
-    -- (like ActionButtonTemplate / LibActionButton's charge cooldown).
+    -- The cooldown swipe, inset so it stays inside the border, plus the charge recharge edge (like
+    -- ActionButtonTemplate and LibActionButton's charge cooldown).
     local inset = size * COOLDOWN_INSET_RATIO
-    frame.Cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
+    frame.Cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate") --[[@as Cooldown]]
     frame.Cooldown:SetPoint("TOPLEFT", inset, -inset)
     frame.Cooldown:SetPoint("BOTTOMRIGHT", -inset, inset)
     frame.Cooldown:SetDrawBling(false)
 
-    -- Recharge of a charge spell with charges left: no swipe (the spell is usable), just the
+    -- The recharge of a spell with charges left shows no swipe (the spell is usable), just the
     -- moving edge, like Blizzard's action bars.
-    frame.ChargeCooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
+    frame.ChargeCooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate") --[[@as Cooldown]]
     frame.ChargeCooldown:SetAllPoints(frame.Cooldown)
     frame.ChargeCooldown:SetDrawSwipe(false)
     frame.ChargeCooldown:SetDrawEdge(true)
@@ -148,11 +178,15 @@ function Ring_Layout.CreateActionIcon(parent, size)
     countLayer:SetAllPoints()
     countLayer:SetFrameLevel(frame.ChargeCooldown:GetFrameLevel() + 2)
     frame.Count = countLayer:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    frame.Count:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    frame.Count:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -COUNT_INSET, COUNT_INSET)
 
     return frame
 end
 
+--- Shows a duration object's cooldown on `cooldown`, or clears it.
+---@param cooldown Cooldown
+---@param isActive boolean?
+---@param durationObject table?
 local function SetCooldownFromDuration(cooldown, isActive, durationObject)
     if isActive and durationObject then
         cooldown:SetCooldownFromDurationObject(durationObject)
@@ -165,8 +199,12 @@ local issecretvalue = issecretvalue or function() return false end
 local GetSpellDisplayCount = C_Spell.GetSpellDisplayCount
 
 --- The count Blizzard's action bars show on a spell (charges left, cast counts). In combat the
---- numbers are secret: GetSpellDisplayCount's text can still be shown (never compared), so it's
---- used when the client has it; the fallback reads the charges and shows nothing while secret.
+--- numbers are secret. GetSpellDisplayCount's text can still be shown (it's never compared), so
+--- it's used when the client has it. The fallback reads the charges, and shows nothing while
+--- they're secret.
+---@param icon ActionIcon
+---@param spell number|string
+---@param charges table?
 local function SetSpellCount(icon, spell, charges)
     if GetSpellDisplayCount then
         icon.Count:SetText(GetSpellDisplayCount(spell))
@@ -180,23 +218,29 @@ local function SetSpellCount(icon, spell, charges)
     icon.Count:SetText(text)
 end
 
---- How many of an item you have (charges included), like the action bars: only for consumable
---- or stacking items (potions, food), not for one-offs such as the Hearthstone.
+--- How many of an item you have (charges included), like the action bars. It's only shown for
+--- consumable or stacking items (potions, food), not for one-offs such as the Hearthstone.
+---@param icon ActionIcon
+---@param itemID number
 local function SetItemCount(icon, itemID)
     local maxStack = C_Item.GetItemMaxStackSizeByID and C_Item.GetItemMaxStackSizeByID(itemID)
     local counts = (C_Item.IsConsumableItem and C_Item.IsConsumableItem(itemID)) or (maxStack and maxStack > 1)
-    icon.Count:SetText(counts and C_Item.GetItemCount(itemID, false, true) or nil)
+    -- SetText takes numbers too.
+    icon.Count:SetText(counts and C_Item.GetItemCount(itemID, false, true) or nil --[[@as string?]])
 end
 
---- Shows `slice`'s cooldown (and charge recharge) on an action icon; clears it for slices without
---- one. Spells use 12.0 duration objects, which stay usable in combat.
+--- Shows `slice`'s cooldown (and charge recharge) on an action icon, or clears it for actions
+--- without one. Spells use 12.0 duration objects, which stay usable in combat.
+---@param icon ActionIcon
+---@param slice Slice?
 function Ring_Layout.UpdateIconCooldown(icon, slice)
     local source, id = nil, nil
     if slice then source, id = Ring_Actions.GetCooldownSource(slice) end
 
     if source == Ring_Kinds.Source.Spell and id then
-        local info = C_Spell.GetSpellCooldown(id)
-        local charges = C_Spell.GetSpellCharges(id)
+        -- 12.0's isActive isn't in the editor's annotations yet.
+        local info = C_Spell.GetSpellCooldown(id) --[[@as table?]]
+        local charges = C_Spell.GetSpellCharges(id) --[[@as table?]]
         SetCooldownFromDuration(icon.Cooldown, info and info.isActive, C_Spell.GetSpellCooldownDuration(id))
         SetCooldownFromDuration(icon.ChargeCooldown, charges and charges.isActive, C_Spell.GetSpellChargeDuration(id))
         SetSpellCount(icon, id, charges)
@@ -219,7 +263,7 @@ end
 
 
 
--- Icon states (in-game menu): Blizzard's action button colors and checked frame
+-- Icon states (in-game menu), with Blizzard's action button colors and checked frame
 
 local IsSpellUsable, IsSpellInRange, IsCurrentSpell = C_Spell.IsSpellUsable, C_Spell.IsSpellInRange, C_Spell.IsCurrentSpell
 local IsUsableItem = C_Item.IsUsableItem
@@ -230,13 +274,18 @@ local COLOR_OUT_OF_RANGE = { 0.64, 0.15, 0.15 }
 local COLOR_NO_RESOURCES = { 0.5, 0.5, 1.0 }
 local COLOR_UNUSABLE = { 0.4, 0.4, 0.4 }
 
---- A value to act on: nil while it's secret (12.0 combat), so the icon just stays plain.
+--- `value`, or nil while it's secret (12.0 combat), so the icon just stays plain.
+---@generic T
+---@param value T
+---@return T?
 local function Plain(value)
     if issecretvalue(value) then return nil end
     return value
 end
 
---- Whether `spell` (an id or a name) is the active stance / form / aura on the stance bar.
+--- Whether `spell` (an id or a name) is the active stance, form or aura on the stance bar.
+---@param spell number|string
+---@return boolean
 local function IsActiveForm(spell)
     local name = type(spell) == "number" and C_Spell.GetSpellName(spell) or spell
     for i = 1, GetNumShapeshiftForms() do
@@ -248,8 +297,10 @@ local function IsActiveForm(spell)
     return false
 end
 
---- Whether `spell` (an id or a name) has its proc glow up, like on the action bars: the spell
---- itself or what it's replaced by right now.
+--- Whether `spell` (an id or a name) has its proc glow up, like on the action bars. That's the
+--- spell itself, or what it's replaced by right now.
+---@param spell number|string
+---@return boolean
 local function IsProcGlowing(spell)
     local spellID = spell
     if type(spell) ~= "number" then
@@ -257,25 +308,30 @@ local function IsProcGlowing(spell)
         spellID = info and info.spellID
     end
     if not spellID then return false end
-    if Plain(IsSpellOverlayed(spellID)) then return true end
-    local override = C_Spell.GetOverrideSpell and C_Spell.GetOverrideSpell(spellID) -- not on every client (classic era lacks it)
+    if Plain(IsSpellOverlayed(spellID --[[@as number]])) then return true end
+    local override = C_Spell.GetOverrideSpell and C_Spell.GetOverrideSpell(spellID) -- Classic Era lacks it
     return override and override ~= spellID and Plain(IsSpellOverlayed(override)) and true or false
 end
 
---- Shows or hides the proc glow: Blizzard's spell alert (the action bars' and the Cooldown
---- Manager's). `skipBirth`: straight to the loop, without the burst (the glow was already up when
---- the icon appeared). Shown again from scratch each time: the alert's loop doesn't restart by
---- itself after the menu was hidden.
+--- Shows or hides the proc glow, Blizzard's spell alert (the action bars' and the Cooldown
+--- Manager's). It's shown again from scratch each time, because the alert's loop doesn't restart
+--- by itself after the menu was hidden.
+---@param icon ActionIcon
+---@param shown boolean?
+---@param skipBirth boolean? straight to the loop, without the burst (the glow was already up when
+---     the icon appeared)
 local function SetProcGlow(icon, shown, skipBirth)
     ActionButtonSpellAlertManager:HideAlert(icon)
     if shown then ActionButtonSpellAlertManager:ShowAlert(icon, skipBirth) end
 end
 
---- @return boolean|nil usable
---- @return boolean|nil noResources
---- @return boolean|nil inRange nil: no range to show (no target, or the spell has none)
---- @return boolean active
---- @return boolean glowing proc glow
+--- What a spell's icon shows right now.
+---@param spell number|string
+---@return boolean? usable
+---@return boolean? noResources
+---@return boolean? inRange nil when there's no range to show (no target, or the spell has none)
+---@return boolean active
+---@return boolean glowing its proc glow
 local function GetSpellState(spell)
     local usable, noResources = IsSpellUsable(spell)
     local inRange
@@ -286,12 +342,17 @@ local function GetSpellState(spell)
     return Plain(usable), Plain(noResources), inRange, active and true or false, IsProcGlowing(spell)
 end
 
---- Shows whether `slice` can be used right now, like the Cooldown Manager: red and shaded while
---- your target is out of range, blue without enough resources, grey while unusable, and the proc
---- glow; plus the action bars' checked frame while it's your active stance or form. Plain for
---- slices without a state source (and nil).
---- @param fresh boolean|nil the icon was just given `slice` (the menu opened, a wedge changed):
----   its glow is set up again, without the burst
+--- Shows whether `slice` can be used right now, like the Cooldown Manager.
+---     - Red and shaded while your target is out of range.
+---     - Blue without enough resources.
+---     - Grey while unusable.
+---     - The proc glow.
+---     - The action bars' checked frame while it's your active stance or form.
+--- Actions without a state source (and nil) stay plain.
+---@param icon ActionIcon
+---@param slice Slice?
+---@param fresh boolean? the icon was just given `slice` (the menu opened, a wedge changed), so its
+---     glow is set up again, without the burst
 function Ring_Layout.UpdateIconState(icon, slice, fresh)
     local source, id = nil, nil
     if slice then source, id = Ring_Actions.GetStateSource(slice) end

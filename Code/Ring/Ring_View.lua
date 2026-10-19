@@ -1,11 +1,12 @@
 --[[
-    Insecure in-game ring: a Ring_Layout wheel plus open/close animation and live selection.
+    Ring_View: the in-game menu you see. It's a Ring_Layout wheel, with the open and close
+    animation and the live highlight. It's insecure, and only shows what the secure side does.
 
-    Driven by the secure controller via CallMethod. Mirrors the secure selection math
-    every frame so the highlight matches what will fire on release (Relaxed, once the keybind is
-    released: on a left click). Opened by a controller (WoW Forever's gamepad UI): its right
-    stick, tilted, picks over the cursor, as the secure snippet does, and doesn't turn the camera
-    while the menu is shown (both: Ring_Stick).
+    The secure controller drives it (Ring_Secure, through CallMethod). Every frame it repeats the
+    secure pick's math, so the highlight matches what the release fires (or in Relaxed, once the
+    keybind is released, what a left click fires). In a menu a controller opened (WoW Forever's
+    gamepad UI), the right stick, tilted, picks over the cursor as the secure snippet does, and it
+    doesn't turn the camera while the menu is shown (both through Ring_Stick).
 ]]
 
 local env = select(2, ...)
@@ -21,33 +22,66 @@ local Ring_Secure = env.AX_Modules:Await("@\\Ring\\Secure")
 local GetCursorPosition, GetTime = GetCursorPosition, GetTime
 local atan2, min, max = math.atan2, math.min, math.max
 
--- Blizzard values (large wheel)
+-- Blizzard's values (the large wheel).
 local INTRO_DURATION = 0.2
 local OUTRO_DURATION = 0.13
-local ANIM_DISTANCE = 20
+local ANIM_DISTANCE  = 20
 
--- Icon states (resources, range, active): range has no event of its own, so all of them are
+-- Icon states (resources, range, active). Range has no event of its own, so all of them are
 -- refreshed this often while open. Blizzard's action bars check range on the same interval.
 local STATE_INTERVAL = TOOLTIP_UPDATE_TIME or 0.2
 
--- Controller: the right stick's direction (0 to 1) as a cursor offset in pixels, for the same
--- wedge math as the mouse (Ring_Layout.GetSliceIndex). Only its angle should count, so the offset
--- must land outside the dead zone even at the smallest tilt that aims: the largest Distance to
--- Select (60px) / that tilt (0.5) = 120px, with ten times that to spare.
-local STICK_REACH = 60 / 0.5 * 10
+-- The right stick's direction (0 to 1) becomes a cursor offset in pixels, for the same wedge math
+-- as the mouse (Ring_Layout.GetSliceIndex). Only its angle should count, so the offset must land
+-- outside the dead zone even at the smallest tilt that aims. That's the largest Distance to Select
+-- over that tilt, with plenty to spare.
+local MAX_DEADZONE = 60     -- Distance to Select's largest value (Setting_Schema)
+local MIN_AIM_TILT = 0.5    -- the secure snippets' "stick.len >= 0.5"
+local STICK_REACH_MARGIN = 10
+local STICK_REACH = MAX_DEADZONE / MIN_AIM_TILT * STICK_REACH_MARGIN
 
+-- The tooltip index of the center's quick action (SetActionTooltip), besides wedge indexes.
+local QUICK_TOOLTIP = "quick"
+
+---@param value number
+---@return number
 local function Clamp01(value) return min(max(value, 0), 1) end
 
+--- Blizzard's ease in and out, for progress `p` from 0 to 1.
+---@param p number
+---@return number
 local function InOutCubic(p)
     if p < 0.5 then return 4 * p * p * p end
     local f = -2 * p + 2
     return 1 - f * f * f / 2
 end
 
--- Fixed position: optional outline of the gesture at the key-down spot (Ring_CursorGuide).
+-- With a fixed position, an optional outline of the gesture at the key down spot (Ring_CursorGuide).
 local Guide = env.AX_Modules:Import("@\\Ring\\CursorGuide").Frame
 
-local View = Ring_Layout.CreateWheel(UIParent, "RLRM_RingView")
+--- The in-game menu's wheel, with what the open menu needs every frame.
+---@class RingView : RingWheel
+---@field ring LiveRing the open menu
+---@field padButton Frame? the menu's secure button, when a controller opened it
+---@field probe Frame the secure center probe (read only here)
+---@field startX number the cursor at key down, in UIParent units
+---@field startY number
+---@field originX number where angles are measured from (the key down spot, or the fixed center)
+---@field originY number
+---@field fromMenu boolean Select From = Menu Center
+---@field deadzone number
+---@field openTime number
+---@field revealDelay number
+---@field revealStart number? when the reveal started (nil before the reveal delay passed)
+---@field closing boolean
+---@field closeStart number
+---@field animatedOffset number
+---@field nextStateUpdate number?
+---@field showTooltips boolean
+---@field tooltipIndex integer|string|nil what the tooltip shows (a wedge index or QUICK_TOOLTIP)
+---@field useGuide boolean
+
+local View = Ring_Layout.CreateWheel(UIParent, "RLRM_RingView") --[[@as RingView]]
 View:SetFrameStrata("FULLSCREEN_DIALOG")
 View:SetShowStates(true)
 View:Hide()
@@ -55,9 +89,14 @@ View:Hide()
 -- While shown, a controller's right stick aims instead of turning the camera (Ring_Stick).
 View:HookScript("OnHide", function() Ring_Stick.SetCameraBlocked(false) end)
 
+--- What the center shows: the quick action (or a lone action) until the cursor has left it, and
+--- the cancel ring's highlight while the cursor is inside the dead zone.
+---@param self RingView
+---@param inDeadzone boolean
+---@param moved boolean the cursor left the center probe
 local function UpdateCenter(self, inDeadzone, moved)
     if self.isSingleCentered then
-        -- The lone slice fires unless the cursor left the center and came back (cancel).
+        -- The lone action fires unless the cursor left the center and came back (a cancel).
         local cancel = moved and inDeadzone
         self:SetCenter(not cancel, true)
         return
@@ -65,8 +104,11 @@ local function UpdateCenter(self, inDeadzone, moved)
     self:SetCenter(not moved and self.quickSlice ~= nil, inDeadzone)
 end
 
---- Steps the reveal (after the reveal delay) or close animation: fade plus the icons sliding out.
---- @return boolean alive false once the close animation has finished and the view is hidden
+--- Steps the reveal (after the reveal delay) or the close animation, a fade plus the icons
+--- sliding out.
+---@param self RingView
+---@param now number
+---@return boolean alive false once the close animation has finished and the view is hidden
 local function UpdateAnimation(self, now)
     local offset = 0
     if self.closing then
@@ -94,13 +136,15 @@ local function UpdateAnimation(self, now)
     return true
 end
 
---- With Show Action Tooltips: the tooltip of what a release would fire, at the HUD Tooltip position
---- (Edit Mode), like an action button's. `index`: a slice index, "quick" (the center's quick
---- action) or nil (hide). Re-shown only when it changes.
+--- With Show Action Tooltips, the tooltip of what a release would fire, at the HUD Tooltip
+--- position (Edit Mode), like an action button's. It's shown again only when it changes.
+---@param self RingView
+---@param index integer|string|nil a wedge index, QUICK_TOOLTIP (the center's quick action), or nil
+---     to hide it
 local function SetActionTooltip(self, index)
     if index == self.tooltipIndex then return end
     self.tooltipIndex = index
-    local slice = index and self.showTooltips and (index == "quick" and self.quickSlice or self.slices[index])
+    local slice = index and self.showTooltips and (index == QUICK_TOOLTIP and self.quickSlice or self.slices[index])
     if not slice then
         if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
         return
@@ -116,7 +160,8 @@ local function SetActionTooltip(self, index)
     GameTooltip:Show()
 end
 
---- Every frame while open: animation, then the highlight, pointer and center for the cursor.
+--- Every frame while open: the animation, then the highlight, pointer and center for the cursor.
+---@param self RingView
 local function OnUpdate(self)
     local now = GetTime()
     if not self.revealStart and not self.closing and now - self.openTime >= self.revealDelay then
@@ -146,28 +191,27 @@ local function OnUpdate(self)
     elseif self.padButton then
         local sticky = self.padButton:GetAttribute(Ring_Secure.Attribute.Sticky)
         if sticky then
-            -- Wedges go clockwise from the top: the middle of wedge `sticky`.
-            local angle = math.rad(90 - (sticky - 1) * 360 / #self.ring.slices)
+            local angle = Ring_Layout.GetSliceAngle(sticky, #self.ring.slices)
             dx, dy, moved = math.cos(angle) * STICK_REACH, math.sin(angle) * STICK_REACH, true
         else
             dx, dy, moved = 0, 0, false
         end
     end
 
-    -- Same rules as the secure snippet (Ring_Secure). Select From = Menu Center: nothing is
-    -- picked until the cursor leaves the quick action square, wherever it is over the menu.
-    -- Relaxed: a click picks by the same rules.
+    -- The same rules as the secure snippet (Ring_Secure). With Select From = Menu Center, nothing
+    -- is picked until the cursor leaves the quick action square, wherever it is over the menu. In
+    -- Relaxed, a click picks by the same rules.
     local index
     if not (self.fromMenu and not moved) then
         index = Ring_Layout.GetSliceIndex(dx, dy, #self.ring.slices, self.deadzone)
     end
     self:SetSelection(index)
-    -- What a release (or Relaxed click) would fire: the highlighted slice, else the center (the
-    -- quick action, or a lone slice) until the cursor has left it. Not before the menu is
-    -- revealed: a tap never shows one.
+    -- What a release (or a Relaxed click) would fire: the highlighted wedge, else the center (the
+    -- quick action, or a lone action) until the cursor has left it. It's not shown before the menu
+    -- is revealed, so a tap never shows one.
     local tooltip = index
     if not index and not moved then
-        tooltip = self.isSingleCentered and 1 or (self.quickSlice and "quick") or nil
+        tooltip = self.isSingleCentered and 1 or (self.quickSlice and QUICK_TOOLTIP) or nil
     end
     SetActionTooltip(self, self.revealStart and tooltip or nil)
     self:SetPointerAngle(index and atan2(dy, dx) or nil)
@@ -177,16 +221,17 @@ end
 
 
 
---- @param ring table
---- @param startX number cursor x at key down, UIParent units
---- @param startY number
---- @param probe Frame secure center probe (read-only here)
---- @param quickSlice table|nil slice the quick action would fire
---- @param displaySlices table|nil what each wedge shows (nested scroll slices show the child's
----                     current slice); defaults to ring.slices
---- @param relaxed boolean Menu Style = Relaxed: shown at once (no tap to wait for)
---- @param padButton Frame|false opened by a controller's click: the menu's secure button (its
----                  "ring-sticky" pick shows); the stick picks, the cursor doesn't
+--- Opens the menu, called by the secure controller when a menu's key is pressed.
+---@param ring LiveRing
+---@param startX number the cursor at key down, in UIParent units
+---@param startY number
+---@param probe Frame the secure center probe (read only here)
+---@param quickSlice Slice? what the quick action would fire
+---@param displaySlices Slice[]? what each wedge shows (a scroll submenu shows its current action),
+---     ring.slices by default
+---@param relaxed boolean this open works like Relaxed, so it's shown at once (no tap to wait for)
+---@param padButton Frame|false the menu's secure button when a controller opened it (its sticky
+---     pick shows), so the stick picks and the cursor doesn't
 function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, relaxed, padButton)
     View.ring = ring
     View.padButton = padButton or nil
@@ -204,7 +249,7 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
 
     View:SetShowLabels(Config.Get(Config.Key.ShowActionNames))
     View.showTooltips = Config.Get(Config.Key.ShowActionTooltips) and true or false
-    -- Opened again without closing (another menu's key pressed while one is held): drop its tooltip.
+    -- Opened again without closing (another menu's key pressed while one is held), so its tooltip goes.
     if GameTooltip:GetOwner() == View then GameTooltip:Hide() end
     View.tooltipIndex = nil
     View:SetSlices(displaySlices or ring.slices, View.animatedOffset, ring.quickSlice ~= nil)
@@ -213,7 +258,7 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     View:SetPointerAngle(nil)
     UpdateCenter(View, true, false)
 
-    -- Position/size are visual only; selection stays relative to startX/startY.
+    -- The position and size are visual only, and the pick stays relative to startX and startY.
     -- SetPoint offsets are in the view's own (scaled) units.
     local scale = Ring_Display.GetScale()
     local centerX, centerY = Ring_Display.GetCenter(startX, startY)
@@ -229,8 +274,8 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     View.fromMenu = Ring_Display.IsSelectFromMenu() and fixedX ~= nil
     if View.fromMenu then View.originX, View.originY = fixedX, fixedY end
 
-    -- Fixed position: optional guide at the key-down cursor spot (UIParent units, like startX/Y).
-    -- Not when selecting from the menu's position: there you point at the menu itself.
+    -- With a fixed position, an optional guide at the key down spot (UIParent units, like startX
+    -- and startY). Not with Select From = Menu Center, where you point at the menu itself.
     View.useGuide = Ring_Display.IsFixed() and not View.fromMenu
         and Config.Get(Config.Key.CursorGuide) and true or false
     if View.useGuide then
@@ -248,33 +293,37 @@ function Ring_View:Open(ring, startX, startY, probe, quickSlice, displaySlices, 
     OnUpdate(View)
 end
 
---- Updates one wedge's icon while the ring is open (mouse wheel on a nested scroll slice).
+--- Updates one wedge's icon while the menu is open (a scroll submenu was scrolled).
+---@param index integer
+---@param slice Slice
 function Ring_View:SetSliceIcon(index, slice)
     if not View:IsShown() then return end
     View:SetSliceSlice(index, slice)
-    -- Scrolled the highlighted slot: its tooltip follows.
+    -- The highlighted wedge was scrolled, so its tooltip follows.
     if index == View.tooltipIndex then
         View.tooltipIndex = nil
         SetActionTooltip(View, index)
     end
 end
 
---- Updates the center's quick action while the ring is open (its scroll slice was scrolled).
+--- Updates the center's quick action while the menu is open (its scroll submenu was scrolled).
+---@param slice Slice
 function Ring_View:SetQuickSlice(slice)
     if not (View:IsShown() and slice) then return end
     View.quickSlice = slice
     View:SetQuickIcon(Ring_Actions.GetIcon(slice), slice)
-    if View.tooltipIndex == "quick" then
+    if View.tooltipIndex == QUICK_TOOLTIP then
         View.tooltipIndex = nil
-        SetActionTooltip(View, "quick")
+        SetActionTooltip(View, QUICK_TOOLTIP)
     end
 end
 
+--- Closes the menu, with the close animation once it was revealed.
 function Ring_View:Close()
     if not View:IsShown() then return end
     SetActionTooltip(View, nil)
 
-    -- Closed before the reveal delay passed (a tap): nothing was visible, just hide.
+    -- Closed before the reveal delay passed (a tap), so nothing was visible, and it just hides.
     if not View.revealStart then
         View:SetScript("OnUpdate", nil)
         View:Hide()
