@@ -1,5 +1,6 @@
 local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local WoWClient = env.AX_Modules:Import("ax_modules\\wow-client")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Setting_Constructor = env.AX_Modules:Await("@\\Setting\\Constructor")
 local Setting_Options = env.AX_Modules:Import("@\\Setting\\Options")
@@ -237,7 +238,7 @@ end
 SettingFrameAnchor:HookScript("OnShow", OnShow)
 SettingFrameAnchor:HookScript("OnHide", OnHide)
 SettingFrameAnchor:SetScript("OnEvent", RenderUI)
-CallbackRegistry.Add("WoWClient.OnUIScaleChanged", RenderUI)
+CallbackRegistry.Add(WoWClient.Event.OnUIScaleChanged, RenderUI)
 
 
 
@@ -251,4 +252,4 @@ local function OnAddonLoaded()
     Settings.RegisterAddOnCategory(category)
     categoryId = category:GetID()
 end
-CallbackRegistry.Add("WoWClient.OnAddonLoaded", OnAddonLoaded)
+CallbackRegistry.Add(WoWClient.Event.OnAddonLoaded, OnAddonLoaded)

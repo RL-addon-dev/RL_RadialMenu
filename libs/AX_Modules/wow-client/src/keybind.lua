@@ -1,6 +1,7 @@
 local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local LazyTimer = env.AX_Modules:Import("ax_modules\\lazy-timer")
+local WoWClient_Events = env.AX_Modules:Import("ax_modules\\wow-client\\events")
 local WoWClient_Keybind = env.AX_Modules:New("ax_modules\\wow-client\\keybind")
 
 local CreateFrame = CreateFrame
@@ -8,17 +9,20 @@ local InCombatLockdown = InCombatLockdown
 
 
 local function OnKeyDown(self, key)
-    CallbackRegistry.Trigger("WoWClient.OnKeyDown", key)
+    CallbackRegistry.Trigger(WoWClient_Events.Event.OnKeyDown, key)
     if key == "ESCAPE" then
-        CallbackRegistry.Trigger("WoWClient.OnEscapePressed")
+        CallbackRegistry.Trigger(WoWClient_Events.Event.OnEscapePressed)
     end
 end
 
 local function OnKeyUp(self, key)
-    CallbackRegistry.Trigger("WoWClient.OnKeyUp", key)
+    CallbackRegistry.Trigger(WoWClient_Events.Event.OnKeyUp, key)
 end
 
-local KeybindEvents = CreateFrame("Frame")
+---@class KeybindEventsFrame : Frame
+---@field awaitingPropagateKeyboardInput boolean set in combat, until keyboard propagation can be turned on
+
+local KeybindEvents = CreateFrame("Frame") --[[@as KeybindEventsFrame]]
 KeybindEvents:SetScript("OnKeyDown", OnKeyDown)
 KeybindEvents:SetScript("OnKeyUp", OnKeyUp)
 
@@ -75,12 +79,19 @@ local function HandleModifierKey(key, bindingKey)
     return key == baseKey
 end
 
+--- Whether `key` (with the modifiers held now) is one of the keys bound to `binding`.
+---@param key string
+---@param binding string? a binding's name ("TOGGLEGAMEMENU")
+---@return boolean
 function WoWClient_Keybind.IsKeyBinding(key, binding)
     if not binding then return false end
     local bindingKey1, bindingKey2 = GetBindingKey(binding)
     return HandleModifierKey(key, bindingKey1) or HandleModifierKey(key, bindingKey2)
 end
 
+--- Whether `binding` has a key.
+---@param binding string
+---@return boolean
 function WoWClient_Keybind.IsKeyBindingSet(binding)
     local bindingKey1, bindingKey2 = GetBindingKey(binding)
     return (bindingKey1 ~= nil or bindingKey2 ~= nil)

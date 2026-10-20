@@ -15,3 +15,4 @@ WoWClient.IsKeyBindingSet = WoWClient_Keybind.IsKeyBindingSet
 
 WoWClient.IsPlayerTurning = WoWClient_Events.IsPlayerTurning
 WoWClient.IsPlayerLooking = WoWClient_Events.IsPlayerLooking
+WoWClient.Event = WoWClient_Events.Event
