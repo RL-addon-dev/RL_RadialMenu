@@ -1,14 +1,14 @@
 --[[
-    Share Menu box of a menu's page in the Menus tab (see Tab.lua), between Menu Settings and
-    Delete. Rows, top to bottom:
+    Rings_Share: the Share Menu box of a menu's page in the Menus tab (see Tab.lua), between Menu
+    Settings and Delete. Its rows, top to bottom:
         Included Submenus       every submenu that comes along (only when there are some)
         Included Macros         the macros whose text comes along (only when there are some)
-        Excluded ...            per reason (battle pets, deleted macros, others, empty
+        Excluded ...            one per reason (battle pets, deleted macros, others, empty
                                 submenus), only when something is left out: what, then the reason
         Click, then Ctrl+C...   "Keybinds aren't shared.", and the share string on the right
-    The share string (Ring_Data.BuildShare: the menu and every submenu it contains) is in a
+    The share string (Ring_Data.BuildShare, the menu and every submenu it contains) is in a
     read-only text box like the Name row's, selected when clicked so Ctrl+C copies it (addons
-    can't set the clipboard themselves). Not shown for built-in menus (they fill themselves).
+    can't set the clipboard themselves). It isn't shown for built-in menus, which fill themselves.
 ]]
 
 local env = select(2, ...)
@@ -16,49 +16,60 @@ local L = env.L
 local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
 local Setting_Widgets = env.AX_Modules:Import("@\\Setting\\Widgets")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
+local Utils_Text = env.AX_Modules:Import("@\\Utils\\Text")
 local Rings_Share = env.AX_Modules:New("@\\Setting\\Rings\\Share")
 
 local format, concat = string.format, table.concat
 
--- What can be left out of a share (Ring_Data.ShareSkip), in the order the box shows it.
-local EXCLUDED_REASONS = { "battlepet", "missing-macro", "invalid", "empty" }
-local REASON_COLOR = "|cffffd100"
+-- How many reasons can leave something out of a share (one row each, GetExcludedReasons).
+local EXCLUDED_ROWS = 4
 
---- Text as it is, not as UI escape codes (menu names are the player's own text).
-local function Plain(text)
-    return (tostring(text or ""):gsub("|", "||"))
+-- What can be left out of a share, in the order the box shows it. It's built on first use,
+-- because Ring_Data loads after the settings.
+local excludedReasons
+
+---@return string[] reasons Ring_Data.ShareSkip values
+local function GetExcludedReasons()
+    excludedReasons = excludedReasons or {
+        Ring_Data.ShareSkip.BattlePet, Ring_Data.ShareSkip.MissingMacro,
+        Ring_Data.ShareSkip.Invalid, Ring_Data.ShareSkip.Empty,
+    }
+    return excludedReasons
 end
 
-local BoxMixin = {}
+local BoxMixin = {} -- the box keeps its share string (text)
 
---- Fills the box for `ring` (a user menu: built-ins don't show it).
+--- Fills the box for `ring` (one of the user's menus, since built-in menus don't show it).
+---@param ring Ring
 function BoxMixin:SetRing(ring)
     local text, summary = Ring_Data.BuildShare({ ring.id })
     self.text = text
 
     local submenus = {}
-    for index, submenuName in ipairs(summary.submenus) do submenus[index] = Plain(submenuName) end
+    for index, submenuName in ipairs(summary.submenus) do submenus[index] = Utils_Text.Escape(submenuName) end
     self.Includes:SetShown(#submenus > 0)
     self.Includes:SetInfo(format(L["Config - Rings - Share - Includes"], #submenus), concat(submenus, ", "))
 
-    -- Macros travel with their text: show which, so nothing personal is shared by surprise.
+    -- Macros travel with their text, so it shows which, and nothing personal is shared by surprise.
     local macros = {}
-    for index, macroName in ipairs(summary.macros) do macros[index] = Plain(macroName) end
+    for index, macroName in ipairs(summary.macros) do macros[index] = Utils_Text.Escape(macroName) end
     self.Macros:SetShown(#macros > 0)
     self.Macros:SetInfo(format(L["Config - Rings - Share - Macros"], #macros), concat(macros, ", "))
 
     -- One row per reason something's left out: what, then the reason.
-    for index, reason in ipairs(EXCLUDED_REASONS) do
+    for index, reason in ipairs(GetExcludedReasons()) do
         local names = {}
-        for i, label in ipairs(summary.skippedNames[reason] or {}) do names[i] = Plain(label) end
+        for i, label in ipairs(summary.skippedNames[reason] or {}) do names[i] = Utils_Text.Escape(label) end
         local row = self.Excluded[index]
         row:SetShown(#names > 0)
+        -- "Config - Rings - Share - Excluded - <reason>" and its " - Reason", for the reasons above.
         local key = "Config - Rings - Share - Excluded - " .. reason
-        -- What, then the reason under it in yellow (like the Import page's notes).
-        row:SetInfo(format(L[key], #names), concat(names, ", ") .. "\n" .. REASON_COLOR .. format(L[key .. " - Reason"], #names) .. "|r")
+        -- What, then the reason under it in gold (like the Import page's notes).
+        local reasonText = Utils_Text.Gold(format(L[key .. " - Reason"], #names))
+        row:SetInfo(format(L[key], #names), concat(names, ", ") .. "\n" .. reasonText)
     end
 
-    -- Every action left out (or none yet): no string, say why instead.
+    -- With every action left out (or none yet), there's no string, and it says why instead.
     if text == "" then
         self.CopyRow:SetInfo(L["Config - Rings - Share - Nothing"], L["Config - Rings - Share - Nothing - Description"])
     else
@@ -72,16 +83,17 @@ function BoxMixin:SetRing(ring)
     if input:HasFocus() then input:HighlightText() end
 end
 
+--- Sets up the box's texts and its read-only copy box.
 function BoxMixin:Setup()
     self.text = ""
     self:SetSubcontainer(false)
     self.Title:SetText(L["Config - Rings - Share - Title"])
-    -- Lists, no control on the right: wrap at the row's edge.
+    -- Lists, with no control on the right, so they wrap at the row's edge.
     self.Includes:SetFullWidth(true)
     self.Macros:SetFullWidth(true)
     for _, row in ipairs(self.Excluded) do row:SetFullWidth(true) end
 
-    -- Read-only: typing or pasting puts the string back; clicking selects all of it.
+    -- Read-only: typing or pasting puts the string back, and clicking selects all of it.
     local input = self.CopyRow:GetInput()
     input:SetMaxLetters(0)
     input:HookScript("OnTextChanged", function(box, userInput)
@@ -111,8 +123,8 @@ Rings_Share.Box = UIKit.Template(function(id, name, children, ...)
 
     frame.Includes = UIKit.GetElementById("Includes", id)
     frame.Macros = UIKit.GetElementById("Macros", id)
-    frame.Excluded = {} -- one per EXCLUDED_REASONS
-    for index in ipairs(EXCLUDED_REASONS) do frame.Excluded[index] = UIKit.GetElementById("Excluded" .. index, id) end
+    frame.Excluded = {} -- one per reason (GetExcludedReasons)
+    for index = 1, EXCLUDED_ROWS do frame.Excluded[index] = UIKit.GetElementById("Excluded" .. index, id) end
     frame.CopyRow = UIKit.GetElementById("CopyRow", id)
 
     Mixin(frame, BoxMixin)

@@ -1,13 +1,13 @@
 --[[
-    "Add Action" panel (AddSlice in code) for the Menus tab: search box + kind dropdown + Done +
-    results. It opens under the preview, pushing the menu's settings down (opened by the preview's
-    "+": on a gap to insert there, or on an empty menu; another "+" while open just moves where
-    the next action goes).
+    Rings_AddSlice: the Add Action panel of the Menus tab, with a search box, a kind filter, Done,
+    and the results. It opens under the preview, pushing the menu's settings down. The preview's
+    "+" opens it, on a gap to insert there or on an empty menu, and another "+" while it's open
+    just moves where the next action goes.
 
-    Results come from Ring_Search. Clicking a row or its Add button (or Enter in the search box
-    for the top result) adds the slice; the panel stays open for more, and its heading says where
-    the next one goes and what was just added. A number also looks up a spell / item / toy /
-    mount by id. Done or Esc in the search box closes it.
+    The results come from Ring_Search. Clicking a row or its Add button (or Enter in the search
+    box, for the top result) adds the action. The panel stays open for more, and its heading says
+    where the next one goes and what was just added. A number also looks up a spell, item, toy
+    or mount by id. Done, or Esc in the search box, closes it.
 ]]
 
 local env = select(2, ...)
@@ -26,6 +26,7 @@ local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Ring_Search = env.AX_Modules:Await("@\\Ring\\Search")
 local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
+local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 local Rings_AddSlice = env.AX_Modules:New("@\\Setting\\Rings\\AddSlice")
 
 local SEARCH_HEIGHT = 32
@@ -35,19 +36,31 @@ local DONE_WIDTH = 70
 local ROW_HEIGHT = 40
 local ROW_SPACING = 3
 local ROW_ICON_SIZE = 28
+local ROW_ICON_X = 10 -- from the row's left edge
+local ROW_TEXT_GAP = 18 -- the text starts this far past the icon's size, and stops this far before Add
+local ROW_NAME_Y, ROW_KIND_Y = 7, -8 -- the two text lines, from the row's middle
+local ROW_BACKGROUND_INSET = 6
 local ADD_WIDTH = 64
 local ADD_HEIGHT = 24
+local ADD_X = -8 -- from the row's right edge
+local HINT_HEIGHT = 60
+local HINT_MARGIN = 40 -- the hint's width is the list's, minus this
+local SCROLLBAR_GAP = 8
 -- Result rows shown before the list scrolls: fewer in the Options panel (shorter), more in our
 -- own window. See Setting.GetHost.
 local VISIBLE_ROWS_OPTIONS = 3
 local VISIBLE_ROWS_WINDOW = 4
 
+--- The results list's height for `rows` rows.
+---@param rows integer
+---@return number
 local function ResultsHeight(rows)
     return rows * (ROW_HEIGHT + ROW_SPACING)
 end
 local SCROLLBAR_WIDTH = 6
 local RESULT_LIMIT = 40
 local BLOCKED_ALPHA = 0.45
+local KIND_SEPARATOR = "  ·  " -- between a result's kind and its note
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
@@ -57,6 +70,7 @@ local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
 local ResultRowMixin = CreateFromMixins(UICSharedMixin.ButtonMixin)
 
+--- Sets up the row as a button.
 function ResultRowMixin:OnLoad()
     self:InitButton()
     self:RegisterMouseEvents()
@@ -67,27 +81,32 @@ function ResultRowMixin:OnLoad()
     self:UpdateAnimation()
 end
 
+--- Shows the row's background while hovered or pressed.
 function ResultRowMixin:UpdateAnimation()
     self.Background:SetShown(self:GetButtonState() ~= "NORMAL")
 end
 
+--- Shows `result` on the row.
+---@param result SearchCandidate
 function ResultRowMixin:SetResult(result)
     self.result = result
-    Ring_Layout.SetIcon(self.IconFrame.Icon, result.icon or 134400)
-    -- Like on the wheel: no action button border for kinds without one (markers, Close).
+    Ring_Layout.SetIcon(self.IconFrame.Icon, result.icon or Ring_Kinds.QUESTION_MARK_ICON)
+    -- Like on the wheel, there's no action button border for kinds without one (markers, Close).
     self.IconFrame.Border:SetShown(not (result.slice and Ring_Actions.HasNoIconBorder(result.slice)))
     Ring_Layout.SetUnderlay(self.IconFrame, result.slice) -- a world marker's beam, as on the wheel
     self.Name:SetText(result.name)
 
-    -- Blocked results (e.g. a ring that would nest in a loop) stay visible but can't be added.
+    -- "Config - Rings - Search - Kind - <kind>", one per action kind (Ring_Kinds.Kind).
     local kindText = result.kindLabel or L["Config - Rings - Search - Kind - " .. result.kind]
-    -- Blocked results can't be added; a note only explains (e.g. a gear slot with no use effect).
+    -- Blocked results (a menu that would contain itself) stay visible but can't be added. A note
+    -- only explains (a gear slot with no use effect).
     local extra = result.blocked or result.note
-    self.Kind:SetText(extra and (kindText .. "  ·  " .. extra) or kindText)
+    self.Kind:SetText(extra and (kindText .. KIND_SEPARATOR .. extra) or kindText)
     self:SetAlpha(result.blocked and BLOCKED_ALPHA or 1)
     self.Add:SetEnabled(not result.blocked)
 end
 
+--- The result's tooltip, and how to add it.
 function ResultRowMixin:ShowTooltip()
     local slice = self.result and self.result.slice
     if not slice then return end
@@ -101,14 +120,14 @@ function ResultRowMixin:ShowTooltip()
 end
 
 local ResultRow = UIKit.Template(function(id, name, children, ...)
-    local textX = ROW_ICON_SIZE + 18
-    local textWidth = UIKit.Define.Percentage{ value = 100, operator = "-", delta = textX + ADD_WIDTH + 18 }
+    local textX = ROW_ICON_SIZE + ROW_TEXT_GAP
+    local textWidth = UIKit.Define.Percentage{ value = 100, operator = "-", delta = textX + ADD_WIDTH + ROW_TEXT_GAP }
 
     local frame =
         Frame(name, {
             Frame(name .. ".Background")
                 :id("Background", id)
-                :size(UIKit.Define.Fill{ delta = -6 })
+                :size(UIKit.Define.Fill{ delta = -ROW_BACKGROUND_INSET })
                 :background(Setting_Preload.UIDef.UIWidget)
                 :frameLevel(1)
                 :_excludeFromCalculations(),
@@ -117,7 +136,7 @@ local ResultRow = UIKit.Template(function(id, name, children, ...)
                 :id("Name", id)
                 :point(UIKit.Enum.Point.Left)
                 :x(textX)
-                :y(7)
+                :y(ROW_NAME_Y)
                 :size(textWidth, 14)
                 :fontObject(UIFont.UIFontObjectNormal12)
                 :textAlignment("LEFT", "MIDDLE")
@@ -127,7 +146,7 @@ local ResultRow = UIKit.Template(function(id, name, children, ...)
                 :id("Kind", id)
                 :point(UIKit.Enum.Point.Left)
                 :x(textX)
-                :y(-8)
+                :y(ROW_KIND_Y)
                 :size(textWidth, 12)
                 :fontObject(UIFont.UIFontObjectNormal11)
                 :textAlignment("LEFT", "MIDDLE")
@@ -137,7 +156,7 @@ local ResultRow = UIKit.Template(function(id, name, children, ...)
             UICCommon.ButtonRedWithText(name .. ".Add")
                 :id("Add", id)
                 :point(UIKit.Enum.Point.Right)
-                :x(-8)
+                :x(ADD_X)
                 :size(ADD_WIDTH, ADD_HEIGHT)
                 :frameLevel(3)
         })
@@ -149,7 +168,7 @@ local ResultRow = UIKit.Template(function(id, name, children, ...)
     frame.Add = UIKit.GetElementById("Add", id)
 
     frame.IconFrame = Ring_Layout.CreateActionIcon(frame, ROW_ICON_SIZE)
-    frame.IconFrame:SetPoint("LEFT", frame, "LEFT", 10, 0)
+    frame.IconFrame:SetPoint("LEFT", frame, "LEFT", ROW_ICON_X, 0)
 
     Mixin(frame, ResultRowMixin)
     frame:OnLoad()
@@ -163,12 +182,19 @@ end)
 
 -- Panel
 
+--- The panel's methods. It keeps the results, the kind filter (kindIndex), where the next action
+--- goes (insertIndex, nil adds it at the end), and the last action added (lastAdded).
 local AddSliceMixin = {}
 
+--- The kind filter's value (a Ring_Search.Kinds entry).
+---@return string
 function AddSliceMixin:GetKind()
     return Ring_Search.Kinds[self.kindIndex or 1]
 end
 
+--- Result row `index`, made on first use.
+---@param index integer
+---@return table
 function AddSliceMixin:GetRow(index)
     local row = self.rows[index]
     if not row then
@@ -181,6 +207,7 @@ function AddSliceMixin:GetRow(index)
     return row
 end
 
+--- Searches again, and shows the results (or a hint).
 function AddSliceMixin:Update()
     local ring = self.getRing()
     if not ring then return end
@@ -203,7 +230,7 @@ function AddSliceMixin:Update()
         local waiting = strtrim(query) == "" and self:GetKind() == Ring_Search.ALL
         hint = (waiting and L["Config - Rings - Search - Hint"]) or L["Config - Rings - Search - NoMatches"]
     elseif truncated then
-        hint = nil -- the list is full; the user can refine the query
+        hint = nil -- the list is full, and the user can refine the query
     end
     self.Hint:SetShown(hint ~= nil)
     if hint then self.Hint:SetText(hint) end
@@ -211,6 +238,8 @@ function AddSliceMixin:Update()
     self.Scroll:_Render()
 end
 
+--- Adds `result` to the menu, where the next action goes.
+---@param result SearchCandidate?
 function AddSliceMixin:AddResult(result)
     local ring = self.getRing()
     if not (ring and result) or result.blocked then return end
@@ -229,13 +258,13 @@ function AddSliceMixin:AddResult(result)
 end
 
 --- Starts a search session.
---- @param index number|nil insert so the new slice becomes #index (nil = add at the end)
+---@param index integer? insert so the new action becomes #index (nil adds it at the end)
 function AddSliceMixin:Open(index)
     self:UpdateResultsHeight() -- the caller re-renders the page after opening
     self.insertIndex = index
     self.lastAdded = nil
 
-    -- Every session starts fresh: empty search, "All" filter, list scrolled to the top.
+    -- Every session starts fresh: an empty search, the All filter, and the list at the top.
     local input = self.SearchBox:GetInput()
     input:SetText("")
     self.kindIndex = 1
@@ -247,7 +276,8 @@ function AddSliceMixin:Open(index)
     input:SetFocus()
 end
 
---- While open: move where the next slice goes (another "+" on the preview), keeping the search.
+--- Moves where the next action goes while open (another "+" on the preview), keeping the search.
+---@param index integer?
 function AddSliceMixin:SetInsertIndex(index)
     self.insertIndex = index
     self.lastAdded = nil
@@ -255,6 +285,7 @@ function AddSliceMixin:SetInsertIndex(index)
     self.SearchBox:GetInput():SetFocus()
 end
 
+--- The heading: where the next action goes, and what was just added.
 function AddSliceMixin:UpdateTitle()
     local ring = self.getRing()
     local atEnd = not self.insertIndex or not ring or self.insertIndex > #ring.slices
@@ -265,8 +296,9 @@ function AddSliceMixin:UpdateTitle()
     self.Title:SetText(where)
 end
 
---- The results list only takes the mouse wheel when it has something to scroll; otherwise the
---- wheel scrolls the page (`outerScrollView`, the tab's scroll view).
+--- The results list only takes the mouse wheel when it has something to scroll. Otherwise the
+--- wheel scrolls the page.
+---@param outerScrollView table the tab's scroll view
 function AddSliceMixin:ForwardMouseWheelWhenIdle(outerScrollView)
     local scrollFrame = self.Scroll:GetScrollFrame()
     local ownHandler = scrollFrame:GetScript("OnMouseWheel")
@@ -283,8 +315,8 @@ function AddSliceMixin:ForwardMouseWheelWhenIdle(outerScrollView)
     end)
 end
 
---- Sizes the results list for where the settings are shown. Returns true if it changed (the page
---- needs a re-render).
+--- Sizes the results list for where the settings are shown.
+---@return boolean changed the page needs rendering again
 function AddSliceMixin:UpdateResultsHeight()
     local rows = Setting.GetHost() == Setting_Enum.Host.Window and VISIBLE_ROWS_WINDOW or VISIBLE_ROWS_OPTIONS
     if rows == self.visibleRows then return false end
@@ -293,8 +325,9 @@ function AddSliceMixin:UpdateResultsHeight()
     return true
 end
 
---- @param getRing function returns the ring being edited
---- @param onDone function called by the Done button / Esc in the search box
+--- Sets up the panel's texts and handlers.
+---@param getRing fun(): Ring? the menu being edited
+---@param onDone function called by the Done button, or Esc in the search box
 function AddSliceMixin:Setup(getRing, onDone)
     self.getRing = getRing
     self.rows = {}
@@ -313,6 +346,7 @@ function AddSliceMixin:Setup(getRing, onDone)
     input:HookEvent("OnEscapePressed", function() onDone() end)
 
     local labels = {}
+    -- "Config - Rings - Search - Filter - <kind>", one per Ring_Search.Kinds entry.
     for index, kind in ipairs(Ring_Search.Kinds) do
         labels[index] = L["Config - Rings - Search - Filter - " .. kind]
     end
@@ -330,7 +364,7 @@ function AddSliceMixin:Setup(getRing, onDone)
     CallbackRegistry.Add(env.Event.SearchSourcesChanged, function()
         if self:IsVisible() then self:Update() end
     end)
-    -- Settings closed: let go of the last results too, with the search lists (Ring_Search).
+    -- When the settings close, it lets go of the last results too, with the search lists (Ring_Search).
     CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function(_, host)
         if not host then self.results = nil end
     end)
@@ -358,7 +392,7 @@ Rings_AddSlice.Panel = UIKit.Template(function(id, name, children, ...)
             })
                 :size(UIKit.UI.P_FILL, SEARCH_HEIGHT),
 
-            -- Height set by UpdateResultsHeight (rows depend on where the settings are shown).
+            -- UpdateResultsHeight sets the height (the rows depend on where the settings are shown).
             Frame(name .. ".Results", {
                 ScrollView(name .. ".Scroll", {
                     LayoutVertical(name .. ".Rows")
@@ -370,7 +404,8 @@ Rings_AddSlice.Panel = UIKit.Template(function(id, name, children, ...)
                 })
                     :id("Scroll", id)
                     :point(UIKit.Enum.Point.TopLeft)
-                    :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = SCROLLBAR_WIDTH + 8 }, UIKit.UI.P_FILL)
+                    :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = SCROLLBAR_WIDTH + SCROLLBAR_GAP },
+                        UIKit.UI.P_FILL)
                     :scrollViewContentWidth(UIKit.UI.P_FILL)
                     :scrollViewContentHeight(UIKit.Define.Fit{})
                     :layoutDirection(UIKit.Enum.Direction.Vertical)
@@ -385,7 +420,7 @@ Rings_AddSlice.Panel = UIKit.Template(function(id, name, children, ...)
                 Text(name .. ".Hint")
                     :id("Hint", id)
                     :point(UIKit.Enum.Point.Center)
-                    :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = 40 }, 60)
+                    :size(UIKit.Define.Percentage{ value = 100, operator = "-", delta = HINT_MARGIN }, HINT_HEIGHT)
                     :fontObject(UIFont.UIFontObjectNormal12)
                     :textAlignment("CENTER", "MIDDLE")
                     :alpha(0.6)

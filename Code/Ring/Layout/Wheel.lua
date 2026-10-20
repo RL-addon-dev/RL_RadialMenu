@@ -67,6 +67,7 @@ Ring_Layout.ATLAS_CANCEL_ICON = ATLAS_CANCEL_ICON -- the preview's X buttons
 ---@field ScrollBadge ScrollBadge
 ---@field ExpandBadge ExpandBadge
 ---@field ConditionBadge ConditionBadge
+---@field RemoveButton Button? the settings preview's X (Rings_Preview)
 
 --- A wheel (Ring_Layout.CreateWheel). WheelMixin holds its methods, and Badges.lua adds some.
 ---@class RingWheel : Frame
@@ -92,6 +93,7 @@ Ring_Layout.ATLAS_CANCEL_ICON = ATLAS_CANCEL_ICON -- the preview's X buttons
 ---@field showLabels boolean
 ---@field showStates boolean
 ---@field onWedgeCreated fun(wheel: RingWheel, wedge: RingWedge)? set by the settings preview
+---@field preview RingPreview? the settings preview it belongs to
 local WheelMixin = {}
 Private.WheelMixin = WheelMixin -- Badges.lua adds its methods
 
