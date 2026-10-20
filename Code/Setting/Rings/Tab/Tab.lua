@@ -54,14 +54,6 @@ local format = string.format
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 
---- Runs `fn` next frame, after the render pass in progress. UIKit drops renders queued during a
---- render pass, and a hidden box can't take focus, so a change made from inside one (the host
---- switching, the Import page growing, the list nav opening this tab) waits a frame.
----@param fn function
-local function AfterRender(fn)
-    C_Timer.After(0, fn)
-end
-
 
 
 -- Tab page
@@ -115,9 +107,10 @@ function PageMixin:ShowImport()
     self.ImportPanel:Clear()
     self:RefreshSettings()
     self.tab:_Render()
-    -- The list nav opens this tab after this, and the page has its new height then. It scrolls to
-    -- the top, so the paste box is in view.
-    AfterRender(function()
+    -- Next frame, because the list nav opens this tab after this, and a hidden box can't take
+    -- focus. The page has its new height then too. It scrolls to the top, so the paste box is in
+    -- view.
+    C_Timer.After(0, function()
         if not self.isImporting then return end
         self.tab.Content:ScrollToTop()
         self.ImportPanel:FocusPaste()
@@ -372,12 +365,9 @@ function Rings_Tab.Build(parent, tab)
     page.Preview:SetTransparent(true) -- the wheel sits on the page background, with no box
     page.AddSlice:Setup(function() return page:GetSelectedRing() end, function() page:ShowPreview() end)
     -- Moving between Options and our window changes how many results fit, so an open Add Action
-    -- panel renders again (after the render pass the host change happens in).
+    -- panel renders again. UIKit gives a render asked for during a render pass its own pass.
     CallbackRegistry.Add(Setting_Enum.Event.HostChanged, function()
-        if not page.isAddingSlice then return end
-        AfterRender(function()
-            if page.AddSlice:UpdateResultsHeight() then page.tab:_Render() end
-        end)
+        if page.isAddingSlice and page.AddSlice:UpdateResultsHeight() then page.tab:_Render() end
     end)
     page.AddSlice:ForwardMouseWheelWhenIdle(tab.Content)
     page.AddSlice:Hide()
@@ -387,9 +377,8 @@ function Rings_Tab.Build(parent, tab)
 
     page.ShareBox:Setup()
     page.RemovedBox:Setup()
-    -- The Import page's height changes as it fills, which can happen inside a render pass.
-    local function RenderSoon() AfterRender(function() page.tab:_Render() end) end
-    page.ImportPanel:Setup(RenderSoon, function(rings)
+    -- The Import page's height changes as it fills (inside a render pass is fine, see above).
+    page.ImportPanel:Setup(function() page.tab:_Render() end, function(rings)
         if rings[1] then page.Nav:Select(rings[1].id) end
     end)
     page.ImportPanel:Hide()

@@ -3,6 +3,9 @@ local Utils_Standard = env.AX_Modules:New("ax_modules\\utils\\standard")
 
 local pairs = pairs
 
+--- How many keys `tbl` has (not only its array part).
+---@param tbl table
+---@return integer
 function Utils_Standard.GetTableLength(tbl)
     local count = 0
     for _ in pairs(tbl) do
@@ -11,6 +14,9 @@ function Utils_Standard.GetTableLength(tbl)
     return count
 end
 
+--- A new array with `tbl`'s array part in reverse order.
+---@param tbl any[]
+---@return any[]
 function Utils_Standard.ReverseTable(tbl)
     local reversed = {}
     local length = #tbl
@@ -43,6 +49,8 @@ end
 
 local nextUniqueID = 0
 
+--- A number no other call returned (this session).
+---@return integer
 function Utils_Standard.GetUniqueID()
     nextUniqueID = nextUniqueID + 1
     return nextUniqueID

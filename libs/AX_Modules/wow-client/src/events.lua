@@ -1,9 +1,20 @@
 local addonName, env = ...
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local WoWClient_Events = env.AX_Modules:New("ax_modules\\wow-client\\events")
 
 local CreateFrame = CreateFrame
 local GetTime = GetTime
+
+-- The CallbackRegistry events this module fires (WoWClient.Event). Listen with
+-- CallbackRegistry.Add(WoWClient.Event.OnAddonLoaded, callback).
+WoWClient_Events.Event = Utils_Standard.Strict({
+    OnAddonLoaded    = "WoWClient.OnAddonLoaded",    -- this addon's ADDON_LOADED (saved variables are there)
+    OnUIScaleChanged = "WoWClient.OnUIScaleChanged", -- the UI scale changed, once it settles
+    OnKeyDown        = "WoWClient.OnKeyDown",        -- a key went down, passes the key
+    OnKeyUp          = "WoWClient.OnKeyUp",          -- a key went up, passes the key
+    OnEscapePressed  = "WoWClient.OnEscapePressed",  -- Escape went down
+}, "WoWClient event")
 
 do -- UI Scale Changed
     local lastChangedTime = 0
@@ -13,7 +24,7 @@ do -- UI Scale Changed
     awaitScaleEnd:SetScript("OnUpdate", function()
         if GetTime() < lastChangedTime + scaleChangeDebounceTime then return end
         awaitScaleEnd:Hide()
-        CallbackRegistry.Trigger("WoWClient.OnUIScaleChanged")
+        CallbackRegistry.Trigger(WoWClient_Events.Event.OnUIScaleChanged)
     end)
 
     local f = CreateFrame("Frame")
@@ -31,7 +42,7 @@ do -- Addon Loaded
         if event == "ADDON_LOADED" then
             local name = ...
             if name == addonName then
-                CallbackRegistry.Trigger("WoWClient.OnAddonLoaded")
+                CallbackRegistry.Trigger(WoWClient_Events.Event.OnAddonLoaded)
             end
         end
     end)

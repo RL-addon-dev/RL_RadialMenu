@@ -65,7 +65,7 @@ do --Prompt
     function PromptMixin:OnLoad()
         self.hideOnEscape = false
 
-        CallbackRegistry.Add("WoWClient.OnEscapePressed", function()
+        CallbackRegistry.Add(WoWClient.Event.OnEscapePressed, function()
             if self.hideOnEscape and self:IsShown() then
                 WoWClient.BlockKeyEvent()
                 self:OnEscape()
