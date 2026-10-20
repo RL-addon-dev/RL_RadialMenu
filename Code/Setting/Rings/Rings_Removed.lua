@@ -1,9 +1,10 @@
 --[[
-    Removed Actions box of a built-in menu's page in the Menus tab (see Tab.lua), under Menu
-    Settings. Shown only while the user has removed actions from it (the X in the preview,
-    Ring_Data BuiltIn.lua): one row per action, its icon and name as they were when removed,
-    with Restore; then Restore All when there are several. A restored action comes back at once
-    if the menu has it right now (a quest item you still have), else whenever it does.
+    Rings_Removed: the Removed Actions box of a built-in menu's page in the Menus tab (see
+    Tab.lua), under Menu Settings. It's shown only while the user has removed actions from it (the
+    X in the preview, Ring_Data BuiltIn.lua): one row per action, with its icon and name as they
+    were when removed, and Restore, then Restore All when there are several. A restored action
+    comes back at once if the menu has it right now (a quest item you still have), else whenever
+    it does.
 ]]
 
 local env = select(2, ...)
@@ -12,16 +13,21 @@ local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
 local _, _, _, LayoutVertical = unpack(UIKit.UI.Frames)
 local Setting_Widgets = env.AX_Modules:Import("@\\Setting\\Widgets")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
+local Utils_Text = env.AX_Modules:Import("@\\Utils\\Text")
 local Rings_Removed = env.AX_Modules:New("@\\Setting\\Rings\\Removed")
 
 local format = string.format
 
 local ICON_SIZE = 16
+local ROW_SPACING = 10
 local ATLAS_PREFIX = "atlas:" -- icons may be atlases (Ring_Layout.SetIcon)
 
---- "<icon> Name" for a row title: the icon as a text escape (a file / id, or an atlas).
+--- "<icon> Name" for a row title, with the icon as a text escape (a file or id, or an atlas).
+---@param icon number|string|nil
+---@param label string?
+---@return string
 local function IconAndName(icon, label)
-    local name = tostring(label or ""):gsub("|", "||")
+    local name = Utils_Text.Escape(label)
     if type(icon) == "string" and icon:sub(1, #ATLAS_PREFIX) == ATLAS_PREFIX then
         return format("|A:%s:%d:%d|a %s", icon:sub(#ATLAS_PREFIX + 1), ICON_SIZE, ICON_SIZE, name)
     elseif icon then
@@ -32,6 +38,9 @@ end
 
 local BoxMixin = {}
 
+--- Row `index`, made on first use.
+---@param index integer
+---@return table
 function BoxMixin:GetRow(index)
     local row = self.rows[index]
     if row then return row end
@@ -46,7 +55,8 @@ function BoxMixin:GetRow(index)
     return row
 end
 
---- Fills the box for built-in `ring`; hides it while nothing's removed (or `ring` isn't built-in).
+--- Fills the box for built-in `ring`, or hides it while nothing's removed (or `ring` isn't built-in).
+---@param ring Ring?
 function BoxMixin:SetRing(ring)
     local removed = Ring_Data.IsBuiltIn(ring) and Ring_Data.GetRemovedSlices(ring) or {}
     self.ringId = ring and ring.id
@@ -65,6 +75,7 @@ function BoxMixin:SetRing(ring)
     self.RestoreAllRow:SetShown(#removed > 1)
 end
 
+--- Sets up the box's texts and Restore All.
 function BoxMixin:Setup()
     self.rows = {}
     self:SetSubcontainer(false)
@@ -83,7 +94,7 @@ Rings_Removed.Box = UIKit.Template(function(id, name, children, ...)
             LayoutVertical(name .. ".List")
                 :id("List", id)
                 :size(UIKit.UI.P_FILL, UIKit.Define.Fit{})
-                :layoutSpacing(10)
+                :layoutSpacing(ROW_SPACING)
                 :_updateMode(UIKit.Enum.UpdateMode.ChildrenVisibilityChanged),
             Setting_Widgets.ElementButton(name .. ".RestoreAll"):id("RestoreAllRow", id)
         })

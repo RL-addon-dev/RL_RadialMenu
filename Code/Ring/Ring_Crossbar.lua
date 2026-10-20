@@ -48,7 +48,15 @@ Ring_Crossbar.SIDE_ORDER = {
 
 -- The gamepad UI's bindings this file reads.
 local LEFT_MODIFIER, RIGHT_MODIFIER = "GAMEPADLEFTMOD", "GAMEPADRIGHTMOD"
-local TARGETING_MODIFIERS = { "GAMEPADLEFTTARGETMODIFIER", "GAMEPADRIGHTTARGETMODIFIER" }
+local LEFT_TARGETING, RIGHT_TARGETING = "GAMEPADLEFTTARGETMODIFIER", "GAMEPADRIGHTTARGETMODIFIER"
+local TARGETING_MODIFIERS = { LEFT_TARGETING, RIGHT_TARGETING }
+-- The same, for the settings' keybind help (Ring_Crossbar.GetBoundKey).
+Ring_Crossbar.Binding = Utils_Standard.Strict({
+    LeftModifier   = LEFT_MODIFIER,   -- LT, the left crossbar
+    RightModifier  = RIGHT_MODIFIER,  -- RT, the right crossbar
+    LeftTargeting  = LEFT_TARGETING,  -- LB
+    RightTargeting = RIGHT_TARGETING, -- RB
+}, "gamepad binding")
 local ACTION_BUTTON = "GAMEPADACTIONBUTTON" -- 1 to ACTION_BUTTONS, a crossbar's slots
 local ACTION_BUTTONS = 8
 
@@ -78,6 +86,16 @@ local MACRO_NAME_LENGTH = 16 -- the longest macro name the game takes
 local MACRO_ICONS = { 4630454, 4630455, 4630456, 4630457, 4630458 }
 -- How many macros were made so far, saved account-wide (DBGlobalPersistent). See NextMacroIcon.
 local MADE_KEY = "CrossbarMacrosMade"
+
+-- Why a controller press can't be a keybind (Ring_Crossbar.FromPress). The values end the
+-- locale keys "Config - Rings - Keybind - Crossbar - <value>" (Held has none, it keeps listening).
+Ring_Crossbar.PressProblem = Utils_Standard.Strict({
+    Held          = "Held",
+    Targeting     = "Targeting",
+    OnlyModifiers = "OnlyModifiers",
+    NotSlot       = "NotSlot",
+    Reserved      = "Reserved",
+}, "controller press problem")
 
 -- Why Ring_Crossbar.Place didn't place the macro.
 Ring_Crossbar.PlaceError = Utils_Standard.Strict({
@@ -210,17 +228,19 @@ end
 ---@param held table<string, boolean>
 ---@return string? key the combo ("PAD:LEFT:PAD1"), or `button` itself (R3 alone...)
 ---@return string? problem why nothing is bound, one of these.
----     "Held" means it's a modifier, so keep listening.
----     "Targeting" means LB or RB is held.
----     "OnlyModifiers" means another button is held.
----     "NotSlot" means LT or RT is held with a button that takes none.
----     "Reserved" means a slot the gamepad UI keeps (A alone...).
+---     Held means it's a modifier, so keep listening.
+---     Targeting means LB or RB is held.
+---     OnlyModifiers means another button is held.
+---     NotSlot means LT or RT is held with a button that takes none.
+---     Reserved means a slot the gamepad UI keeps (A alone...).
 function Ring_Crossbar.FromPress(button, held)
-    if IsBoundTo(button, CROSSBAR_MODIFIERS) or IsBoundTo(button, TARGETING_MODIFIERS) then return nil, "Held" end
+    if IsBoundTo(button, CROSSBAR_MODIFIERS) or IsBoundTo(button, TARGETING_MODIFIERS) then
+        return nil, Ring_Crossbar.PressProblem.Held
+    end
     for other in pairs(held) do
         if other ~= button then
-            if IsBoundTo(other, TARGETING_MODIFIERS) then return nil, "Targeting" end
-            if not IsBoundTo(other, CROSSBAR_MODIFIERS) then return nil, "OnlyModifiers" end
+            if IsBoundTo(other, TARGETING_MODIFIERS) then return nil, Ring_Crossbar.PressProblem.Targeting end
+            if not IsBoundTo(other, CROSSBAR_MODIFIERS) then return nil, Ring_Crossbar.PressProblem.OnlyModifiers end
         end
     end
     local function IsHeld(key) return held[key] or IsKeyDown(key) end
@@ -233,10 +253,10 @@ function Ring_Crossbar.FromPress(button, held)
         local slotId = GetSlotId(side, button)
         local util = _G["GamepadActionBarBindingUtil"]
         if not (slotId and util) then
-            if side ~= Ring_Crossbar.Side.Top then return nil, "NotSlot" end
+            if side ~= Ring_Crossbar.Side.Top then return nil, Ring_Crossbar.PressProblem.NotSlot end
             return button -- not a crossbar button, so it's bound as itself
         end
-        if not util.IsBindablePageUnitSlotID(slotId) then return nil, "Reserved" end
+        if not util.IsBindablePageUnitSlotID(slotId) then return nil, Ring_Crossbar.PressProblem.Reserved end
     end
     return PREFIX .. side .. ":" .. button
 end

@@ -1,59 +1,56 @@
 --[[
     Live wheel preview for the Menus tab: the same Ring_Layout wheel as the in-game ring.
 
-    Behaves like the real ring while the mouse is over it, measured from the wheel's center:
-    the pointer follows the cursor angle, the slice is picked by angle outside the dead zone,
-    and the center highlights inside it. While the cursor is on an icon (or its X), that slice
-    stays selected so the X is always reachable. The selected slice shows a small X; clicking it
-    removes the slice. Hovering an icon also shows its name in a tooltip.
+    It behaves like the real menu while the mouse is over it, measured from the wheel's center.
+    The pointer follows the cursor's angle, a wedge is picked by angle outside the dead zone, and
+    the center highlights inside it. While the cursor is on an icon (or its X), that wedge stays
+    selected, so the X is always reachable. The selected wedge shows a small X, and clicking it
+    removes the action. Hovering an icon also shows its name in a tooltip.
 
-    Drag & drop:
-      Each slice's angle has a middle part ("over" the slice) and edges ("between" slices).
-      A gold wedge marks "over", a gold divider line marks "between", and a GameTooltip pointing
-      out of the wheel from the target says what releasing will do.
+    Drag and drop. Each wedge's angle has a middle part ("over" the action) and edges ("between"
+    actions). A gold wedge marks over, a gold divider line marks between, and a GameTooltip
+    pointing out of the wheel from the target says what releasing will do.
+        - From the game: a spell, item, toy, macro or mount on the cursor. Over an action replaces
+          it, between two actions inserts it there (the gap before the first action adds at the
+          end), and the center makes it a tap-only quick action. On an empty menu, anywhere outside
+          the center adds it. It works with drag and release, or pick up then click.
+        - Reorder: press on an action's icon and drag (the icon follows the cursor). Over another
+          action swaps the two, between two actions moves it there, and the center copies it there
+          (it stays on the wheel, and replaces what the center had). Releasing off the wheel
+          cancels.
+        - Quick action: the center is a slot. Press on it and drag its action onto the wheel. Over
+          an action swaps the two (not with a submenu or action bar, which can't be in the center),
+          and between two actions inserts it there. An empty center drags out as a Close action (it
+          cancels, like Close). The drag label says when an action can't go in the center.
 
-      from the game   a spell / item / toy / macro / mount on the cursor: over a slice replaces
-                      it, between two slices inserts it there (the gap before the first slice adds
-                      at the end), the center makes it a tap-only quick action. On an empty ring,
-                      anywhere outside the center adds it. Works with drag-release or
-                      pick-up-then-click.
-      reorder         press on a slice icon and drag (the icon follows the cursor): over another
-                      slice swaps the two, between two slices moves it there, the center copies it
-                      there (it stays on the wheel; it replaces what the center had). Releasing
-                      off the wheel cancels.
-      quick action    the center is a slot: press on it and drag its action onto the wheel: over a
-                      slice swaps the two (not with a submenu or action bar, which can't be in
-                      the center), between two slices inserts it there. An empty center drags out as a Close
-                      action (it cancels, like Close). Nested rings and action bars can't be in
-                      the center (the drag label says so).
+    Double-click on the center cycles empty (Close Menu), a Last Used action and a First Action.
+    Another quick action is only cleared with the center's X. Double-click on a submenu switches
+    it between scroll and spread.
 
-    Double-click: the center cycles empty (Close Menu), a Last Used action and a First Action
-    (another quick action is only cleared with the center's X); a nested ring slice switches between scroll
-    and spread.
+    The center icon is like the real menu before the mouse moves: the quick action's icon (a Last
+    Used action shows the question mark here, and the last action's icon in game), or cancel when
+    empty. The center's badges and X follow the quick action.
 
-    Center icon, like the real ring before the mouse moves: the quick action's icon (a Last Used
-    action shows the question mark here, the last action's icon in game); empty shows cancel.
-    Badges and the X on the center follow the quick action.
-    Read-only (built-in rings, which fill themselves): slices can be rearranged by dragging and
-    removed with the X (remembered, see Ring_Data BuiltIn.lua), but there's no "+" and nothing
-    can be dropped in from the game.
+    Read-only (built-in menus, which fill themselves): actions can be rearranged by dragging and
+    removed with the X (remembered, see Ring_Data BuiltIn.lua), but there's no "+" and nothing can
+    be dropped in from the game.
 
-    A ring with one slice shows that slice in the center instead (hover, X, tooltip and drag work
-    on it there, since they follow the icon).
+    A menu with one action shows that action in the center instead (hover, X, tooltip and drag
+    work on it there, since they follow the icon).
 
     Another class's or character's submenu (inside an account menu) counts as hidden: it doesn't
     exist on this character, so it has nothing to show (its name and icon come from that menu's
     saved copy, Elsewhere.lua; its tooltip says whose it is).
 
-    Hide Hidden Actions (the eye in the top corner, PreviewHideHidden): slices hidden in game right
-    now are left out too. The wheel's indices are then positions among the shown slices
-    (self.shown[index] = stored index); callbacks translate them back (StoredCallbacks), so edits
-    still work. A slice placed between two shown slices lands right before the second one, after
-    any hidden slices in between.
+    Hide Hidden Actions (the eye in the top corner, PreviewHideHidden) leaves out the actions
+    hidden in game right now too. The wheel's indexes are then positions among the shown actions
+    (self.shown[index] = stored index), and the callbacks translate them back (StoredCallbacks),
+    so edits still work. An action placed between two shown actions lands right before the second
+    one, after any hidden actions in between.
 
-    Files (one module, Rings_Preview; shared state on the preview object, helpers in
+    The files (one module, Rings_Preview, with shared state on the preview object and helpers in
     "@\\Setting\\Rings\\Preview\\Private"):
-        Preview.lua     this file: building the preview, SetRing / SetReadOnly
+        Preview.lua     this file, building the preview (SetRing, SetReadOnly)
         Display.lua     what it shows: selection, drop target, drag labels, tooltips, the gap "+"
         Input.lua       what it does: hit testing, hover, press, drag, drop, double-click
 ]]
@@ -70,48 +67,104 @@ local UIKit = env.AX_Modules:Import("ax_modules\\ui-kit")
 local Text = UIKit.UI.Frames[5]
 local UICCommon = env.AX_Modules:Import("ax_modules\\uic-common")
 local GenericEnum = env.AX_Modules:Import("ax_modules\\generic-enum")
+local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Rings_Preview = env.AX_Modules:New("@\\Setting\\Rings\\Preview")
 local Private = env.AX_Modules:New("@\\Setting\\Rings\\Preview\\Private")
 
-local pi = math.pi
-
-local PREVIEW_SCALE = 1 -- same size as the in-game ring at the default Ring Size
+local PREVIEW_SCALE = 1 -- the same size as the in-game menu at the default Menu Size
 local REMOVE_SIZE = 20
-local REMOVE_OFFSET = 12 -- X center sits this far in from the corner, minus half its size (2px inside the icon)
-local QUICK_REMOVE_SCALE = 0.8 -- the center icon is smaller than a slice icon
+-- The X's center sits this far in from the corner, minus half its size (2px inside the icon).
+local REMOVE_OFFSET = 12
+local REMOVE_ALPHA = 0.8 -- full while hovered
+local QUICK_REMOVE_SCALE = 0.8 -- the center icon is smaller than an action's
 local DRAG_ICON_SIZE = 36
 local INSERT_LINE_COLOR = { 1, 0.82, 0, 0.95 }
--- "+" on the gap between two slices (hovered), to add a slice at that spot.
+local INSERT_LINE_THICKNESS = 4
+-- The X sits above the icons, and the gap "+" and the eye above that, over the wheel.
+local REMOVE_FRAME_LEVEL = 10
+local CONTROL_FRAME_LEVEL = 12
+-- The empty menu's text, below the center.
+local EMPTY_TEXT_Y = -70
+local EMPTY_TEXT_WIDTH = 240
+local MUTED_ALPHA = 0.75 -- the empty text and the hidden count
+local EYE_OFF_ALPHA = 0.6 -- the eye while hidden actions are shown
+-- The "+" on the gap between two actions (hovered), to add an action at that spot.
 local GAP_BUTTON_SIZE = 26
 local GAP_BUTTON_RADIUS = 128
 Private.GAP_BUTTON_SIZE, Private.GAP_BUTTON_RADIUS = GAP_BUTTON_SIZE, GAP_BUTTON_RADIUS
 
--- Fits what you interact with (icons and the gap "+", out to GAP_BUTTON_RADIUS), not the whole
--- wheel art: the faded background and highlight wedges may reach a little past it.
+-- It fits what you interact with (icons and the gap "+", out to GAP_BUTTON_RADIUS), not the whole
+-- wheel art. The faded background and highlight wedges may reach a little past it.
 local PREVIEW_MARGIN = 6
 Rings_Preview.HEIGHT = math.ceil(2 * (GAP_BUTTON_RADIUS + GAP_BUTTON_SIZE / 2) * PREVIEW_SCALE) + 2 * PREVIEW_MARGIN
 local EYE_SIZE = 24
 
+-- Where a drag or drop would land (PreviewMixin:GetDropTarget's `mode`).
+Private.Target = Utils_Standard.Strict({
+    Center  = "center",  -- the dead zone: the quick action
+    Over    = "over",    -- on an action
+    Between = "between", -- between two actions, on their divider
+    Add     = "add",     -- anywhere on an empty menu
+}, "preview drop target")
+-- The center, as a tooltip index or a press (besides wedge indexes).
+Private.CENTER = "center"
+-- The quick action, as what's dragged (besides wedge indexes).
+Private.QUICK = "quick"
+-- Straight down from the wheel center, in radians. Tooltips from the center open this way.
+Private.BELOW = -math.pi / 2
 
---- Methods of the preview object; Display.lua and Input.lua add theirs.
+
+---@class PreviewEyeButton : Button
+---@field Texture Texture
+
+--- The settings preview (Rings_Preview.Create). Display.lua and Input.lua add methods.
+---@class RingPreview
+---@field wheel RingWheel
+---@field ring Ring? the menu shown
+---@field shown integer[] the stored index of each wedge (Hide Hidden Actions leaves some out)
+---@field callbacks table the edits, with wheel positions turned into stored indexes
+---@field readOnly boolean a built-in menu, rearranged and trimmed but not added to
+---@field locked boolean another class's or character's menu, look only
+---@field emptyText string
+---@field selectedIndex integer?
+---@field tooltipIndex integer|string|nil a wedge index or Private.CENTER
+---@field tooltipOwner Frame?
+---@field drag table? the drag in progress (BeginDrag)
+---@field lastPressIndex integer|string|nil for double-clicks, a wedge index or Private.CENTER
+---@field lastPressTime number
+---@field QuickRemove Button the center's X
+---@field DragIcon ActionIcon
+---@field GapButton table the gap "+" (insertIndex, tooltipAngle)
+---@field InsertLine Line
+---@field LabelAnchor Frame
+---@field Empty FontString
+---@field EyeButton PreviewEyeButton
+---@field EyeCount FontString
 local PreviewMixin = {}
 Private.PreviewMixin = PreviewMixin
 
---- The stored slice at wheel position `index` (Hide Hidden Actions leaves some out), and what it
---- shows (a scroll submenu shows its current child).
+--- The stored action at wheel position `index` (Hide Hidden Actions leaves some out).
+---@param index integer?
+---@return Slice?
 function PreviewMixin:GetSlice(index)
     local stored = index and self.shown[index]
     return stored and self.ring.slices[stored]
 end
 
+--- What wheel position `index` shows (a scroll submenu shows its current action).
+---@param index integer?
+---@return Slice?
 function PreviewMixin:GetShownSlice(index)
     local stored = index and self.shown[index]
     return stored and Ring_Live.GetStoredShownSlice(self.ring, stored)
 end
 
---- The callbacks with wheel positions turned back into stored indices (the others are passed
---- through). A gap position (insert so the new slice becomes #index) goes right before that shown
---- slice, or at the end past the last.
+--- The callbacks with wheel positions turned back into stored indexes (the others are passed
+--- through). A gap position (insert so the new action becomes #index) goes right before that
+--- shown action, or at the end past the last.
+---@param preview RingPreview
+---@param callbacks table
+---@return table
 local function StoredCallbacks(preview, callbacks)
     local function Stored(index) return index and preview.shown[index] end
     local function Gap(index) return index and (preview.shown[index] or #preview.ring.slices + 1) end
@@ -135,24 +188,30 @@ local function StoredCallbacks(preview, callbacks)
     }, { __index = callbacks })
 end
 
+--- Whether Hide Hidden Actions is on.
+---@return boolean
 local function IsHidingHidden()
     return Config.DBGlobal and Config.Get(Config.Key.PreviewHideHidden) and true or false
 end
 
---- X on an icon's top-right corner. `onClick` defaults to removing the wedge's slice.
+--- The X on an icon's top-right corner.
+---@param preview RingPreview
+---@param wedge table a RingWedge, or { Button = the center's icon }
+---@param onClick function? removing the wedge's action by default
+---@return Button
 local function CreateRemoveButton(preview, wedge, onClick)
     local button = CreateFrame("Button", nil, wedge.Button)
     button:SetSize(REMOVE_SIZE, REMOVE_SIZE)
     button:SetPoint("CENTER", wedge.Button, "TOPRIGHT", -REMOVE_OFFSET + REMOVE_SIZE / 2, -REMOVE_OFFSET + REMOVE_SIZE / 2)
-    button:SetFrameLevel(preview.wheel:GetFrameLevel() + 10)
+    button:SetFrameLevel(preview.wheel:GetFrameLevel() + REMOVE_FRAME_LEVEL)
 
     button.Texture = button:CreateTexture(nil, "OVERLAY")
     button.Texture:SetAllPoints()
     button.Texture:SetAtlas(Ring_Layout.ATLAS_CANCEL_ICON)
-    button:SetAlpha(0.8)
+    button:SetAlpha(REMOVE_ALPHA)
 
     button:SetScript("OnEnter", function(self) self:SetAlpha(1) end)
-    button:SetScript("OnLeave", function(self) self:SetAlpha(0.8) end)
+    button:SetScript("OnLeave", function(self) self:SetAlpha(REMOVE_ALPHA) end)
     button:SetScript("OnClick", function()
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
         if onClick then
@@ -169,22 +228,27 @@ end
 
 
 
---- Read-only previews (automatic rings) can't be edited from the wheel.
---- @param builtInKey string|nil the built-in ring's key, for its "nothing here yet" text
+--- Whether the menu shown is read-only (a built-in menu), so it can't be added to from the wheel.
+---@param readOnly boolean
+---@param builtInKey string? the built-in menu's key, for its "nothing here yet" text
 function PreviewMixin:SetReadOnly(readOnly, builtInKey)
     self.readOnly = readOnly or false
+    -- "Config - Rings - Auto - Empty - <key>", one per built-in menu (BuiltInDefinition.key).
     local emptyText = self.readOnly and L["Config - Rings - Auto - Empty - " .. tostring(builtInKey)]
     self.emptyText = emptyText or L["Config - Rings - Preview - Empty"] -- shown by SetRing
 end
 
---- Locked (another class's menu): look only. Unlike read-only (a built-in menu, rearranged and
---- trimmed but not added to), nothing changes it: no drags, X, double-clicks or drops.
+--- Whether the menu shown is locked (another class's or character's menu), look only. Unlike
+--- read-only (a built-in menu, rearranged and trimmed but not added to), nothing changes it: no
+--- drags, X, double-clicks or drops.
+---@param locked boolean
 function PreviewMixin:SetLocked(locked)
     self.locked = locked or false
     if self.locked then self.readOnly = true end
 end
 
 --- Redraws the wheel for `ring` (nil clears it).
+---@param ring Ring?
 function PreviewMixin:SetRing(ring)
     self:EndDrag(false)
     self.ring = ring
@@ -194,9 +258,9 @@ function PreviewMixin:SetRing(ring)
     self.tooltipOwner = nil
 
     local wheel = self.wheel
-    -- The slices on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
-    -- Another class's or character's submenu counts as hidden: it doesn't exist here, so it has
-    -- nothing to show (its tooltip says whose it is).
+    -- The actions on the wheel: all of them, or (Hide Hidden Actions) the ones shown in game now.
+    -- Another class's or character's submenu counts as hidden, since it doesn't exist here and so
+    -- has nothing to show (its tooltip says whose it is).
     local hideHidden = IsHidingHidden()
     self.shown = {}
     local slices, hiddenCount = {}, 0
@@ -209,14 +273,14 @@ function PreviewMixin:SetRing(ring)
         end
     end
     self:UpdateEyeButton(hiddenCount)
-    -- Scroll slices show the child's current slice, like the in-game ring.
+    -- Scroll submenus show their current action, like the in-game menu.
     local displaySlices = {}
     for index = 1, #slices do
         displaySlices[index] = self:GetShownSlice(index)
     end
     local hasTapOnly = ring ~= nil and Ring_Data.GetQuickActionSlice(ring) ~= nil
     wheel:SetSlices(displaySlices, nil, hasTapOnly)
-    -- Scroll submenus show what scrolls them in game: the D-pad when playing with a controller.
+    -- Scroll submenus show what scrolls them in game, the D-pad when playing with a controller.
     wheel:SetScrollBadges(slices, nil, env.IsGamepadUI())
     wheel:SetConditionBadges(slices)
     for i = 1, #wheel.Wedges do
@@ -228,52 +292,56 @@ function PreviewMixin:SetRing(ring)
 
     local quickIcon, quickSlice
     if #slices == 0 then
-        quickIcon = nil -- nothing to fire yet: show cancel
+        quickIcon = nil -- nothing to fire yet, so it shows cancel
     elseif ring then
         quickSlice = Ring_Data.GetQuickActionSlice(ring)
-        -- Hide Hidden Actions: a hidden quick action leaves the center to cancel, like in game.
+        -- With Hide Hidden Actions, a hidden quick action leaves the center to cancel, like in game.
         if hideHidden and quickSlice and not Ring_Actions.IsSliceAvailable(quickSlice) then quickSlice = nil end
         quickIcon = quickSlice and Ring_Actions.GetIcon(quickSlice)
     end
     wheel:SetQuickIcon(quickIcon, quickSlice)
-    -- A single slice sits in the center and is itself the quick action, unless a tap-only quick
-    -- action owns the center (Ring_Layout / Ring_Secure).
+    -- A single action sits in the center and is itself the quick action, unless a tap-only quick
+    -- action owns the center (Ring_Layout, Ring_Secure).
     wheel:SetCenter(quickIcon ~= nil or wheel.isSingleCentered, false)
     wheel:SetQuickBadges(self:GetQuickStoredSlice())
     wheel:SetCenterHighlight(false)
 
-    -- Nothing on the wheel: an empty menu, or (Hide Hidden Actions) all of it hidden right now.
+    -- Nothing on the wheel means an empty menu, or (Hide Hidden Actions) all of it hidden now.
     local allHidden = #slices == 0 and hiddenCount > 0
     self.Empty:SetText(allHidden and L["Config - Rings - Preview - AllHidden"] or self.emptyText)
     self.Empty:SetShown(#slices == 0)
-    self:SetGapTarget(nil) -- places the "+" on an empty ring, hides it otherwise
+    self:SetGapTarget(nil) -- places the "+" on an empty menu, hides it otherwise
 end
 
---- The eye toggle shows the current state: crossed out while hidden actions are left out, with
---- how many are (`hiddenCount`) beside it.
+--- Shows the eye toggle's current state: crossed out while hidden actions are left out, with how
+--- many are beside it.
+---@param hiddenCount integer
 function PreviewMixin:UpdateEyeButton(hiddenCount)
     local hiding = IsHidingHidden()
     local atlas = Ring_Layout.GetEyeAtlas(hiding)
     if atlas then self.EyeButton.Texture:SetAtlas(atlas) end
-    self.EyeButton:SetAlpha(hiding and 1 or 0.6)
+    self.EyeButton:SetAlpha(hiding and 1 or EYE_OFF_ALPHA)
     local count = hiding and hiddenCount or 0
     self.EyeCount:SetText(count > 0 and format(L["Config - Rings - Preview - HiddenCount"], count) or "")
 end
 
---- @param host Frame frame to center the wheel in (at least Rings_Preview.HEIGHT tall)
---- @param callbacks table
----     onAdd(index)                     the "+" on a gap was clicked (insert so the new slice is #index)
----     onRemove(index)                  a slice's X was clicked
----     onToggleExpand(index)            a nested ring slice was double-clicked (scroll <-> expand)
----     onSetQuick(slice) -> ok          dropped from the game onto the center (tap-only quick action)
----     onQuickFromSlice(index)          a slice was dragged onto the center (quick action = it)
+--- A new preview, centered in `host`.
+---@param host Frame the frame to center the wheel in (at least Rings_Preview.HEIGHT tall)
+---@param callbacks table what edits do. The ones marked "returns ok" say whether it worked.
+---     onAdd(index)                     the "+" on a gap was clicked (insert so the new action is #index)
+---     onRemove(index)                  an action's X was clicked
+---     onToggleExpand(index)            a submenu was double-clicked (switch scroll and spread)
+---     onSetQuick(slice)                dropped from the game onto the center, returns ok
+---     onQuickFromSlice(index)          an action was dragged onto the center (the quick action is it)
 ---     onQuickToWheel(index, replace)   the tap-only quick action was dragged onto the wheel
----     onToggleQuick()                  the center was double-clicked (None <-> Last Used Slice)
----     onClearQuick()                   the center's X was clicked (quick action = None)
----     onSwap(a, b)                     a slice was dragged onto another slice
----     onMove(from, to)                 a slice was dragged between two slices (ends up at `to`)
----     onDrop(slice, index) -> ok       dropped from the game between slices (index nil = at the end)
----     onReplace(index, slice) -> ok    dropped from the game onto a slice
+---     onToggleQuick()                  the center was double-clicked (cycle the quick action)
+---     onClearQuick()                   the center's X was clicked (no quick action)
+---     onSwap(a, b)                     an action was dragged onto another action
+---     onMove(from, to)                 an action was dragged between two actions (ends up at `to`)
+---     onDrop(slice, index)             dropped from the game between actions (index nil adds it at
+---                                      the end), returns ok
+---     onReplace(index, slice)          dropped from the game onto an action, returns ok
+---@return RingPreview
 function Rings_Preview.Create(host, callbacks)
     local preview = CreateFromMixins(PreviewMixin)
     preview.callbacks = StoredCallbacks(preview, callbacks or {})
@@ -295,19 +363,19 @@ function Rings_Preview.Create(host, callbacks)
     end)
     preview.wheel = wheel
 
-    -- X on the center: clears the quick action (to None).
+    -- The X on the center, which clears the quick action.
     preview.QuickRemove = CreateRemoveButton(preview, { Button = wheel.Quick }, function()
         if preview.callbacks.onClearQuick then preview.callbacks.onClearQuick() end
     end)
     preview.QuickRemove:SetScale(QUICK_REMOVE_SCALE)
 
-    -- Icon that follows the cursor while reordering.
+    -- The icon that follows the cursor while reordering.
     preview.DragIcon = Ring_Layout.CreateActionIcon(UIParent, DRAG_ICON_SIZE)
     preview.DragIcon:SetFrameStrata("TOOLTIP")
     preview.DragIcon:Hide()
 
-    -- "+" on a hovered gap between two slices: opens Add Slice to insert there. Same red button
-    -- art as "+ Add Slice", in its square variant.
+    -- The "+" on a hovered gap between two actions, which opens Add Action to insert there. It's
+    -- the same red button art as "+ Add Action", in its square variant.
     local gap = UICCommon.ButtonRedSquare("RLRM_RingPreview.GapButton", {
         Text("RLRM_RingPreview.GapButton.Text")
             :id("GapText", "RLRM_RingPreview.GapButton")
@@ -320,9 +388,9 @@ function Rings_Preview.Create(host, callbacks)
         :size(GAP_BUTTON_SIZE, GAP_BUTTON_SIZE)
     gap.Text = UIKit.GetElementById("GapText", "RLRM_RingPreview.GapButton")
     gap.Text:SetText("+")
-    gap:SetFrameLevel(wheel:GetFrameLevel() + 12)
+    gap:SetFrameLevel(wheel:GetFrameLevel() + CONTROL_FRAME_LEVEL)
     gap:HookMouseEnter(function(self)
-        Private.SetTooltipOutward(self, self.tooltipAngle or -pi / 2)
+        Private.SetTooltipOutward(self, self.tooltipAngle or Private.BELOW)
         GameTooltip:SetText(L["Config - Rings - AddSlice"], 1, 1, 1)
         GameTooltip:Show()
     end)
@@ -334,31 +402,32 @@ function Rings_Preview.Create(host, callbacks)
     gap:Hide()
     preview.GapButton = gap
 
-    -- Gold line on the divider where a slice would be inserted.
+    -- The gold line on the divider where an action would be inserted.
     preview.InsertLine = wheel:CreateLine(nil, "OVERLAY", nil, 5)
-    preview.InsertLine:SetThickness(4)
+    preview.InsertLine:SetThickness(INSERT_LINE_THICKNESS)
     preview.InsertLine:SetColorTexture(unpack(INSERT_LINE_COLOR))
     preview.InsertLine:Hide()
 
-    -- Invisible anchor for the "Swap" / "Move here" / "Replace" / "Insert" / "Add to end"
-    -- tooltip on a divider or the center (slice targets anchor to the slice's icon).
+    -- An invisible anchor for the drag label (Swap, Move here, Replace, Insert, Add to end) on a
+    -- divider or the center. Over an action, it anchors to the action's icon.
     preview.LabelAnchor = CreateFrame("Frame", nil, wheel)
     preview.LabelAnchor:SetSize(GAP_BUTTON_SIZE, GAP_BUTTON_SIZE)
 
     preview.Empty = wheel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    preview.Empty:SetPoint("CENTER", wheel, "CENTER", 0, -70)
-    preview.Empty:SetWidth(240)
+    preview.Empty:SetPoint("CENTER", wheel, "CENTER", 0, EMPTY_TEXT_Y)
+    preview.Empty:SetWidth(EMPTY_TEXT_WIDTH)
     preview.emptyText = L["Config - Rings - Preview - Empty"] -- the empty text (SetRing shows it)
-    preview.Empty:SetAlpha(0.75)
+    preview.Empty:SetAlpha(MUTED_ALPHA)
 
-    -- Hide Hidden Actions: the eye in the top corner (remembered, for every menu).
-    local eye = CreateFrame("Button", nil, host)
+    -- The Hide Hidden Actions eye in the top corner (remembered, for every menu).
+    local eye = CreateFrame("Button", nil, host) --[[@as PreviewEyeButton]]
     eye:SetSize(EYE_SIZE, EYE_SIZE)
     eye:SetPoint("TOPRIGHT", host, "TOPRIGHT", -PREVIEW_MARGIN, -PREVIEW_MARGIN)
-    eye:SetFrameLevel(wheel:GetFrameLevel() + 12)
+    eye:SetFrameLevel(wheel:GetFrameLevel() + CONTROL_FRAME_LEVEL)
     eye.Texture = eye:CreateTexture(nil, "OVERLAY")
     eye.Texture:SetAllPoints()
     eye:SetScript("OnEnter", function(self)
+        -- "Config - Rings - Preview - HideHidden - On" or "- Off", each with a " - Description".
         local key = IsHidingHidden() and "Config - Rings - Preview - HideHidden - On" or "Config - Rings - Preview - HideHidden - Off"
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L[key], 1, 1, 1)
@@ -376,7 +445,7 @@ function Rings_Preview.Create(host, callbacks)
     -- How many actions it leaves out right now, beside it.
     preview.EyeCount = host:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     preview.EyeCount:SetPoint("RIGHT", eye, "LEFT", -2, 1)
-    preview.EyeCount:SetAlpha(0.75)
+    preview.EyeCount:SetAlpha(MUTED_ALPHA)
     preview:UpdateEyeButton(0)
 
     return preview

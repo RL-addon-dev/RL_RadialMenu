@@ -1,20 +1,20 @@
 --[[
-    Key capture for the Menus tab Keybind row.
+    Rings_Keybind: the key capture for the Menus tab's Keybind row, and keys as text.
 
     StartCapture(onKey, onCancel) grabs the keyboard, mouse and controller until a key or button
-    is pressed:
-        a key (with modifiers)           onKey("ALT-CTRL-SHIFT-KEY" in WoW binding order)
-        mouse button 3 and up (same)     onKey("SHIFT-BUTTON4", ...)
+    is pressed.
+        a key (with modifiers)           onKey("ALT-CTRL-SHIFT-KEY", in WoW's binding order)
+        mouse button 3 and up (same)     onKey("SHIFT-BUTTON4"...)
         a controller button              only while WoW Forever's gamepad UI is on
-                                         (env.IsGamepadUI): Ring_Crossbar.FromPress decides,
+                                         (env.IsGamepadUI). Ring_Crossbar.FromPress decides:
                                          onKey("PAD:LEFT:PAD1") for a combo (LT + A, D-pad up,
-                                         LT + R3 ...), onKey("PADBACK") for another button;
-                                         LT / RT / LB / RB alone keep listening, refusals are
-                                         said in chat
-        Escape, left or right click      onCancel() (plain and modified left / right clicks are
-                                         what the rest of the UI runs on: never a keybind)
-        modifiers alone                  ignored, keep listening
-    Not available in combat (keyboard propagation is protected).
+                                         LT + R3...), onKey("PADBACK") for another button. LT,
+                                         RT, LB and RB alone keep listening, and refusals are
+                                         said in chat.
+        Escape, left or right click      onCancel(). Plain and modified left and right clicks are
+                                         what the rest of the UI runs on, so never a keybind.
+        modifiers alone                  ignored, it keeps listening
+    It isn't available in combat (keyboard propagation is protected).
 ]]
 
 local env = select(2, ...)
@@ -22,29 +22,31 @@ local L = env.L
 local Ring_Crossbar = env.AX_Modules:Await("@\\Ring\\Crossbar")
 local Rings_Keybind = env.AX_Modules:New("@\\Setting\\Rings\\Keybind")
 
+-- Keys that are only modifiers, which the capture ignores.
 local MODIFIER_KEYS = {
     LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true,
     LMETA = true, RMETA = true, UNKNOWN = true
 }
 
--- Covers the screen while listening, so a mouse press anywhere is caught (and doesn't click
+-- It covers the screen while listening, so a mouse press anywhere is caught (and doesn't click
 -- through to what's under it).
 local capture = CreateFrame("Frame", nil, UIParent)
 capture:SetFrameStrata("TOOLTIP")
 capture:SetAllPoints(UIParent)
 capture:Hide()
 
--- Mouse buttons as WoW binding keys; buttons past 5 follow the same pattern (Button6 = BUTTON6).
+-- Mouse buttons as WoW binding keys. Buttons past 5 follow the same pattern (Button6 is BUTTON6).
 local MOUSE_BUTTONS = { MiddleButton = "BUTTON3" }
 local CANCEL_BUTTONS = { LeftButton = true, RightButton = true }
 
--- Controller buttons held while capturing (our frame takes them): Ring_Crossbar.FromPress reads
--- the modifiers held from these.
+-- Controller buttons held while capturing (the capture frame takes them). Ring_Crossbar.FromPress
+-- reads the modifiers held from these.
 local HAS_GAMEPAD = capture.EnableGamePadButton ~= nil
 local heldButtons = {} -- [button] = true while held (capturing)
 
 local onKey, onCancel
 
+--- Stops listening.
 local function Stop()
     capture:Hide()
     capture:EnableKeyboard(false)
@@ -54,7 +56,9 @@ local function Stop()
     onKey, onCancel = nil, nil
 end
 
---- Binding string for `key` with the modifiers currently held (ALT-CTRL-SHIFT order, like WoW).
+--- The binding string for `key` with the modifiers held now (ALT-CTRL-SHIFT order, like WoW).
+---@param key string
+---@return string
 function Rings_Keybind.BuildKey(key)
     local prefix = ""
     if IsAltKeyDown() then prefix = prefix .. "ALT-" end
@@ -64,7 +68,7 @@ function Rings_Keybind.BuildKey(key)
     return prefix .. key
 end
 
--- Combat starting while listening: stop, so the next key press reaches its ability.
+-- When combat starts while listening, it stops, so the next key press reaches its ability.
 capture:RegisterEvent("PLAYER_REGEN_DISABLED")
 capture:SetScript("OnEvent", function() Rings_Keybind.CancelCapture() end)
 
@@ -100,7 +104,11 @@ if HAS_GAMEPAD then
         heldButtons[button] = true
         local key, problem = Ring_Crossbar.FromPress(button, heldButtons)
         if problem then
-            if problem ~= "Held" then env.Print(L["Config - Rings - Keybind - Crossbar - " .. problem]) end
+            -- "Config - Rings - Keybind - Crossbar - <problem>", one per Ring_Crossbar.PressProblem
+            -- (but Held, which keeps listening).
+            if problem ~= Ring_Crossbar.PressProblem.Held then
+                env.Print(L["Config - Rings - Keybind - Crossbar - " .. problem])
+            end
             return
         end
 
@@ -111,11 +119,14 @@ if HAS_GAMEPAD then
     capture:SetScript("OnGamePadButtonUp", function(_, button)
         heldButtons[button] = nil
     end)
-    -- Setting the handlers switches controller button input on: off until a capture wants it.
+    -- Setting the handlers switches controller button input on, so it's off until a capture wants it.
     capture:EnableGamePadButton(false)
 end
 
---- @return boolean started false in combat
+--- Listens for the next key or button (see the header).
+---@param keyCallback fun(key: string)
+---@param cancelCallback function
+---@return boolean started false in combat
 function Rings_Keybind.StartCapture(keyCallback, cancelCallback)
     if InCombatLockdown() then return false end
 
@@ -128,6 +139,7 @@ function Rings_Keybind.StartCapture(keyCallback, cancelCallback)
     return true
 end
 
+--- Stops listening, as a cancel.
 function Rings_Keybind.CancelCapture()
     if not capture:IsShown() then return end
     local cancelCallback = onCancel
@@ -135,24 +147,31 @@ function Rings_Keybind.CancelCapture()
     if cancelCallback then cancelCallback() end
 end
 
+--- Whether it's listening.
+---@return boolean
 function Rings_Keybind.IsCapturing()
     return capture:IsShown()
 end
 
---- Readable name of the Blizzard keybinding action on `key`, or nil. Ignores override bindings
---- (the rings' own bindings are overrides).
+--- The readable name of the Blizzard keybinding action on `key`, or nil. It ignores override
+--- bindings (the menus' own bindings are overrides).
+---@param key string
+---@return string?
 function Rings_Keybind.GetBlizzardConflict(key)
     local action = GetBindingAction(key, false)
     if not action or action == "" then return nil end
     return _G["BINDING_NAME_" .. action] or action
 end
 
--- Controller buttons show as icons in key text (WoW Forever's gamepad UI: inline atlas "|A:...|a"
--- or texture "|T...|t" markup), drawn at ICON_SCALE of their size so they sit with the text. A
--- size of 0 means "the text's height": ICON_TEXT_HEIGHT stands in for it.
+-- Controller buttons show as icons in key text (WoW Forever's gamepad UI, with inline atlas
+-- "|A:...|a" or texture "|T...|t" markup), drawn at ICON_SCALE of their size so they sit with the
+-- text. A size of 0 means the text's height, which ICON_TEXT_HEIGHT stands in for.
 local ICON_SCALE = 0.8
 local ICON_TEXT_HEIGHT = 12
 
+--- An inline icon's size, scaled.
+---@param size string|number
+---@return integer
 local function ScaleIconSize(size)
     size = tonumber(size) or 0
     if size == 0 then size = ICON_TEXT_HEIGHT end
@@ -160,6 +179,8 @@ local function ScaleIconSize(size)
 end
 
 --- `text` with its inline icons scaled (height, and width when given).
+---@param text string
+---@return string
 local function ShrinkIcons(text)
     text = text:gsub("|A:([^:|]+):(%-?%d+):(%-?%d+)", function(atlas, height, width)
         return "|A:" .. atlas .. ":" .. ScaleIconSize(height) .. ":" .. ScaleIconSize(width)
@@ -173,10 +194,12 @@ local function ShrinkIcons(text)
 end
 
 --- Localized, readable key text ("Alt-Space" rather than "ALT-SPACE") where the client has one.
---- Mouse buttons are shortened ("Shift-Mouse 4" rather than "Shift-Mouse Button 4"); controller
---- button icons drawn a little smaller (ShrinkIcons).
+--- Mouse buttons are shortened ("Shift-Mouse 4" rather than "Shift-Mouse Button 4"), and
+--- controller button icons drawn a little smaller (ShrinkIcons).
+---@param key string
+---@return string
 function Rings_Keybind.GetDisplayText(key)
-    -- Controller combos aren't keys: their buttons' text (Ring_Crossbar).
+    -- Controller combos aren't keys, so it's their buttons' text (Ring_Crossbar).
     if Ring_Crossbar.IsCombo(key) then
         return ShrinkIcons(Ring_Crossbar.GetDisplayText(key))
     end

@@ -2,5 +2,6 @@
 ..\FrameXML\UI.xsd">
     <!-- Rings_Tab, one module over several files (see Tab.lua). Tab first. -->
     <Script file="Tab.lua"/>
+    <Script file="Nav.lua"/>
     <Script file="SettingRows.lua"/>
 </Ui>

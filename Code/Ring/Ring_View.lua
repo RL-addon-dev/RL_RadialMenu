@@ -35,10 +35,9 @@ local STATE_INTERVAL = TOOLTIP_UPDATE_TIME or 0.2
 -- as the mouse (Ring_Layout.GetSliceIndex). Only its angle should count, so the offset must land
 -- outside the dead zone even at the smallest tilt that aims. That's the largest Distance to Select
 -- over that tilt, with plenty to spare.
-local MAX_DEADZONE = 60     -- Distance to Select's largest value (Setting_Schema)
 local MIN_AIM_TILT = 0.5    -- the secure snippets' "stick.len >= 0.5"
 local STICK_REACH_MARGIN = 10
-local STICK_REACH = MAX_DEADZONE / MIN_AIM_TILT * STICK_REACH_MARGIN
+local STICK_REACH = Config.DEADZONE_MAX / MIN_AIM_TILT * STICK_REACH_MARGIN
 
 -- The tooltip index of the center's quick action (SetActionTooltip), besides wedge indexes.
 local QUICK_TOOLTIP = "quick"

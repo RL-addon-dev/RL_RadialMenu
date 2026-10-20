@@ -11,4 +11,5 @@
     <Script file="Utils_Item.lua"/>
     <Script file="Utils_Unit.lua"/>
     <Script file="Utils_Housing.lua"/>
+    <Script file="Utils_Text.lua"/>
 </Ui>

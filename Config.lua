@@ -95,6 +95,10 @@ local DB_GLOBAL_DEFAULTS = {
                                                             -- in game right now (the eye toggle)
 }
 
+-- Distance to Select's slider limits, in px (Setting_Schema). Ring_View also reads the largest.
+Config.DEADZONE_MIN = 8
+Config.DEADZONE_MAX = 60
+
 -- The keys settings are saved under in the global database, one per default above. Pass them to
 -- Config.Get / Set / OnChange (below) and the schema's `key`: Config.Get(Config.Key.MenuStyle).
 local Key = {}
