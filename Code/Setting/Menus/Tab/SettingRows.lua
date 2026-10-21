@@ -17,10 +17,7 @@ local format = string.format
 
 local PageMixin = Private.PageMixin
 
--- The controller buttons the keybind help shows: the crossbar and targeting modifiers where
--- they're bound (the gamepad UI's defaults otherwise), and A, B, X and Y.
-local DEFAULT_LEFT_MODIFIER, DEFAULT_RIGHT_MODIFIER = "PADLTRIGGER", "PADRTRIGGER"
-local DEFAULT_LEFT_TARGETING, DEFAULT_RIGHT_TARGETING = "PADLSHOULDER", "PADRSHOULDER"
+-- The face buttons the keybind help shows (A, B, X and Y).
 local FACE_BUTTONS = { "PAD1", "PAD2", "PAD3", "PAD4" }
 
 local SettingFrame = _G[Setting_Preload.FRAME_NAME]
@@ -31,16 +28,16 @@ local SettingFrame = _G[Setting_Preload.FRAME_NAME]
 ---@return string
 local function KeybindDescription()
     if not env.IsGamepadUI() then return L["Config - Menus - Keybind - Description"] end
-    local function Bound(binding, default)
-        return Menus_Keybind.GetDisplayText(Menu_Crossbar.GetBoundKey(binding) or default)
+    local function Bound(binding)
+        return Menus_Keybind.GetDisplayText(Menu_Crossbar.GetBoundKey(binding) --[[@as string]])
     end
     local faces = {}
     for index, button in ipairs(FACE_BUTTONS) do faces[index] = Menus_Keybind.GetDisplayText(button) end
     return format(L["Config - Menus - Keybind - Description - Controller"],
-        Bound(Menu_Crossbar.Binding.LeftModifier, DEFAULT_LEFT_MODIFIER),
-        Bound(Menu_Crossbar.Binding.RightModifier, DEFAULT_RIGHT_MODIFIER),
-        Bound(Menu_Crossbar.Binding.LeftTargeting, DEFAULT_LEFT_TARGETING),
-        Bound(Menu_Crossbar.Binding.RightTargeting, DEFAULT_RIGHT_TARGETING),
+        Bound(Menu_Crossbar.Binding.LeftModifier),
+        Bound(Menu_Crossbar.Binding.RightModifier),
+        Bound(Menu_Crossbar.Binding.LeftTargeting),
+        Bound(Menu_Crossbar.Binding.RightTargeting),
         unpack(faces))
 end
 
