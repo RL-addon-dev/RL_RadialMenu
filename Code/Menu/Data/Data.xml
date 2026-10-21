@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+    <!--
+        Menu_Data, one module over several files (see Store.lua). Private.lua comes first because
+        it creates the modules.
+    -->
+    <Script file="Private.lua"/>
+    <Script file="Store.lua"/>
+    <Script file="Keybinds.lua"/>
+    <Script file="QuickAction.lua"/>
+    <Script file="Library.lua"/>
+    <Script file="Elsewhere.lua"/>
+    <Script file="Share.lua"/>
+    <Script file="Startup.lua"/>
+    <Include file="Migrations\Migrations.xml"/>
+</Ui>

@@ -3,7 +3,7 @@
     cost in that time, to find what's heavy while playing (and for testers to send).
         cpu      the game's addon profiler: the recent average per frame, and the peak (Retail)
         mem      memory now, and how much it grew in those 5 s (temporary data not yet collected)
-        updates  Ring_Auto's background updates: how many, their time, built-in menus refilled
+        updates  Menu_Auto's background updates: how many, their time, library menus refilled
         events   the events that asked for them, most first
         ui       the settings' per-frame work: the preview's per-frame script (frames, time),
                  UIKit layout passes (how many, time), animations running now
@@ -13,7 +13,7 @@
     their size), and the calls that led to the first one (file:line, newest first). A frame asking
     every pass is a layout loop.
 
-    It's off by default and costs nothing then. There's no timer, Ring_Auto and the preview only
+    It's off by default and costs nothing then. There's no timer, Menu_Auto and the preview only
     count while `enabled`, and UIKit's functions are only wrapped while it's on. It stays in the
     shipped addon, so testers can send their numbers.
 ]]
@@ -56,15 +56,15 @@ local function ResetCounters()
 end
 ResetCounters()
 
---- Counts an event that asked Ring_Auto for an update (while enabled).
+--- Counts an event that asked Menu_Auto for an update (while enabled).
 ---@param event string
 function Perf.CountEvent(event)
     eventCounts[event] = (eventCounts[event] or 0) + 1
 end
 
---- Counts one Ring_Auto update (while enabled).
+--- Counts one Menu_Auto update (while enabled).
 ---@param ms number its time
----@param refilled integer how many built-in menus it refilled
+---@param refilled integer how many library menus it refilled
 function Perf.CountUpdate(ms, refilled)
     updates = updates + 1
     updateMs = updateMs + ms
@@ -146,7 +146,7 @@ end
 ---@return string
 local function OpenText()
     local open = {}
-    local view = _G["RLRM_RingView"] -- the in-game menu (Ring_View)
+    local view = _G["RLRM_MenuView"] -- the in-game menu (Menu_View)
     if view and view:IsShown() then open[#open + 1] = "menu" end
     if Setting.GetHost and Setting.GetHost() then open[#open + 1] = "settings" end
     return "open: " .. (#open > 0 and table.concat(open, ", ") or "none")

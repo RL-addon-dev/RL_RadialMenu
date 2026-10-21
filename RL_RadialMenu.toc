@@ -23,7 +23,7 @@ libs\AX_Settings\AX_Settings.xml
 Code\Perf.lua
 Code\Utils\Utils.xml
 Code\Setting\Setting.xml
-Code\Ring\Ring.xml
+Code\Menu\Menu.xml
 Code\Commands.lua
 
 API.lua

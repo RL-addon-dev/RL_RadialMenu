@@ -73,7 +73,7 @@ local SLOT_TOKENS = {
 ---@param slot integer an inventory slot
 ---@return string
 function Utils_Item.GetSlotName(slot)
-    return L["Config - Rings - Slot - " .. slot] or format(L["Config - Rings - Slot - Other"], slot)
+    return L["Config - Menus - Slot - " .. slot] or format(L["Config - Menus - Slot - Other"], slot)
 end
 
 --- An empty equipment slot's icon, or nil for a slot the game has no icon for.
@@ -149,10 +149,10 @@ local scanned, scannedAt -- the last scan, and when (GetTime, one value per fram
 
 --- The usable items in your bags by the slot they go in, once per copy (item link) and sorted by
 --- name. Every slot of EQUIP_SLOTS has a list. One-handers go in the off hand too for classes that
---- dual wield, and rings and trinkets in both of their slots. Equipped items aren't in the bags,
+--- dual wield, and menus and trinkets in both of their slots. Equipped items aren't in the bags,
 --- so they're never listed.
 ---
---- Scanned once per frame, because the Equip menus refill together (Ring_Auto), each asking for
+--- Scanned once per frame, because the Equip menus refill together (Menu_Auto), each asking for
 --- its own slot. Each bag slot costs an item id and its equip type. Only gear asks for its link and
 --- whether you can use it.
 ---@return table<integer, BagItem[]>

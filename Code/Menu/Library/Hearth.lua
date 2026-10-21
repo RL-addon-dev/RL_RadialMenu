@@ -1,0 +1,89 @@
+--[[
+    Hearthstones: the Hearthstone (while it's in your bags) and every hearthstone toy you own. Then
+    come the housing actions, Teleport Home to each neighborhood you have a house in, and Return.
+]]
+
+local env = select(2, ...)
+local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
+local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_Housing = env.AX_Modules:Import("@\\Utils\\Housing")
+
+local HEARTHSTONE_ITEM = 6948
+
+-- Hearthstone toys (item ids), in the order the menu lists them. The game has no "this is a
+-- hearthstone" flag, so new ones need adding here. Ids you don't own (or that don't exist on this
+-- client) are skipped. The Dalaran and Garrison Hearthstones come last, because they go somewhere
+-- else.
+--
+-- To keep it up to date, look through Wowhead's spells whose description says they return you to
+-- your hearthstone, https://www.wowhead.com/spells/name-extended:%22return+you+to+your+hearthstone%22
+-- Open each new spell's "Used by item", and add that item if its tooltip says Toy (not quest
+-- items, gear you equip, or consumables). Last checked October 2026.
+local HEARTHSTONE_TOYS = {
+    54452,  -- Ethereal Portal
+    64488,  -- The Innkeeper's Daughter
+    93672,  -- Dark Portal
+    142542, -- Tome of Town Portal
+    162973, -- Greatfather Winter's Hearthstone
+    163045, -- Headless Horseman's Hearthstone
+    163206, -- Weary Spirit Binding
+    165669, -- Lunar Elder's Hearthstone
+    165670, -- Peddlefeet's Lovely Hearthstone
+    165802, -- Noble Gardener's Hearthstone
+    166746, -- Fire Eater's Hearthstone
+    166747, -- Brewfest Reveler's Hearthstone
+    168907, -- Holographic Digitalization Hearthstone
+    172179, -- Eternal Traveler's Hearthstone
+    180290, -- Night Fae Hearthstone
+    182773, -- Necrolord Hearthstone
+    183716, -- Venthyr Sinstone
+    184353, -- Kyrian Hearthstone
+    188952, -- Dominated Hearthstone
+    190196, -- Enlightened Hearthstone
+    190237, -- Broker Translocation Matrix
+    193588, -- Timewalker's Hearthstone
+    200630, -- Ohn'ir Windsage's Hearthstone
+    206195, -- Path of the Naaru
+    208704, -- Deepdweller's Earthen Hearthstone
+    209035, -- Hearthstone of the Flame
+    210455, -- Draenic Hologem
+    212337, -- Stone of the Hearth
+    228940, -- Notorious Thread's Hearthstone
+    235016, -- Redeployment Module
+    236687, -- Explosive Hearthstone
+    245970, -- P.O.S.T. Master's Express Hearthstone
+    246565, -- Cosmic Hearthstone
+    257736, -- Lightcalled Hearthstone
+    263489, -- Naaru's Enfold
+    263933, -- Preyseeker's Hearthstone
+    264367, -- Mycomancer's Hearthspore
+    265100, -- Corewarden's Hearthstone
+    281136, -- Hiveborne Hearthstone
+    281615, -- Shadeweaver's Hearthstone
+    140192, -- Dalaran Hearthstone
+    110560, -- Garrison Hearthstone
+}
+
+Menu_Data.RegisterLibraryMenu({
+    key      = "hearth",
+    category = Menu_Data.LibraryCategory.Travel,
+    name     = "Config - Menus - HearthMenu - Name",
+    versions = { env.GameVersion.Retail },
+    -- Toys load after login (TOYS_UPDATED).
+    events   = { "BAG_UPDATE_DELAYED", "TOYS_UPDATED", "NEW_TOY_ADDED", "PLAYER_HOUSE_LIST_UPDATED" },
+    scan     = function()
+        local actions = {}
+        if C_Item.GetItemCount(HEARTHSTONE_ITEM) > 0 then
+            actions[1] = { kind = Menu_Kinds.Kind.Item, id = HEARTHSTONE_ITEM }
+        end
+        for _, toyID in ipairs(HEARTHSTONE_TOYS) do
+            if PlayerHasToy(toyID) then actions[#actions + 1] = { kind = Menu_Kinds.Kind.Toy, id = toyID } end
+        end
+        for _, home in ipairs({ Utils_Housing.Home.Alliance, Utils_Housing.Home.Horde }) do
+            if Utils_Housing.HasHouse(home) then actions[#actions + 1] = { kind = Menu_Kinds.Kind.House, home = home } end
+        end
+        -- Return is always there, and hidden while it can't be used.
+        actions[#actions + 1] = { kind = Menu_Kinds.Kind.House, home = Utils_Housing.Home.Return }
+        return actions
+    end,
+})
