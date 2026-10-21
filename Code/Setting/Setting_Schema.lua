@@ -13,8 +13,8 @@ local Setting_Define = env.AX_Modules:Import("@\\Setting\\Define")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Setting_Schema = env.AX_Modules:New("@\\Setting\\Schema")
-local Ring_Display = env.AX_Modules:Await("@\\Ring\\Display")
-local Rings_Tab = env.AX_Modules:Await("@\\Setting\\Rings\\Tab")
+local Menu_Display = env.AX_Modules:Await("@\\Menu\\Display")
+local Menus_Tab = env.AX_Modules:Await("@\\Setting\\Menus\\Tab")
 
 local SETTING_PROMPT = _G[Setting_Preload.FRAME_NAME].Prompt
 
@@ -33,11 +33,11 @@ local function HandleAccept()
     RefreshShown()
 end
 
--- Which Position and Appearance settings apply. Ring_Display loads after this file, so they're
+-- Which Position and Appearance settings apply. Menu_Display loads after this file, so they're
 -- read when the settings refresh.
-local function IsFixed() return Ring_Display.IsFixed() end
-local function UsesCursorGuide() return Ring_Display.IsFixed() and not Ring_Display.IsSelectFromMenu() end
--- Menus work like Relaxed with the setting, or always in WoW Forever's gamepad UI (Ring_Secure).
+local function IsFixed() return Menu_Display.IsFixed() end
+local function UsesCursorGuide() return Menu_Display.IsFixed() and not Menu_Display.IsSelectFromMenu() end
+-- Menus work like Relaxed with the setting, or always in WoW Forever's gamepad UI (Menu_Secure).
 local function IsRelaxed() return env.IsGamepadUI() or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed end
 -- Playing with a controller (WoW Forever's gamepad UI), settings about the mouse are hidden (their
 -- values still apply to menus opened with the keyboard or mouse), and controller ones shown.
@@ -132,7 +132,7 @@ end
 local function BehaviorDescription(setting)
     -- "Config - Behavior - <setting> - Description", and its " - Menu" form.
     local key = "Config - Behavior - " .. setting .. " - Description"
-    if Ring_Display.IsSelectFromMenu() then key = key .. " - Menu" end
+    if Menu_Display.IsSelectFromMenu() then key = key .. " - Menu" end
     return L[key]
 end
 
@@ -257,8 +257,8 @@ do -- Schema
                             -- The right stick picks by its own direction, wherever the menu is.
                             showWhen                 = function() return IsFixed() and IsMouse() end
                         },
-                        Button("Config - Display - EditMode", function() Ring_Display.OpenEditMode() end, IsFixed),
-                        Button("Config - Display - ResetPosition", function() Ring_Display.ResetPosition() end, IsFixed)
+                        Button("Config - Display - EditMode", function() Menu_Display.OpenEditMode() end, IsFixed),
+                        Button("Config - Display - ResetPosition", function() Menu_Display.ResetPosition() end, IsFixed)
                     }
                 },
                 {
@@ -268,10 +268,10 @@ do -- Schema
                         {
                             widgetName                 = L["Config - Display - Scale"],
                             widgetType                 = Setting_Enum.WidgetType.Range,
-                            -- The same range as the Edit Mode slider (Ring_Display).
-                            widgetRange_min            = function() return Ring_Display.SCALE_MIN end,
-                            widgetRange_max            = function() return Ring_Display.SCALE_MAX end,
-                            widgetRange_step           = function() return Ring_Display.SCALE_STEP end,
+                            -- The same range as the Edit Mode slider (Menu_Display).
+                            widgetRange_min            = function() return Menu_Display.SCALE_MIN end,
+                            widgetRange_max            = function() return Menu_Display.SCALE_MAX end,
+                            widgetRange_step           = function() return Menu_Display.SCALE_STEP end,
                             widgetRange_textFormatting = "%s%%",
                             key                        = Config.Key.DisplayScale
                         },
@@ -359,12 +359,12 @@ do -- Schema
             }
         },
         {
-            widgetName = L["Config - Rings"],
+            widgetName = L["Config - Menus"],
             widgetType = Setting_Enum.WidgetType.Tab,
             children   = {
                 {
                     widgetType         = Setting_Enum.WidgetType.Custom,
-                    widgetCustom_build = function(parent, tab) return Rings_Tab.Build(parent, tab) end
+                    widgetCustom_build = function(parent, tab) return Menus_Tab.Build(parent, tab) end
                 }
             }
         },
@@ -381,7 +381,7 @@ do -- Schema
                 AboutGroup("Config - About - Inspirations", {
                     Credit("Config - About - Inspirations - WaypointUI"),
                     Credit("Config - About - Inspirations - Opie"),
-                    -- Its technique keeps the right stick off the camera (Ring_Stick.lua). It's
+                    -- Its technique keeps the right stick off the camera (Menu_Stick.lua). It's
                     -- also credited in README and NOTICE.
                     Credit("Config - About - Inspirations - ConsolePort"),
                 }),

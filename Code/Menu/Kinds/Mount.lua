@@ -1,0 +1,106 @@
+--[[
+    A mount, or a random favorite mount (id 0).
+]]
+
+---@class MountAction : Action
+---@field id number the mount journal id, or 0 for a random favorite
+
+local env = select(2, ...)
+local L = env.L
+local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_Spell = env.AX_Modules:Import("@\\Utils\\Spell")
+
+local RANDOM_FAVORITE = 0
+local RANDOM_FAVORITE_SPELL_ID = 150544 -- only for its icon and name, it can't be cast directly
+-- The mount id the cursor reports for "Summon Random Favorite Mount" (the Mount Journal's random
+-- favorite button). It's saved as RANDOM_FAVORITE.
+local RANDOM_FAVORITE_CURSOR_ID = 268435455
+-- The companion type the cursor reports for a mount's spell (GetCursorInfo's third value).
+local COMPANION_MOUNT = "MOUNT"
+
+--- The mount's summon spell. Nil for the random favorite and for unknown mounts.
+---@param mountID number
+---@return number?
+local function GetMountSpellID(mountID)
+    if mountID == RANDOM_FAVORITE then return nil end
+    local _, spellID = C_MountJournal.GetMountInfoByID(mountID)
+    return spellID
+end
+
+Menu_Kinds.Register({
+    kind = Menu_Kinds.Kind.Mount,
+
+    validate = function(action)
+        return type(action.id) == "number", L["Config - Menus - Edit - Error - Mount"]
+    end,
+
+    apply = function(button, suffix, action)
+        -- Casting the mount's spell also dismounts when mounted, like an action bar mount. The
+        -- random favorite (and mounts whose journal info isn't available yet) use the journal API.
+        local spellID = GetMountSpellID(action.id)
+        if spellID then
+            -- By name, like /cast <mount>, because casting mount spells by id does nothing.
+            Menu_Kinds.SetSpell(button, suffix, C_Spell.GetSpellName(spellID) or spellID)
+        else
+            Menu_Kinds.SetMacroText(button, suffix, ("/run C_MountJournal.SummonByID(%d)"):format(action.id))
+        end
+    end,
+
+    icon = function(action)
+        if action.id == RANDOM_FAVORITE then return C_Spell.GetSpellTexture(RANDOM_FAVORITE_SPELL_ID) end
+        return select(3, C_MountJournal.GetMountInfoByID(action.id))
+    end,
+    label = function(action)
+        if action.id == RANDOM_FAVORITE then
+            return C_Spell.GetSpellName(RANDOM_FAVORITE_SPELL_ID) or L["Config - Menus - Search - RandomMount"]
+        end
+        return (C_MountJournal.GetMountInfoByID(action.id))
+    end,
+
+    tooltip = function(tooltip, action)
+        local spellID = GetMountSpellID(action.id)
+        if not spellID then return false end
+        tooltip:SetMountBySpellID(spellID)
+        return true
+    end,
+
+    search = {
+        filter = "mount",
+        events = { "NEW_MOUNT_ADDED", "MOUNT_JOURNAL_USABILITY_CHANGED" },
+        scan   = function(add)
+            add({ kind = Menu_Kinds.Kind.Mount, id = RANDOM_FAVORITE })
+            for _, mountID in ipairs(C_MountJournal.GetMountIDs()) do
+                local name, _, icon, _, _, _, _, _, _, shouldHideOnChar, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+                if isCollected and not shouldHideOnChar then
+                    add({ kind = Menu_Kinds.Kind.Mount, id = mountID }, name, icon)
+                end
+            end
+        end,
+    },
+
+    lookupId = function(id)
+        if not C_MountJournal.GetMountInfoByID(id) then return nil end
+        local isCollected = select(11, C_MountJournal.GetMountInfoByID(id))
+        local note = (not isCollected and L["Config - Menus - Search - Note - NotCollected"]) or nil
+        return { kind = Menu_Kinds.Kind.Mount, id = id }, note
+    end,
+
+    cursor = {
+        mount = function(mountID)
+            if mountID == RANDOM_FAVORITE_CURSOR_ID then
+                return { kind = Menu_Kinds.Kind.Mount, id = RANDOM_FAVORITE }
+            end
+            if mountID and C_MountJournal.GetMountInfoByID(mountID) then
+                return { kind = Menu_Kinds.Kind.Mount, id = mountID }
+            end
+        end,
+        -- A mount's spell picked up by id (MountsJournal drags mounts this way) shows as
+        -- "companion", <index>, "MOUNT". The index can't be turned into a mount, but the spell can.
+        companion = function(_, companionType)
+            if companionType ~= COMPANION_MOUNT then return nil end
+            local spellID = Utils_Spell.GetLastPickedUpSpell()
+            local mountID = spellID and C_MountJournal.GetMountFromSpell(spellID)
+            if mountID then return { kind = Menu_Kinds.Kind.Mount, id = mountID } end
+        end,
+    },
+})

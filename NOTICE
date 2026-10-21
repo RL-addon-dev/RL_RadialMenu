@@ -17,7 +17,7 @@ Included libraries:
                     (libs\LibEditMode\LICENSE.txt), included as a separate work
 
 Techniques adapted from other addons (no code included):
-- Code\Ring\Ring_Stick.lua  keeping the right stick from turning the camera follows the technique
+- Code\Menu\Menu_Stick.lua  keeping the right stick from turning the camera follows the technique
                             in ConsolePort by Sebastian Lindfors (Controller\Radial.lua), under the
                             Artistic License 2.0
 
