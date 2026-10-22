@@ -5,7 +5,7 @@
         DisplayOpenAt   env.Enum.OpenAt.Cursor or .Fixed
         DisplayScale    a percent
 
-    The fixed position is an Edit Mode frame (LibEditMode). Positions are saved per Edit Mode
+    The fixed position is an Edit Mode frame (Utils_EditMode). Positions are saved per Edit Mode
     layout, as RL_RadialMenuDB_Global_Persistent.EditModePositions[layoutName] = { point, x, y }.
 
     By default, the pick is relative to the cursor at key down (Menu_Secure), so a fixed menu is
@@ -19,16 +19,13 @@ local L = env.L
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Setting = env.AX_Modules:Import("@\\Setting")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
-local LEM = env.LibEditMode
+local Utils_EditMode = env.AX_Modules:Import("@\\Utils\\EditMode")
 local Menu_Display = env.AX_Modules:New("@\\Menu\\Display")
 
 local DEFAULT_POSITION = { point = "CENTER", x = 0, y = 0 }
 local ATLAS_BACKGROUND = "Radial_Wheel_BG" -- the wheel's shade (Menu_Layout), for the Edit Mode footprint
 local FALLBACK_SIZE = 375 -- RadialWheelFrameTemplate's size
 local SCALE_DEFAULT, SCALE_MIN, SCALE_MAX, SCALE_STEP = 100, 50, 200, 5
--- LibEditMode's names for Blizzard's first two preset layouts. They're saved data (the keys of
--- EditModePositions), so they never change.
-local LAYOUT_MODERN, LAYOUT_CLASSIC = "Modern", "Classic"
 
 Menu_Display.SCALE_MIN = SCALE_MIN
 Menu_Display.SCALE_MAX = SCALE_MAX
@@ -76,11 +73,9 @@ end
 
 --- The fixed menu's Edit Mode frame.
 ---@class MenuDisplayAnchor : Frame
----@field editModeName string the name Edit Mode shows (LibEditMode)
 ---@field Preview Texture the menu's footprint, shown while Edit Mode is open
 
 local Anchor = CreateFrame("Frame", "RLRM_MenuAnchor", UIParent) --[[@as MenuDisplayAnchor]]
-Anchor.editModeName = env.NAME_ALT
 Anchor:SetPoint(DEFAULT_POSITION.point, UIParent, DEFAULT_POSITION.point, DEFAULT_POSITION.x, DEFAULT_POSITION.y)
 Anchor:SetFrameStrata("FULLSCREEN_DIALOG")
 Anchor:SetClampedToScreen(true)
@@ -121,31 +116,21 @@ local function GetSavedPositions()
     return stored.EditModePositions
 end
 
---- The active Edit Mode layout's name. It's not LibEditMode's own lookup, which assumes two
---- presets, while Blizzard numbers all its presets first, then the custom layouts.
----@return string?
-local function GetActiveLayoutName()
-    local info, presets = C_EditMode.GetLayouts(), EditModePresetLayoutManager.presetLayoutInfo
-    if info.activeLayout <= 2 then return info.activeLayout == 1 and LAYOUT_MODERN or LAYOUT_CLASSIC end
-    local layout = presets[info.activeLayout] or info.layouts[info.activeLayout - #presets]
-    return layout and layout.layoutName
-end
-
 --- Moves the anchor to its saved position in the active Edit Mode layout (the default if none).
 local function ApplyPosition()
-    local layoutName = GetActiveLayoutName()
+    local layoutName = Utils_EditMode.GetActiveLayoutName()
     local position = (layoutName and GetSavedPositions()[layoutName]) or DEFAULT_POSITION
     Anchor:ClearAllPoints()
     Anchor:SetPoint(position.point, UIParent, position.point, position.x, position.y)
     NotifyMoved()
 end
 
---- Called by LibEditMode when the anchor was dragged in the active layout.
+--- The anchor was dragged in the active layout.
 ---@param point string
 ---@param x number
 ---@param y number
-local function OnPositionChanged(_, _, point, x, y)
-    local layoutName = GetActiveLayoutName()
+local function OnPositionChanged(point, x, y)
+    local layoutName = Utils_EditMode.GetActiveLayoutName()
     if not layoutName then return end
     GetSavedPositions()[layoutName] = { point = point, x = x, y = y }
     ApplyPosition()
@@ -153,7 +138,7 @@ end
 
 --- Puts the fixed menu back at the default position, in the active Edit Mode layout.
 function Menu_Display.ResetPosition()
-    local layoutName = GetActiveLayoutName()
+    local layoutName = Utils_EditMode.GetActiveLayoutName()
     if layoutName then GetSavedPositions()[layoutName] = nil end
     ApplyPosition()
 end
@@ -194,50 +179,32 @@ end
 
 -- Registration
 
-local function RefreshEditModeSettings()
-    if LEM:IsInEditMode() then LEM:RefreshFrameSettings(Anchor) end
-end
-
 local function OnSettingChanged()
     UpdateAnchorSize()
-    RefreshEditModeSettings()
+    Utils_EditMode.RefreshDialog()
     CallbackRegistry.Trigger(Setting_Enum.Event.Refresh)
 end
 
 local function Initialize()
     UpdateAnchorSize()
 
-    LEM:AddFrame(Anchor, OnPositionChanged, DEFAULT_POSITION, env.NAME_ALT)
-    -- Only the size here (and LibEditMode's Reset Position). The rest is in the addon's settings.
-    LEM:AddFrameSettings(Anchor, {
-        {
-            name      = L["Config - Display - Scale"],
-            desc      = L["Config - Display - Scale - Description"],
-            kind      = LEM.SettingType.Slider,
-            default   = SCALE_DEFAULT,
-            minValue  = SCALE_MIN,
-            maxValue  = SCALE_MAX,
-            valueStep = SCALE_STEP,
-            get       = function() return Config.Get(Config.Key.DisplayScale) end,
-            set       = function(_, value) Menu_Display.SetScalePercent(value) end
-        }
+    -- Only the size in Edit Mode's dialog. The rest is in the addon's settings.
+    Utils_EditMode.AddFrame(Anchor, {
+        name     = env.NAME_ALT,
+        onMoved  = OnPositionChanged,
+        onReset  = Menu_Display.ResetPosition,
+        onEnter  = function() Anchor.Preview:Show() end,
+        onExit   = function() Anchor.Preview:Hide() end,
+        onLayout = ApplyPosition,
+        slider   = {
+            label = L["Config - Display - Scale"],
+            min   = SCALE_MIN,
+            max   = SCALE_MAX,
+            step  = SCALE_STEP,
+            get   = function() return Config.Get(Config.Key.DisplayScale) or SCALE_DEFAULT end,
+            set   = Menu_Display.SetScalePercent,
+        },
     })
-
-    -- LibEditMode always adds Reset To Default under a frame's settings (every setting back to its
-    -- default). It's hidden for this frame, where it would only reset the size. That's done after
-    -- the dialog fills itself, because the dialog is shared with any other frame of this copy, so
-    -- it's shown again for them.
-    local dialog = LEM.internal and LEM.internal.dialog
-    if dialog and dialog.UpdateSettings then
-        hooksecurefunc(dialog, "UpdateSettings", function(self)
-            local resetButton = self.Settings and self.Settings.ResetButton
-            if resetButton then resetButton:SetShown(not (self.selection and self.selection.parent == Anchor)) end
-        end)
-    end
-
-    LEM:RegisterCallback("layout", ApplyPosition)
-    LEM:RegisterCallback("enter", function() Anchor.Preview:Show() end)
-    LEM:RegisterCallback("exit", function() Anchor.Preview:Hide() end)
 
     Config.OnChange(Config.Key.DisplayScale, OnSettingChanged)
     Config.OnChange(Config.Key.DisplayOpenAt, OnSettingChanged)

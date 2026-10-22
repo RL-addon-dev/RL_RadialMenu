@@ -172,7 +172,6 @@ RL: Radial Menu is free software under the **GNU General Public License v3** (se
 
 - The settings window and its UI toolkit (`libs\AX_Settings`, `libs\AX_Modules`) are based on
   **WaypointUI** by **AdaptiveX** (GPLv3).
-- Fixed position via **LibEditMode** by p3lim.
 - Aiming with the right stick without turning the camera (WoW Forever's gamepad UI) follows the
   technique in **ConsolePort** by **Sebastian Lindfors** (Artistic License 2.0).
 - Emote symbols (`Art\Symbols`) from [game-icons.net](https://game-icons.net) by Lorc, Delapouite,
