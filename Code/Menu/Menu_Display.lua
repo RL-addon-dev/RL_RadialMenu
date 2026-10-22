@@ -7,6 +7,7 @@
 
     The fixed position is an Edit Mode frame (Utils_EditMode). Positions are saved per Edit Mode
     layout, as RL_RadialMenuDB_Global_Persistent.EditModePositions[layoutName] = { point, x, y }.
+    EditModeHidden is set while it's hidden in Edit Mode (its checkbox under Edit Mode's window).
 
     By default, the pick is relative to the cursor at key down (Menu_Secure), so a fixed menu is
     still steered by gestures from wherever the mouse is. Select From = Menu Center measures from
@@ -196,6 +197,10 @@ local function Initialize()
         onEnter  = function() Anchor.Preview:Show() end,
         onExit   = function() Anchor.Preview:Hide() end,
         onLayout = ApplyPosition,
+        shown    = {
+            get = function() return not Config.DBGlobalPersistent:GetData().EditModeHidden end,
+            set = function(shown) Config.DBGlobalPersistent:GetData().EditModeHidden = (not shown) or nil end,
+        },
         slider   = {
             label = L["Config - Display - Scale"],
             min   = SCALE_MIN,
