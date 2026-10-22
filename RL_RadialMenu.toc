@@ -3,6 +3,7 @@
 ## Notes: Radial menus for your spells, items, toys, mounts and markers. Hold a key, flick, release.
 ## Author: RL
 ## Category: Action Bars
+## OptionalDeps: ConsolePort
 ## X-License: GPL-3.0
 ## IconTexture: Interface/AddOns/RL_RadialMenu/Art/Icon/logo-1024.png
 ## Version: 0.0.3

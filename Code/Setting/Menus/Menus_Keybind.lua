@@ -5,20 +5,26 @@
     is pressed.
         a key (with modifiers)           onKey("ALT-CTRL-SHIFT-KEY", in WoW's binding order)
         mouse button 3 and up (same)     onKey("SHIFT-BUTTON4"...)
-        a controller button              only while WoW Forever's gamepad UI is on
-                                         (env.IsGamepadUI). Menu_Crossbar.FromPress decides:
-                                         onKey("PAD:LEFT:PAD1") for a combo (LT + A, D-pad up,
-                                         LT + R3...), onKey("PADBACK") for another button. LT,
-                                         RT, LB and RB alone keep listening, and refusals are
-                                         said in chat.
+        a controller button              in WoW Forever's gamepad UI (env.IsGamepadUI),
+                                         Menu_Crossbar.FromPress decides: onKey("PAD:LEFT:PAD1")
+                                         for a combo (LT + A, D-pad up, LT + R3...),
+                                         onKey("PADBACK") for another button. LT, RT, LB and RB
+                                         alone keep listening, and refusals are said in chat.
+                                         With ConsolePort (Utils_ConsolePort), any button is a
+                                         key like any other, onKey("SHIFT-PAD1"), but a stick's
+                                         directions keep listening. A button
+                                         ConsolePort uses as a modifier (LT) is one while
+                                         another button is pressed with it, and the keybind when
+                                         it's let go on its own, onKey("PADLTRIGGER").
         Escape, left or right click      onCancel(). Plain and modified left and right clicks are
                                          what the rest of the UI runs on, so never a keybind.
-        modifiers alone                  ignored, it keeps listening
+        keyboard modifiers alone         ignored, it keeps listening
     It isn't available in combat (keyboard propagation is protected).
 ]]
 
 local env = select(2, ...)
 local L = env.L
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 local Menu_Crossbar = env.AX_Modules:Await("@\\Menu\\Crossbar")
 local Menus_Keybind = env.AX_Modules:New("@\\Setting\\Menus\\Keybind")
 
@@ -98,8 +104,22 @@ capture:SetScript("OnMouseDown", function(_, button)
     end
 end)
 
+--- With ConsolePort, a controller button's press or release, which ends the capture once it's
+--- a keybind (Utils_ConsolePort.ReadCapturePress): the button, with the modifiers held now.
+---@param button string
+---@param down boolean
+local function OnConsolePortButton(button, down)
+    local bound = Utils_ConsolePort.ReadCapturePress(button, down)
+    if not bound then return end
+    local keyCallback = onKey
+    local binding = Menus_Keybind.BuildKey(bound) -- before Stop, like OnKeyDown
+    Stop()
+    if keyCallback then keyCallback(binding) end
+end
+
 if HAS_GAMEPAD then
     capture:SetScript("OnGamePadButtonDown", function(_, button)
+        if Utils_ConsolePort.IsActive() then return OnConsolePortButton(button, true) end
         if not env.IsGamepadUI() then return end -- controller buttons only with controller support
         heldButtons[button] = true
         local key, problem = Menu_Crossbar.FromPress(button, heldButtons)
@@ -117,6 +137,7 @@ if HAS_GAMEPAD then
         if keyCallback then keyCallback(key) end
     end)
     capture:SetScript("OnGamePadButtonUp", function(_, button)
+        if Utils_ConsolePort.IsActive() then return OnConsolePortButton(button, false) end
         heldButtons[button] = nil
     end)
     -- Setting the handlers switches controller button input on, so it's off until a capture wants it.
@@ -131,10 +152,12 @@ function Menus_Keybind.StartCapture(keyCallback, cancelCallback)
     if InCombatLockdown() then return false end
 
     onKey, onCancel = keyCallback, cancelCallback
+    Utils_ConsolePort.StartCapture()
     capture:Show()
     capture:EnableKeyboard(true)
     capture:EnableMouse(true)
-    if HAS_GAMEPAD and env.IsGamepadUI() then capture:EnableGamePadButton(true) end
+    local controller = env.IsGamepadUI() or Utils_ConsolePort.IsActive()
+    if HAS_GAMEPAD and controller then capture:EnableGamePadButton(true) end
     capture:SetPropagateKeyboardInput(false) -- keep the key from also triggering its binding
     return true
 end
@@ -163,9 +186,9 @@ function Menus_Keybind.GetBlizzardConflict(key)
     return _G["BINDING_NAME_" .. action] or action
 end
 
--- Controller buttons show as icons in key text (WoW Forever's gamepad UI, with inline atlas
--- "|A:...|a" or texture "|T...|t" markup), drawn at ICON_SCALE of their size so they sit with the
--- text. A size of 0 means the text's height, which ICON_TEXT_HEIGHT stands in for.
+-- Controller buttons show as icons in key text (WoW Forever's gamepad UI and ConsolePort, with
+-- inline atlas "|A:...|a" or texture "|T...|t" markup), drawn at ICON_SCALE of their size so they
+-- sit with the text. A size of 0 means the text's height, which ICON_TEXT_HEIGHT stands in for.
 local ICON_SCALE = 0.8
 local ICON_TEXT_HEIGHT = 12
 
@@ -195,7 +218,8 @@ end
 
 --- Localized, readable key text ("Alt-Space" rather than "ALT-SPACE") where the client has one.
 --- Mouse buttons are shortened ("Shift-Mouse 4" rather than "Shift-Mouse Button 4"), and
---- controller button icons drawn a little smaller (ShrinkIcons).
+--- controller button icons drawn a little smaller (ShrinkIcons). With ConsolePort, a controller
+--- key reads like a gamepad UI combo, "LT + A" (Utils_ConsolePort.GetKeyText).
 ---@param key string
 ---@return string
 function Menus_Keybind.GetDisplayText(key)
@@ -203,6 +227,8 @@ function Menus_Keybind.GetDisplayText(key)
     if Menu_Crossbar.IsCombo(key) then
         return ShrinkIcons(Menu_Crossbar.GetDisplayText(key))
     end
+    local consolePortText = Utils_ConsolePort.IsActive() and Utils_ConsolePort.GetKeyText(key)
+    if consolePortText then return ShrinkIcons(consolePortText) end
     local text = GetBindingText and GetBindingText(key)
     if not text or text == "" then return key end
 
