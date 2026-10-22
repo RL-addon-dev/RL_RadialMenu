@@ -425,6 +425,7 @@ L["Config - Behavior - Deadzone - Description"] = "How far to move the mouse fro
 L["Config - Behavior - Deadzone - Description - Menu"] = "How far to move the mouse from the center of the menu before an action is picked."
 L["Config - Behavior - FlickToSelect"] = "Flick to Select"
 L["Config - Behavior - FlickToSelect - Description"] = "With a controller, push the right stick toward an action and let go to use it, without pressing A."
+L["Config - Behavior - FlickToSelect - Description - ConsolePort"] = "|cffffd100With ConsolePort, this needs its Allow Radial Bindings option, in its advanced settings.|r"
 L["Config - Behavior - MenuStyle"] = "Menu Style"
 L["Config - Behavior - MenuStyle - Description - Quick"] = "Hold the keybind, move toward an action and release to use it. Press Escape to cancel."
 L["Config - Behavior - MenuStyle - Description - Quick - RightClick"] = "Hold the keybind, move toward an action and release to use it. Press Escape or right-click to cancel."

@@ -70,7 +70,8 @@
     Close fires "FocusClear" (/clearfocus) instead of nothing.
 
     Menu Style = Relaxed ("menu-relaxed"): the key's release fires nothing and leaves the menu open
-    (RELAXED_OPEN), with its bindings and the probe still up. There's no quick action on a tap,
+    (RELAXED_OPEN, set on the open itself for a controller's), with its bindings and the probe
+    still up. There's no quick action on a tap,
     because secure code can't time the press in combat and so couldn't tell a tap from a still
     hold. Left click is bound to the menu button itself as "RelaxedSelect", which picks on the
     click's release by the same rules as a Quick release. Escape (and right click, with Right-Click
@@ -96,13 +97,30 @@
     Flick to Select, letting go of the stick fires its pick, in either menu style. A pick with the
     right stick tilted at least halfway (GetGamePadState's stick 2) takes the stick's direction
     over the cursor. The left stick's directions are never bound, so walking is untouched, and
-    Menu_Stick keeps the right stick from turning the camera. A button that is the menu's own key
-    ("menu-keybase") is left to it.
+    Menu_Stick keeps the right stick from turning the camera. R3 or a D-pad button that is the
+    menu's own key ("menu-keybase") is left to it, but A and B always pick and close (with
+    ConsolePort, the menu's key can be A or B). With ConsolePort, those controller keys are
+    claimed in its binding layers too (BIND_PAD), since it binds the buttons again whenever a
+    modifier changes.
 ]]
 
 local env = select(2, ...)
 env.AX_Modules:New("@\\Menu\\Secure")
 local Private = env.AX_Modules:New("@\\Menu\\Secure\\Private")
+
+-- Binds a controller key while a menu is open, and claims it in ConsolePort's layers so it can't
+-- take the key back. Run as RunAttribute("BindPad", key, frame name, button).
+Private.BIND_PAD = [[
+    local key, target, button = ...
+    self:GetFrameRef("helper"):SetBindingClick(true, key, target, button)
+    self:RunAttribute("consoleport-claim", key, target, button)
+]]
+-- Unbinds a key BIND_PAD bound, while the menu stays open (RunAttribute "UnbindPad", the key).
+Private.UNBIND_PAD = [[
+    local key = ...
+    self:GetFrameRef("helper"):ClearBinding(key)
+    self:RunAttribute("consoleport-release", key)
+]]
 
 -- The menu button's OnClick, wrapped by the controller (Setup.lua). It returns the button to
 -- redirect the click to ("s3", "s3_2", "FocusSteal"...), or false to fire nothing.
@@ -142,14 +160,14 @@ Private.PRE_CLICK = [[
             if keyBase == "PADDUP" or keyBase == "PADDDOWN" then
                 local scrolls = self:GetAttribute("menu-scrollcount-" .. pick)
                 local keyMods = self:GetAttribute("menu-keymods")
-                local prefix = ""
+                local prefix, helperName = "", helper:GetName()
                 for pass = 1, keyMods and 2 or 1 do
                     if scrolls then
-                        helper:SetBindingClick(true, prefix .. "PADDUP", helper, "PadUp")
-                        helper:SetBindingClick(true, prefix .. "PADDDOWN", helper, "PadDown")
+                        owner:RunAttribute("BindPad", prefix .. "PADDUP", helperName, "PadUp")
+                        owner:RunAttribute("BindPad", prefix .. "PADDDOWN", helperName, "PadDown")
                     else
-                        helper:ClearBinding(prefix .. "PADDUP")
-                        helper:ClearBinding(prefix .. "PADDDOWN")
+                        owner:RunAttribute("UnbindPad", prefix .. "PADDUP")
+                        owner:RunAttribute("UnbindPad", prefix .. "PADDDOWN")
                     end
                     prefix = keyMods
                 end
@@ -201,6 +219,7 @@ Private.PRE_CLICK = [[
             OPEN_BUTTON = nil
             RELAXED_OPEN = nil
             helper:ClearBindings()
+            owner:RunAttribute("consoleport-release")
             probe:UnregisterAutoHide()
             probe:Hide()
             owner:CallMethod("OnMenuClose", menuId, "cancel", nil)
@@ -218,6 +237,7 @@ Private.PRE_CLICK = [[
         if not x then return false end
 
         helper:ClearBindings()
+        owner:RunAttribute("consoleport-release")
         START_X, START_Y = x * screen:GetWidth(), y * screen:GetHeight()
         OPEN_MENU = menuId
         OPEN_BUTTON = self
@@ -251,24 +271,26 @@ Private.PRE_CLICK = [[
         -- In a controller's open, B and R3 close the menu and A uses the pick. The right stick's
         -- directions (keys while the menu is up, see SetStickKeys) keep the pick it leaves ("Aim"),
         -- in combat too. D-pad up and down scroll the aimed wedge's scroll submenu. The left
-        -- stick's directions aren't bound, so walking stays untouched. A button that is the menu's
-        -- own key is left to it.
+        -- stick's directions aren't bound, so walking stays untouched. R3 or a D-pad button that is
+        -- the menu's own key is left to it. A and B always pick and close, even when the menu's
+        -- key is one of them (ConsolePort, where any button can be one), and with or without its
+        -- modifiers held. They're bound with BIND_PAD, which ConsolePort can't take back.
         if GAMEPAD_OPEN then
             self:SetAttribute("menu-sticky", nil)
             local keyBase = self:GetAttribute("menu-keybase")
             local scrollPad = self:GetAttribute("menu-hasscroll") and keyBase ~= "PADDUP" and keyBase ~= "PADDDOWN"
-            local prefix = ""
+            local prefix, helperName, menuName = "", helper:GetName(), self:GetName()
             for pass = 1, keyMods and 2 or 1 do
-                if keyBase ~= "PAD2" then helper:SetBindingClick(true, prefix .. "PAD2", helper, "Dismiss") end
-                if keyBase ~= "PAD1" then helper:SetBindingClick(true, prefix .. "PAD1", self, "PadUse") end
-                if keyBase ~= "PADRSTICK" then helper:SetBindingClick(true, prefix .. "PADRSTICK", helper, "Dismiss") end
-                helper:SetBindingClick(true, prefix .. "PADRSTICKUP", self, "Aim")
-                helper:SetBindingClick(true, prefix .. "PADRSTICKDOWN", self, "Aim")
-                helper:SetBindingClick(true, prefix .. "PADRSTICKLEFT", self, "Aim")
-                helper:SetBindingClick(true, prefix .. "PADRSTICKRIGHT", self, "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PAD2", helperName, "Dismiss")
+                owner:RunAttribute("BindPad", prefix .. "PAD1", menuName, "PadUse")
+                if keyBase ~= "PADRSTICK" then owner:RunAttribute("BindPad", prefix .. "PADRSTICK", helperName, "Dismiss") end
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKUP", menuName, "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKDOWN", menuName, "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKLEFT", menuName, "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKRIGHT", menuName, "Aim")
                 if scrollPad then
-                    helper:SetBindingClick(true, prefix .. "PADDUP", helper, "PadUp")
-                    helper:SetBindingClick(true, prefix .. "PADDDOWN", helper, "PadDown")
+                    owner:RunAttribute("BindPad", prefix .. "PADDUP", helperName, "PadUp")
+                    owner:RunAttribute("BindPad", prefix .. "PADDDOWN", helperName, "PadDown")
                 end
                 prefix = keyMods
             end
@@ -283,6 +305,13 @@ Private.PRE_CLICK = [[
         end
 
         owner:CallMethod("OnMenuOpen", menuId, START_X, START_Y, relaxed and true or false, GAMEPAD_OPEN)
+        -- A controller's open is always Relaxed, so it counts as left open now, not on the
+        -- release. When the menu's own key is A or B, the open just bound it to pick or close, so
+        -- its release may not come back here.
+        if GAMEPAD_OPEN then
+            RELAXED_OPEN = menuId
+            owner:CallMethod("OnMenuRelaxed", menuId)
+        end
         -- With Cursor + Focus, in a menu of only target markers, the unit under the mouse becomes
         -- your focus, which the markers mark ("<suffix>F"). Every way out clears it. This click
         -- fires on its key down. It's skipped when OnMenuOpen already aimed the markers at the
@@ -348,6 +377,7 @@ Private.PRE_CLICK = [[
     local stolen = FOCUS_STOLEN
     FOCUS_STOLEN = nil
     helper:ClearBindings()
+    owner:RunAttribute("consoleport-release")
     probe:UnregisterAutoHide()
     probe:Hide()
     result = result or "cancel"
@@ -424,6 +454,7 @@ Private.HELPER_CLICK = [[
         OPEN_BUTTON = nil
         RELAXED_OPEN = nil
         self:ClearBindings()
+        owner:RunAttribute("consoleport-release")
         local probe = owner:GetFrameRef("probe")
         probe:UnregisterAutoHide()
         probe:Hide()

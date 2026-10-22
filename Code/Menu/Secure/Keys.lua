@@ -17,6 +17,7 @@ local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Menu_Crossbar = env.AX_Modules:Import("@\\Menu\\Crossbar")
 local Menu_Secure = env.AX_Modules:Import("@\\Menu\\Secure")
 local Private = env.AX_Modules:Import("@\\Menu\\Secure\\Private")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 
 local RECLAIM_LIMIT, RECLAIM_WINDOW = 5, 2
 
@@ -38,14 +39,15 @@ local reclaimWaiter = CreateFrame("Frame")
 local dispatchers = {} -- [stick] = Button
 
 --- The click a menu's keybind sends. A controller button (PAD1, PADRSTICK...) sends "Gamepad"
---- while WoW Forever's gamepad UI is on, for a controller's open with the stick, D-pad, A and B
---- (PRE_CLICK). Anything else sends "LeftButton", and so does a controller button elsewhere,
---- where it opens like a key (ConsolePort and other controller addons handle the controller their
---- own way). Menus rebuild when the UI switches (Rebuild.lua).
+--- while WoW Forever's gamepad UI is on, or with ConsolePort, for a controller's open with the
+--- stick, D-pad, A and B (PRE_CLICK). Anything else sends "LeftButton", and so does a controller
+--- button with neither, where it opens like a key. Menus rebuild when the UI switches
+--- (Rebuild.lua).
 ---@param key string
 ---@return string
 local function GetBindingClick(key)
-    if Menu_Crossbar.IsPadButton(key) and env.IsGamepadUI() then return Menu_Secure.Click.Gamepad end
+    local controller = env.IsGamepadUI() or Utils_ConsolePort.IsActive()
+    if Menu_Crossbar.IsPadButton(key) and controller then return Menu_Secure.Click.Gamepad end
     return Menu_Secure.Click.LeftButton
 end
 

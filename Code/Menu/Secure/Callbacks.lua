@@ -13,6 +13,7 @@ local Menu_Live = env.AX_Modules:Import("@\\Menu\\Live")
 local Menu_View = env.AX_Modules:Import("@\\Menu\\View")
 local Menu_Secure = env.AX_Modules:Import("@\\Menu\\Secure")
 local Private = env.AX_Modules:Import("@\\Menu\\Secure\\Private")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 local Utils_Unit = env.AX_Modules:Import("@\\Utils\\Unit")
 
 -- A held menu "open" longer than this (in seconds) missed its release, so rebuilds don't wait for it.
@@ -21,7 +22,10 @@ local MAX_OPEN_TIME = 30
 -- A controller's open: the game sends the right stick's directions as keys (PADRSTICKUP, ...),
 -- which keep the pick in combat (PRE_CLICK's "Aim"), only with this setting on. It's switched on
 -- while the menu is up, and the player's own value put back after. The left stick's direction keys
--- aren't bound, and walking doesn't use them, so walking is unaffected.
+-- aren't bound, and walking doesn't use them, so walking is unaffected. With ConsolePort it's left
+-- as the player set it, because each change announces itself in chat ("Your gamepad configuration
+-- has changed"). A then picks where the stick points as it's pressed, and the pick is only kept
+-- after the stick is let go with ConsolePort's Allow Radial Bindings on (Utils_ConsolePort).
 local STICK_KEYS_SETTING = "GamePadStickAxisButtons"
 
 -- What a Last Used or First Action fires, by its kind: the attribute holding its target wedge.
@@ -174,7 +178,7 @@ function Private.Controller:OnMenuOpen(menuId, startX, startY, relaxed, gamepad)
             aimedButton, aimedLive = button, menu
         end
     end
-    if gamepad then SetStickKeys(true) end
+    if gamepad and not Utils_ConsolePort.IsActive() then SetStickKeys(true) end
     local displayActions = GetDisplayActions(menu, button)
     local quickIndex = button:GetAttribute(Menu_Secure.Attribute.Quick)
     local quickAction = (quickIndex == Private.QUICK_SUFFIX and ShowRedirect(menu, button, menu.quickAction))

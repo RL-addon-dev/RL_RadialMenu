@@ -12,6 +12,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Setting_Define = env.AX_Modules:Import("@\\Setting\\Define")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 local Setting_Schema = env.AX_Modules:New("@\\Setting\\Schema")
 local Menu_Display = env.AX_Modules:Await("@\\Menu\\Display")
 local Menus_Tab = env.AX_Modules:Await("@\\Setting\\Menus\\Tab")
@@ -37,12 +38,13 @@ end
 -- read when the settings refresh.
 local function IsFixed() return Menu_Display.IsFixed() end
 local function UsesCursorGuide() return Menu_Display.IsFixed() and not Menu_Display.IsSelectFromMenu() end
--- Menus work like Relaxed with the setting, or always in WoW Forever's gamepad UI (Menu_Secure).
-local function IsRelaxed() return env.IsGamepadUI() or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed end
--- Playing with a controller (WoW Forever's gamepad UI), settings about the mouse are hidden (their
--- values still apply to menus opened with the keyboard or mouse), and controller ones shown.
-local function IsController() return env.IsGamepadUI() end
-local function IsMouse() return not env.IsGamepadUI() end
+-- Playing with a controller (WoW Forever's gamepad UI, or ConsolePort), settings about the mouse
+-- are hidden (their values still apply to menus opened with the keyboard or mouse), and controller
+-- ones shown.
+local function IsController() return env.IsGamepadUI() or Utils_ConsolePort.IsActive() end
+local function IsMouse() return not IsController() end
+-- Menus work like Relaxed with the setting, or always with a controller (Menu_Secure).
+local function IsRelaxed() return IsController() or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed end
 
 -- Menu Style decides whether Reveal Delay shows, and its own description.
 Config.OnChange(Config.Key.MenuStyle, RefreshShown)
@@ -185,7 +187,21 @@ do -- Schema
                             -- With a controller, menus always work like Relaxed (A picks, B closes).
                             showWhen                 = IsMouse
                         },
-                        CheckButton("Config - Behavior - FlickToSelect", Config.Key.FlickToSelect, IsController),
+                        {
+                            widgetName        = L["Config - Behavior - FlickToSelect"],
+                            widgetDescription = Description(function()
+                                -- With ConsolePort, flicks come from the stick's direction keys,
+                                -- which its Allow Radial Bindings option switches on (Callbacks.lua).
+                                local text = L["Config - Behavior - FlickToSelect - Description"]
+                                if Utils_ConsolePort.IsActive() and not Utils_ConsolePort.HasStickKeys() then
+                                    text = text .. "\n\n" .. L["Config - Behavior - FlickToSelect - Description - ConsolePort"]
+                                end
+                                return text
+                            end),
+                            widgetType        = Setting_Enum.WidgetType.CheckButton,
+                            key               = Config.Key.FlickToSelect,
+                            showWhen          = IsController
+                        },
                         {
                             widgetName                     = L["Config - Behavior - RevealDelay"],
                             widgetDescription              = Description(L["Config - Behavior - RevealDelay - Description"]),
@@ -309,20 +325,21 @@ do -- Schema
                                 L["Config - Behavior - WorldMarkerPlacement - Click"]
                             },
                             key                      = Config.Key.WorldMarkerPlacement,
-                            -- With a controller, world markers are always placed with the reticle
-                            -- (Kinds\WorldMarker.lua), since there's no mouse to place them under.
-                            showWhen                 = IsMouse
+                            -- In WoW Forever's gamepad UI, world markers are always placed with the
+                            -- reticle (Kinds\WorldMarker.lua), since there's no mouse to place them
+                            -- under. ConsolePort has no such reticle, so the setting stays.
+                            showWhen                 = function() return not env.IsGamepadUI() end
                         },
                         {
                             widgetName               = L["Config - Behavior - TargetMarkerUnit"],
                             widgetDescription        = Description(function()
                                 -- The chosen option's own description (the Cursor ones say their
-                                -- limits, in yellow). With a controller, the cursor is the reticle.
-                                -- That's "Config - Behavior - TargetMarkerUnit - Description -
-                                -- Target", "- Cursor" or "- CursorFocus", and the last two's
-                                -- " - Controller" forms.
+                                -- limits, in yellow). In WoW Forever's gamepad UI, the cursor is
+                                -- the reticle. That's "Config - Behavior - TargetMarkerUnit -
+                                -- Description - Target", "- Cursor" or "- CursorFocus", and the
+                                -- last two's " - Controller" forms.
                                 local value = Config.Get(Config.Key.TargetMarkerUnit)
-                                local suffix = IsController() and " - Controller" or ""
+                                local suffix = env.IsGamepadUI() and " - Controller" or ""
                                 for name, enumValue in pairs(env.Enum.TargetMarkerUnit) do
                                     if enumValue == value and name ~= "Target" then
                                         return L["Config - Behavior - TargetMarkerUnit - Description - " .. name .. suffix]
@@ -332,7 +349,7 @@ do -- Schema
                             end),
                             widgetType               = Setting_Enum.WidgetType.SelectionMenu,
                             widgetSelectionMenu_data = function() -- in env.Enum.TargetMarkerUnit's order (Config.lua)
-                                local suffix = IsController() and " - Controller" or ""
+                                local suffix = env.IsGamepadUI() and " - Controller" or ""
                                 return {
                                     L["Config - Behavior - TargetMarkerUnit - Target"],
                                     L["Config - Behavior - TargetMarkerUnit - Cursor" .. suffix],

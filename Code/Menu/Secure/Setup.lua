@@ -15,6 +15,7 @@ local Menu_Display = env.AX_Modules:Import("@\\Menu\\Display")
 local Menu_Crossbar = env.AX_Modules:Import("@\\Menu\\Crossbar")
 local Menu_Secure = env.AX_Modules:Import("@\\Menu\\Secure")
 local Private = env.AX_Modules:Import("@\\Menu\\Secure\\Private")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 
 -- A target marker's copies, after its suffix. PRE_CLICK spells them out too.
 local TAP_SUFFIX = "M"   -- marks the mouseover (a tap)
@@ -277,9 +278,10 @@ function Private.SetupMenu(menu)
     local keyBase = binding and (Menu_Crossbar.GetPlainButton(binding) or binding:match("[^%-]+$") or binding)
     button:SetAttribute(Menu_Secure.Attribute.KeyBase, keyBase or nil)
     button:SetAttribute(Menu_Secure.Attribute.RightClick, (Config.Get(Config.Key.RightClickDismiss) and true) or nil)
-    -- Menu Style, always Relaxed in WoW Forever's gamepad UI (A picks, B closes). Menus rebuild when
-    -- the UI switches (Rebuild.lua).
-    local relaxed = env.IsGamepadUI() or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed
+    -- Menu Style, always Relaxed with a controller, in WoW Forever's gamepad UI or with ConsolePort
+    -- (A picks, B closes). Menus rebuild when the UI switches (Rebuild.lua).
+    local controller = env.IsGamepadUI() or Utils_ConsolePort.IsActive()
+    local relaxed = controller or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed
     button:SetAttribute(Menu_Secure.Attribute.Relaxed, relaxed or nil)
     button:SetAttribute(Menu_Secure.Attribute.Flick, (Config.Get(Config.Key.FlickToSelect) and true) or nil)
     -- A crossbar slot isn't a key. Its macro on the crossbar opens the menu (Menu_Crossbar).
