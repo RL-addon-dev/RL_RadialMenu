@@ -1,7 +1,7 @@
 --[[
-    Cursor guide (fixed position, optional): a faint outline of the gesture drawn at the key-down
-    cursor spot, since that's where a fixed menu is steered from. Shown by Ring_View while a menu
-    is open (Ring_CursorGuide.Frame: Setup, Update, and the usual frame methods).
+    Ring_CursorGuide: with a fixed position, an optional faint outline of the gesture, drawn at the
+    key down spot, since that's where a fixed menu is steered from. Ring_View shows it while a menu
+    is open, through Ring_CursorGuide.Frame (Setup, Update, and the usual frame methods).
 ]]
 
 local env = select(2, ...)
@@ -15,16 +15,18 @@ local GUIDE_CIRCLE_SEGMENTS = 48
 local GUIDE_DIVIDER_LENGTH = 14 -- past the dead zone
 local GUIDE_POINTER_LENGTH = 9
 local GUIDE_THICKNESS = 2
--- Color from the Cursor Guide Color setting; faint normally, brighter for the selected slice.
+-- Its color comes from the Cursor Guide Color setting. It's faint, and brighter for the selected
+-- wedge.
 local GUIDE_ALPHA = 0.25
 local GUIDE_ACTIVE_ALPHA = 0.7
 local GUIDE_COLOR = { 1, 1, 1, GUIDE_ALPHA }
 local GUIDE_ACTIVE_COLOR = { 1, 1, 1, GUIDE_ACTIVE_ALPHA }
--- Quick action square (Distance to Cancel Quick Action): filled while a release would fire the
--- quick action, hollow once the cursor has left it (a release in the center cancels) or when
--- there's no quick action.
+-- The quick action square (Distance to Cancel Quick Action). It's filled while a release would
+-- fire the quick action, and hollow once the cursor has left it (a release in the center cancels)
+-- or when there's no quick action.
 local GUIDE_NUDGE_MIN_SIZE = 5
 local GUIDE_NUDGE_EDGE = 2
+local NUDGE_SIDES = { "TOP", "BOTTOM", "LEFT", "RIGHT" }
 
 local Guide = CreateFrame("Frame", "RLRM_CursorGuide", UIParent)
 Guide:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -32,6 +34,9 @@ Guide:SetSize(1, 1)
 Guide:Hide()
 Guide.Circle, Guide.Dividers = {}, {}
 
+--- A new line of the guide, in `color`.
+---@param color number[]
+---@return Line
 local function GuideLine(color)
     local line = Guide:CreateLine(nil, "OVERLAY")
     line:SetThickness(GUIDE_THICKNESS)
@@ -39,7 +44,11 @@ local function GuideLine(color)
     return line
 end
 
---- Line from `inner` to `outer` along `angle` (radians), from the guide's center.
+--- Places `line` from `inner` to `outer` along `angle` (radians), from the guide's center.
+---@param line Line
+---@param angle number
+---@param inner number
+---@param outer number
 local function PlaceRadial(line, angle, inner, outer)
     local c, s = math.cos(angle), math.sin(angle)
     line:SetStartPoint("CENTER", Guide, c * inner, s * inner)
@@ -49,17 +58,22 @@ end
 for i = 1, GUIDE_CIRCLE_SEGMENTS do Guide.Circle[i] = GuideLine(GUIDE_COLOR) end
 Guide.Pointer = GuideLine(GUIDE_ACTIVE_COLOR)
 
--- Quick action square: a fill plus four edges (so it can be drawn hollow).
+-- The quick action square, a fill plus four edges, so it can be drawn hollow.
 Guide.NudgeFill = Guide:CreateTexture(nil, "OVERLAY")
 Guide.NudgeFill:SetPoint("CENTER")
+---@class GuideEdge : Texture
+---@field side string which side of the square it draws (NUDGE_SIDES)
+
+---@type GuideEdge[]
 Guide.NudgeEdges = {}
-for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-    local edge = Guide:CreateTexture(nil, "OVERLAY")
+for _, side in ipairs(NUDGE_SIDES) do
+    local edge = Guide:CreateTexture(nil, "OVERLAY") --[[@as GuideEdge]]
     edge.side = side
     Guide.NudgeEdges[#Guide.NudgeEdges + 1] = edge
 end
 
---- Sizes the quick action square (`size` px: the real probe's side, but at least the minimum).
+--- Sizes the quick action square.
+---@param size number the real probe's side in px (at least GUIDE_NUDGE_MIN_SIZE is drawn)
 local function SetupNudge(size)
     size = math.max(size, GUIDE_NUDGE_MIN_SIZE)
     local half = size / 2
@@ -76,7 +90,9 @@ local function SetupNudge(size)
     end
 end
 
---- Filled (bright) while a release fires the quick action; hollow (dim) otherwise.
+--- Draws the quick action square filled (bright) while a release fires the quick action, else
+--- hollow (dim).
+---@param armed boolean
 local function SetNudgeArmed(armed)
     Guide.NudgeFill:SetShown(armed)
     Guide.NudgeFill:SetColorTexture(unpack(GUIDE_ACTIVE_COLOR))
@@ -85,10 +101,13 @@ local function SetNudgeArmed(armed)
     end
 end
 
---- Lays the guide out for `count` slices, dead zone radius `deadzone`, quick action square side
---- `probeSize`; `hasQuick` = a tap fires something (else the center only cancels).
+--- Lays the guide out for a menu that's opening.
+---@param count integer how many wedges
+---@param deadzone number the dead zone's radius
+---@param probeSize number the quick action square's side
+---@param hasQuick boolean a tap fires something (else the center only cancels)
 function Guide:Setup(count, deadzone, probeSize, hasQuick)
-    -- Current color (the setting can change between openings).
+    -- The current color, since the setting can change between openings.
     local color = Config.Get(Config.Key.CursorGuideColor) or {}
     local r, g, b = color.r or 1, color.g or 1, color.b or 1
     GUIDE_COLOR[1], GUIDE_COLOR[2], GUIDE_COLOR[3] = r, g, b
@@ -103,12 +122,12 @@ function Guide:Setup(count, deadzone, probeSize, hasQuick)
         line:SetEndPoint("CENTER", self, math.cos(a1) * deadzone, math.sin(a1) * deadzone)
     end
 
-    -- Boundary after slice i, clockwise (as Ring_Layout draws its dividers). One slice: none.
+    -- The boundary after each wedge, as Ring_Layout draws its dividers. One action has none.
     local dividers = count >= 2 and count or 0
     for i = 1, dividers do
         local line = self.Dividers[i] or GuideLine(GUIDE_COLOR)
         self.Dividers[i] = line
-        PlaceRadial(line, Ring_Layout.GetSliceAngle(i, count) - math.pi / count, deadzone, deadzone + GUIDE_DIVIDER_LENGTH)
+        PlaceRadial(line, Ring_Layout.GetBoundaryAngle(i, count), deadzone, deadzone + GUIDE_DIVIDER_LENGTH)
         line:SetColorTexture(unpack(GUIDE_COLOR))
         line:Show()
     end
@@ -122,8 +141,11 @@ function Guide:Setup(count, deadzone, probeSize, hasQuick)
     SetNudgeArmed(hasQuick)
 end
 
---- Brightens the selected slice's two boundaries, points at the cursor's direction, and shows
---- whether the cursor has left the quick action square (`moved`).
+--- Brightens the selected wedge's two boundaries, points at the cursor's direction, and shows
+--- whether the cursor has left the quick action square.
+---@param index integer? the selected wedge
+---@param angle number? the cursor's direction (nil hides the pointer)
+---@param moved boolean the cursor has left the quick action square
 function Guide:Update(index, angle, moved)
     local armed = self.hasQuick and not moved
     if armed ~= self.armed then
