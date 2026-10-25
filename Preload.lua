@@ -14,8 +14,8 @@ env.NAME_ALT = "Radial Menu" -- without the prefix or color (Edit Mode, About)
 env.ICON = Path.Root .. "\\Art\\Icon\\logo-1024.png"
 env.VERSION_STRING = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?" -- from the .toc
 
--- Which game this is running in (the .toc lists the interfaces it supports). Built-in menus can be
--- limited to some of them (Code\Ring\Data\BuiltIn.lua). WoW Forever's builds are 1.6x (16001...).
+-- Which game this is running in (the .toc lists the interfaces it supports). Library menus can be
+-- limited to some of them (Code\Menu\Data\Library.lua). WoW Forever's builds are 1.6x (16001...).
 env.GameVersion = Utils_Standard.Strict({
     Retail  = "retail",
     Forever = "forever",
@@ -28,7 +28,7 @@ do
         or env.GameVersion.Classic
 end
 
---- Whether something limited to `versions` exists in the game this is running in. Built-in
+--- Whether something limited to `versions` exists in the game this is running in. Library
 --- menus and action kinds use it.
 ---@param versions string[]? env.GameVersion values (nil means every version)
 ---@return boolean
@@ -68,17 +68,17 @@ end
 env.Event = Utils_Standard.Strict({
     DatabaseReady        = "Preload.DatabaseReady",     -- saved variables loaded (Config.lua)
     ConfigReset          = "Config.Reset",              -- settings reset to defaults, without any OnChange callbacks
-    DataReady            = "Ring.DataReady",            -- menus loaded and migrated, built-ins created (Ring_Data)
-    DataChanged          = "Ring.DataChanged",          -- any menu edit, passes a ChangeReason or nil
-    LastUsedChanged      = "Ring.LastUsedChanged",      -- a menu's Last Used action changed, passes its ringId
-    Rebuilt              = "Ring.Rebuilt",              -- the secure buttons were rebuilt (Ring_Secure)
-    DisplayMoved         = "Ring.DisplayMoved",         -- the fixed menu's center may have moved (Ring_Display)
-    SearchSourcesChanged = "Ring.SearchSourcesChanged", -- Add Action's search lists are out of date (Ring_Search)
+    DataReady            = "Menu.DataReady",            -- menus loaded and migrated, library menus created (Menu_Data)
+    DataChanged          = "Menu.DataChanged",          -- any menu edit, passes a ChangeReason or nil
+    LastUsedChanged      = "Menu.LastUsedChanged",      -- a menu's Last Used action changed, passes its menuId
+    Rebuilt              = "Menu.Rebuilt",              -- the secure buttons were rebuilt (Menu_Secure)
+    DisplayMoved         = "Menu.DisplayMoved",         -- the fixed menu's center may have moved (Menu_Display)
+    SearchSourcesChanged = "Menu.SearchSourcesChanged", -- Add Action's search lists are out of date (Menu_Search)
 }, "event")
 
 -- Why menus changed or need a rebuild, passed with env.Event.DataChanged. A hand edit passes none.
 env.ChangeReason = Utils_Standard.Strict({
-    Auto = "auto", -- start-up, built-in refills or the menu moving, rebuilt without the combat message
+    Auto = "auto", -- start-up, library refills or the menu moving, rebuilt without the combat message
 }, "change reason")
 
 -- Development only: chat output for menu use (what fired) and drag and drop (cursor info). Set

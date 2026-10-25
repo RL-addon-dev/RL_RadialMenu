@@ -11,7 +11,7 @@
         RL_RadialMenuDB_Global_Persistent   account data kept by Reset: menus, keybinds, positions
         RL_RadialMenuDB_Local               per character settings (none yet)
         RL_RadialMenuDB_Local_Persistent    per character data: menus, keybinds, Last Used...
-    The menus' own data is described in Code\Ring\Data\Store.lua.
+    The menus' own data is described in Code\Menu\Data\Store.lua.
 ]]
 
 local env = select(2, ...)
@@ -45,7 +45,7 @@ Enum.SelectFrom = {
 }
 
 -- Menu Style (MenuStyle), named like the ping wheel's. Quick picks on the keybind's release.
--- Relaxed keeps the menu open after the release, and a left click picks (Ring_Secure).
+-- Relaxed keeps the menu open after the release, and a left click picks (Menu_Secure).
 Enum.MenuStyle = {
     Quick   = 1,
     Relaxed = 2
@@ -59,7 +59,7 @@ Enum.WorldMarkerPlacement = {
 }
 
 -- Mark Target Markers On (TargetMarkerUnit): your target, or the unit under the mouse when the
--- keybind was pressed (out of combat, Ring_Secure). CursorFocus also marks any unit, in combat
+-- keybind was pressed (out of combat, Menu_Secure). CursorFocus also marks any unit, in combat
 -- too, in menus of only target markers, by stealing your focus while the menu is open.
 Enum.TargetMarkerUnit = {
     Target = 1,
@@ -87,18 +87,18 @@ local DB_GLOBAL_DEFAULTS = {
     CursorGuideColor     = { r = 1, g = 1, b = 1 },
     MenuStyle            = Enum.MenuStyle.Quick,
     FlickToSelect        = false,                           -- with a controller, letting go of the aimed right
-                                                            -- stick uses the action (Ring_Secure)
+                                                            -- stick uses the action (Menu_Secure)
     RevealDelay          = 0.15,                            -- seconds
     Deadzone             = 24,                              -- px
     ProbeSize            = 12,                              -- px from the key-down spot (the square is twice this wide)
-    RightClickDismiss    = true,                            -- right click closes a held menu (Ring_Secure)
+    RightClickDismiss    = true,                            -- right click closes a held menu (Menu_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
     TargetMarkerUnit     = Enum.TargetMarkerUnit.Cursor,    -- like the ping menu
     PreviewHideHidden    = false,                           -- the settings preview leaves out actions hidden
                                                             -- in game right now (the eye toggle)
 }
 
--- Distance to Select's slider limits, in px (Setting_Schema). Ring_View also reads the largest.
+-- Distance to Select's slider limits, in px (Setting_Schema). Menu_View also reads the largest.
 Config.DEADZONE_MIN = 8
 Config.DEADZONE_MAX = 60
 
@@ -110,7 +110,7 @@ Config.Key = Utils_Standard.Strict(Key, "setting key")
 
 local DB_GLOBAL_PERSISTENT_DEFAULTS = {}
 local DB_LOCAL_DEFAULTS = {}
-local DB_LOCAL_PERSISTENT_DEFAULTS = {} -- menus' own data (Code\Ring\Data\Store.lua)
+local DB_LOCAL_PERSISTENT_DEFAULTS = {} -- menus' own data (Code\Menu\Data\Store.lua)
 
 Config.DBGlobal = nil
 Config.DBGlobalPersistent = nil
