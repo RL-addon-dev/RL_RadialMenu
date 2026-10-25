@@ -11,7 +11,11 @@
             onExit  = function() end,                    -- Edit Mode closed (optional)
             onLayout = function() end,                   -- the active layout changed (optional)
             slider  = { label, min, max, step, get, set }, -- one setting in the dialog (optional)
+            shown   = { get, set },                      -- a checkbox to hide it while editing (optional)
         })
+
+    The `shown` checkboxes sit in a strip under Edit Mode's window. It's only anchored there, not
+    part of the window's layout, so Blizzard's code never touches it.
 
     It uses Blizzard's templates for the look, but never registers the frame as an Edit Mode
     system, so Edit Mode itself is never tainted.
@@ -24,8 +28,9 @@ local Utils_EditMode = env.AX_Modules:New("@\\Utils\\EditMode")
 -- they never change.
 local LAYOUT_MODERN, LAYOUT_CLASSIC = "Modern", "Classic"
 local DIALOG_WIDTH, DIALOG_PADDING = 320, 16
+local TOGGLE_ROW_HEIGHT = 28
 
-local entries = {} -- [frame] = { info, selection }
+local entries = {} -- [frame] = { frame, info, selection, checkButton }
 local selected -- the entry whose dialog is open
 
 --- Whether Edit Mode is open.
@@ -149,6 +154,38 @@ local function Select(entry)
     OpenDialog(entry)
 end
 
+-- Hiding while editing
+
+local Toggles = CreateFrame("Frame", nil, UIParent, "DialogBorderTranslucentTemplate") --[[@as Frame]]
+Toggles:SetFrameStrata("DIALOG")
+Toggles:Hide()
+local toggleCount = 0
+
+--- Shows or hides `entry`'s frame for the rest of Edit Mode, by its `shown` setting.
+---@param entry table
+local function ApplyShown(entry)
+    local shown = not entry.info.shown or entry.info.shown.get()
+    entry.frame:SetShown(shown)
+    if not shown and selected == entry then Deselect() end
+end
+
+--- Adds `entry`'s checkbox to the strip under Edit Mode's window.
+---@param entry table
+local function AddToggle(entry)
+    local checkButton = CreateFrame("CheckButton", nil, Toggles, "UICheckButtonTemplate") --[[@as CheckButton]]
+    checkButton:SetPoint("TOPLEFT", DIALOG_PADDING, -DIALOG_PADDING - toggleCount * TOGGLE_ROW_HEIGHT)
+    local label = checkButton:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
+    label:SetPoint("LEFT", checkButton, "RIGHT", 4, 0)
+    label:SetText(entry.info.name)
+    checkButton:SetScript("OnClick", function(self)
+        entry.info.shown.set(self:GetChecked())
+        ApplyShown(entry)
+    end)
+    entry.checkButton = checkButton
+    toggleCount = toggleCount + 1
+    Toggles:SetHeight(2 * DIALOG_PADDING + toggleCount * TOGGLE_ROW_HEIGHT)
+end
+
 --- Reports where `frame` was dropped, as its center's offset from UIParent's center.
 ---@param frame Frame
 ---@param info table
@@ -181,7 +218,9 @@ function Utils_EditMode.AddFrame(frame, info)
     selection:SetScript("OnEnter", function(self) self:ShowEditInstructions(true) end)
     selection:SetScript("OnLeave", function(self) self:ShowEditInstructions(false) end)
 
-    entries[frame] = { info = info, selection = selection }
+    local entry = { frame = frame, info = info, selection = selection }
+    entries[frame] = entry
+    if info.shown then AddToggle(entry) end
     if Utils_EditMode.IsActive() then selection:ShowHighlighted() end
 end
 
@@ -193,13 +232,23 @@ local function OnEnter()
     for _, entry in pairs(entries) do
         entry.selection:ShowHighlighted()
         if entry.info.onEnter then entry.info.onEnter() end
+        if entry.checkButton then entry.checkButton:SetChecked(entry.info.shown.get()) end
+        ApplyShown(entry)
+    end
+    if toggleCount > 0 then
+        Toggles:ClearAllPoints()
+        Toggles:SetPoint("TOPLEFT", EditModeManagerFrame, "BOTTOMLEFT", 0, 2)
+        Toggles:SetPoint("TOPRIGHT", EditModeManagerFrame, "BOTTOMRIGHT", 0, 2)
+        Toggles:Show()
     end
 end
 
 local function OnExit()
     Deselect()
+    Toggles:Hide()
     for _, entry in pairs(entries) do
         entry.selection:Hide()
+        entry.frame:Show() -- hidden only while editing
         if entry.info.onExit then entry.info.onExit() end
     end
 end
