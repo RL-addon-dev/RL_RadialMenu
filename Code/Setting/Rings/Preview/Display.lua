@@ -1,7 +1,8 @@
 --[[
-    Settings preview: what it shows. The selected slice (and its X), the drop / drag target
-    (gold wedge, gold divider line, center highlight) with a label tooltip pointing out of the
-    wheel, the "+" on a hovered gap, and the slice / center tooltips. See Preview.lua.
+    Rings_Preview (see Preview.lua): what the preview shows. That's the selected action (and its
+    X), the drop or drag target (gold wedge, gold divider line, center highlight) with a label
+    tooltip pointing out of the wheel, the "+" on a hovered gap, and the action and center
+    tooltips.
 ]]
 
 local env = select(2, ...)
@@ -10,28 +11,31 @@ local Ring_Actions = env.AX_Modules:Await("@\\Ring\\Actions")
 local Ring_Data = env.AX_Modules:Await("@\\Ring\\Data")
 local Ring_Layout = env.AX_Modules:Await("@\\Ring\\Layout")
 local Ring_Live = env.AX_Modules:Await("@\\Ring\\Live")
-local Rings_Preview = env.AX_Modules:Import("@\\Setting\\Rings\\Preview")
 local Private = env.AX_Modules:Import("@\\Setting\\Rings\\Preview\\Private")
 local Ring_Kinds = env.AX_Modules:Await("@\\Ring\\Kinds")
 
-local atan2, cos, sin, pi = math.atan2, math.cos, math.sin, math.pi
+local atan2, cos, sin = math.atan2, math.cos, math.sin
+
+---@class RingPreview
 local PreviewMixin = Private.PreviewMixin
-local GAP_BUTTON_RADIUS = Private.GAP_BUTTON_RADIUS
 
 local INSERT_LINE_INNER = 30
 local INSERT_LINE_OUTER = 150
-local GAP_BUTTON_ICON_CLEARANCE = 48 -- keeps the "+" outside icons pushed out on crowded rings
-local EMPTY_BUTTON_GAP = 8 -- empty ring: "+" just below the "no slices yet" text
+local GAP_BUTTON_ICON_CLEARANCE = 48 -- keeps the "+" outside icons pushed out on crowded menus
+local EMPTY_BUTTON_GAP = 8 -- on an empty menu, the "+" sits just below the "no actions yet" text
 -- Tooltips open away from the wheel center (Ring_Layout.GetOutwardPoints), this far out.
 local TOOLTIP_GAP = 6
+local NOTE_COLOR = { 1, 0.5, 0.25 } -- orange, for "hidden now" and whose a menu is
 
 
 
 --- Opens GameTooltip on `owner`, placed away from the wheel center along `angle` (radians,
---- counter-clockwise from +x): top slices get it above, right slices to the right, and so on.
-local function SetTooltipOutward(owner, angle)
+--- counter-clockwise from +x). Top actions get it above, right actions to the right, and so on.
+---@param owner Frame
+---@param angle number
+function Private.SetTooltipOutward(owner, angle)
     local c, s = cos(angle), sin(angle)
-    -- The tooltip's opposite corner / edge touches the owner's outer corner / edge (the same
+    -- The tooltip's opposite corner or edge touches the owner's outer corner or edge (the same
     -- rule places the in-game menu's action names).
     local tooltipPoint, ownerPoint = Ring_Layout.GetOutwardPoints(angle)
 
@@ -39,30 +43,32 @@ local function SetTooltipOutward(owner, angle)
     GameTooltip:ClearAllPoints()
     GameTooltip:SetPoint(tooltipPoint, owner, ownerPoint, c * TOOLTIP_GAP, s * TOOLTIP_GAP)
 end
-Private.SetTooltipOutward = SetTooltipOutward
-Rings_Preview.SetTooltipOutward = SetTooltipOutward
 
 
--- Drop / drag target
+-- Drop and drag target
 
 
---- Shows what releasing now would do: gold wedge over a slice, a gold divider line between two,
---- the center highlight for the center, plus a label at the cursor.
---- @param from number|nil the slice being reordered (nil for a drop from the game)
+--- Shows what releasing now would do: a gold wedge over an action, a gold divider line between
+--- two, the center highlight for the center, plus a label at the cursor.
+---@param target table GetDropTarget's
+---@param from integer|string|nil the wedge being reordered, Private.QUICK, or nil for a drop from
+---     the game
+---@param dx number
+---@param dy number
 function PreviewMixin:ShowTarget(target, from, dx, dy)
     local wheel = self.wheel
     local label, lineAngle, detail
-    -- Where the label tooltip points from: the slice, the divider, or the center (downwards).
+    -- Where the label tooltip points from: the action, the divider, or the center (downwards).
     local owner, ownerAngle
 
-    if target.mode == "over" then
+    if target.mode == Private.Target.Over then
         local wedge = wheel.Wedges[target.index]
         owner, ownerAngle = wedge and wedge.Button, wedge and wedge.angle
         self:SetSelected(target.index, false)
-        if from and from ~= "quick" then
+        if from and from ~= Private.QUICK then
             label = target.index ~= from and L["Config - Rings - Drag - Swap"] or nil
-        elseif from == "quick" then
-            -- The center's action and this one swap; a submenu or action bar can't go to the center.
+        elseif from == Private.QUICK then
+            -- The center's action and this one swap. A submenu or action bar can't go to the center.
             local over = self.ring and self:GetSlice(target.index)
             if over and not Ring_Data.CanBeQuickAction(over) then
                 label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickSwapRing - Hint"]
@@ -72,35 +78,37 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
         else
             label = L["Config - Rings - Drag - Replace"]
         end
-    elseif target.mode == "between" then
+    elseif target.mode == Private.Target.Between then
         self:SetSelected(nil)
-        -- Moving next to itself changes nothing, so don't advertise it.
-        local noop = from and from ~= "quick" and (target.index == from or target.index == from + 1
+        -- Moving next to itself changes nothing, so it isn't offered.
+        local noop = from and from ~= Private.QUICK and (target.index == from or target.index == from + 1
             or (from == wheel.sliceCount and target.index == 1))
         if not noop then
             lineAngle = target.angle
-            label = (from and from ~= "quick") and L["Config - Rings - Drag - Move"] or L["Config - Rings - Drag - Insert"]
+            local moving = from and from ~= Private.QUICK
+            label = moving and L["Config - Rings - Drag - Move"] or L["Config - Rings - Drag - Insert"]
             owner, ownerAngle = self:PlaceLabelAnchor(target.angle, self:GetGapRadius()), target.angle
         end
-    elseif target.mode == "add" then
+    elseif target.mode == Private.Target.Add then
         self:SetSelected(nil)
         label = L["Config - Rings - Drag - Add"]
-        owner, ownerAngle = self:PlaceLabelAnchor(-pi / 2, 0), -pi / 2
+        owner, ownerAngle = self:PlaceLabelAnchor(Private.BELOW, 0), Private.BELOW
     else
-        -- Center: sets the quick action (nothing to do when dragging the quick action itself).
+        -- The center sets the quick action (nothing to do when dragging the quick action itself).
         self:SetSelected(nil)
-        -- Nested rings and action bars can't be the quick action: say so, and what to do instead.
+        -- Submenus and action bars can't be the quick action, so it says so, and what to do instead.
         local fromSlice = type(from) == "number" and self.ring and self:GetSlice(from)
         if fromSlice and not Ring_Data.CanBeQuickAction(fromSlice) then
             label, detail = L["Config - Rings - Drag - QuickRing"], L["Config - Rings - Drag - QuickRing - Hint"]
-        elseif from ~= "quick" then
+        elseif from ~= Private.QUICK then
             label = L["Config - Rings - Drag - Quick"]
         end
-        owner, ownerAngle = self:PlaceLabelAnchor(-pi / 2, 0), -pi / 2
+        owner, ownerAngle = self:PlaceLabelAnchor(Private.BELOW, 0), Private.BELOW
     end
 
-    wheel:SetPointerAngle((target.mode == "over" or target.mode == "between") and atan2(dy, dx) or nil)
-    wheel:SetCenterHighlight(target.mode == "center")
+    local onWedges = target.mode == Private.Target.Over or target.mode == Private.Target.Between
+    wheel:SetPointerAngle(onWedges and atan2(dy, dx) or nil)
+    wheel:SetCenterHighlight(target.mode == Private.Target.Center)
 
     self.InsertLine:SetShown(lineAngle ~= nil)
     if lineAngle then
@@ -112,12 +120,17 @@ function PreviewMixin:ShowTarget(target, from, dx, dy)
     self:SetDragLabel(label, owner, ownerAngle, detail)
 end
 
---- Radius of the "+" on a gap (outside the icons, pushed out on crowded rings).
+--- The radius of the "+" on a gap (outside the icons, pushed out on crowded menus).
+---@return number
 function PreviewMixin:GetGapRadius()
-    return math.max(GAP_BUTTON_RADIUS, Ring_Layout.GetIconRadius(self.wheel.sliceCount) + GAP_BUTTON_ICON_CLEARANCE)
+    local outsideIcons = Ring_Layout.GetIconRadius(self.wheel.sliceCount) + GAP_BUTTON_ICON_CLEARANCE
+    return math.max(Private.GAP_BUTTON_RADIUS, outsideIcons)
 end
 
---- Moves the invisible label anchor to `radius` along `angle` (0 = the wheel center).
+--- Moves the invisible label anchor to `radius` along `angle` (a radius of 0 is the wheel center).
+---@param angle number
+---@param radius number
+---@return Frame
 function PreviewMixin:PlaceLabelAnchor(angle, radius)
     local anchor = self.LabelAnchor
     anchor:ClearAllPoints()
@@ -126,32 +139,37 @@ function PreviewMixin:PlaceLabelAnchor(angle, radius)
 end
 
 --- What releasing would do, as a standard GameTooltip pointing out of the wheel from `owner`.
---- @param detail string|nil a second, wrapped line under the label
+---@param text string? nil hides it
+---@param owner Frame?
+---@param angle number?
+---@param detail string? a second, wrapped line under the label
 function PreviewMixin:SetDragLabel(text, owner, angle, detail)
     if not (text and owner) then
         if self.labelOwner and GameTooltip:GetOwner() == self.labelOwner then GameTooltip:Hide() end
         self.labelOwner, self.labelText, self.labelAngle = nil, nil, nil
         return
     end
-    -- Called every frame while dragging: only re-anchor when something changed.
+    -- It's called every frame while dragging, so it only anchors again when something changed.
     if owner == self.labelOwner and text == self.labelText and angle == self.labelAngle
         and GameTooltip:GetOwner() == owner and GameTooltip:IsShown() then
         return
     end
     self.labelOwner, self.labelText, self.labelAngle = owner, text, angle
-    SetTooltipOutward(owner, angle)
+    Private.SetTooltipOutward(owner, angle --[[@as number]])
     GameTooltip:SetText(text, 1, 1, 1)
     if detail then GameTooltip:AddLine(detail, nil, nil, nil, true) end
     GameTooltip:Show()
 end
 
+--- Hides the drop target's line and label.
 function PreviewMixin:HideTarget()
     self.InsertLine:Hide()
     self:SetDragLabel(nil)
 end
 
---- Shows the "+" on a "between" target's divider. With no target it hides, except on an empty
---- ring, where it always sits where the first slice will go.
+--- Shows the "+" on a between target's divider. With no target it hides, except on an empty
+--- menu, where it always sits where the first action will go.
+---@param target table? a GetDropTarget of Private.Target.Between
 function PreviewMixin:SetGapTarget(target)
     local button = self.GapButton
     button:ClearAllPoints()
@@ -168,7 +186,7 @@ function PreviewMixin:SetGapTarget(target)
         button:Show()
     elseif self.ring and #self.shown == 0 then
         button.insertIndex = nil
-        button.tooltipAngle = -pi / 2 -- below the wheel center: tooltip opens downwards
+        button.tooltipAngle = Private.BELOW -- below the wheel center, so its tooltip opens downwards
         button:SetPoint("TOP", self.Empty, "BOTTOM", 0, -EMPTY_BUTTON_GAP)
         button:Show()
     else
@@ -178,9 +196,11 @@ end
 
 
 
--- Selection / tooltip
+-- Selection and tooltips
 
---- @param showRemove boolean|nil show the X on the selected slice (default true)
+--- Selects wedge `index` (nil for none).
+---@param index integer?
+---@param showRemove boolean? show the X on the selected action (true by default)
 function PreviewMixin:SetSelected(index, showRemove)
     local wheel = self.wheel
     if index ~= self.selectedIndex then
@@ -196,26 +216,31 @@ end
 
 
 --- The tooltip's Visibility group for `slice` (after an empty line), if it can hide.
+---@param slice Slice?
 local function AddVisibilityGroup(slice)
     local condition = slice and Ring_Actions.GetVisibilityCondition(slice)
     if not condition then return end
     GameTooltip:AddLine(" ")
+    -- "Config - Rings - Visibility - <condition>", one per visibility condition (KindDefinition.condition).
     GameTooltip:AddLine(L["Config - Rings - Tooltip - Visibility"] .. " " .. L["Config - Rings - Visibility - " .. condition], nil, nil, nil, true)
     if not Ring_Actions.IsSliceAvailable(slice) then
-        GameTooltip:AddLine(L["Config - Rings - Visibility - HiddenNow"], 1, 0.5, 0.25, true)
+        GameTooltip:AddLine(L["Config - Rings - Visibility - HiddenNow"],
+            NOTE_COLOR[1], NOTE_COLOR[2], NOTE_COLOR[3], true)
     end
 end
 
+--- Shows the tooltip of wedge `index` or of the center (Private.CENTER), or hides it with nil.
+---@param index integer|string|nil
 function PreviewMixin:SetTooltipIndex(index)
     if index == self.tooltipIndex then return end
     self.tooltipIndex = index
 
-    if index == "center" then
+    if index == Private.CENTER then
         self:ShowCenterTooltip()
         return
     end
 
-    local slice = index and self.ring and self:GetSlice(index)
+    local slice = index and self.ring and self:GetSlice(index --[[@as integer]])
     local wedge = index and self.wheel.Wedges[index]
     if not (slice and wedge) then
         if self.tooltipOwner and GameTooltip:GetOwner() == self.tooltipOwner then GameTooltip:Hide() end
@@ -224,10 +249,10 @@ function PreviewMixin:SetTooltipIndex(index)
     end
 
     self.tooltipOwner = wedge.Button
-    SetTooltipOutward(wedge.Button, wedge.angle)
+    Private.SetTooltipOutward(wedge.Button, wedge.angle)
     GameTooltip:SetText(Ring_Actions.GetLabel(slice), 1, 1, 1)
 
-    -- Groups under the name, each after an empty line: Control, Nested ring, Visibility.
+    -- Groups under the name, each after an empty line: Control, Submenu, Visibility.
     local function Group(text, r, g, b)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(text, r, g, b, true)
@@ -248,11 +273,12 @@ function PreviewMixin:SetTooltipIndex(index)
     AddVisibilityGroup(slice)
     -- A class or character menu says whose it is, last, in orange like the other notes.
     local owner = slice.kind == Ring_Kinds.Kind.Ring and Ring_Data.GetOwnerLabel(slice.ring)
-    if owner then GameTooltip:AddLine(owner, 1, 0.5, 0.25, true) end
+    if owner then GameTooltip:AddLine(owner, NOTE_COLOR[1], NOTE_COLOR[2], NOTE_COLOR[3], true) end
     GameTooltip:Show()
 end
 
 --- The action in the center (the quick action), or nil.
+---@return Slice?
 function PreviewMixin:GetQuickStoredSlice()
     return self.ring and Ring_Data.GetQuickActionSlice(self.ring) or nil
 end
@@ -261,12 +287,12 @@ end
 function PreviewMixin:ShowCenterTooltip()
     local ring = self.ring
     if not ring then return end
-    local owner = self:PlaceLabelAnchor(-pi / 2, 0)
+    local owner = self:PlaceLabelAnchor(Private.BELOW, 0)
     self.tooltipOwner = owner
-    SetTooltipOutward(owner, -pi / 2)
+    Private.SetTooltipOutward(owner, Private.BELOW)
 
     local slice = Ring_Data.GetQuickActionSlice(ring)
-    -- An empty center closes the menu, like a Close action: named the same.
+    -- An empty center closes the menu, like a Close action, so it's named the same.
     local title = Ring_Actions.GetLabel(slice or { kind = Ring_Kinds.Kind.Close })
     GameTooltip:SetText(format(L["Config - Rings - Tooltip - QuickTitle"], title), 1, 1, 1)
 
@@ -276,7 +302,7 @@ function PreviewMixin:ShowCenterTooltip()
     GameTooltip:AddLine(" ")
     local control
     if slice and slice.kind ~= Ring_Kinds.Kind.LastUsed and slice.kind ~= Ring_Kinds.Kind.First then
-        -- A double-click only cycles empty, Last Used and First Action; this one goes with the X.
+        -- A double-click only cycles empty, Last Used and First Action. This one goes with the X.
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickSetReadOnly"] or L["Config - Rings - Preview - Control - QuickSet"]
     else
         control = self.readOnly and L["Config - Rings - Preview - Control - QuickReadOnly"] or L["Config - Rings - Preview - Control - Quick"]
@@ -295,6 +321,7 @@ function PreviewMixin:ShowCenterTooltip()
     GameTooltip:Show()
 end
 
+--- Clears every hover and drag display (the mouse left the wheel).
 function PreviewMixin:ClearInteraction()
     self.QuickRemove:Hide()
     self:SetSelected(nil)
