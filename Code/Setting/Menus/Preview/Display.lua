@@ -13,6 +13,7 @@ local Menu_Layout = env.AX_Modules:Await("@\\Menu\\Layout")
 local Menu_Live = env.AX_Modules:Await("@\\Menu\\Live")
 local Private = env.AX_Modules:Import("@\\Setting\\Menus\\Preview\\Private")
 local Menu_Kinds = env.AX_Modules:Await("@\\Menu\\Kinds")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 
 local atan2, cos, sin = math.atan2, math.cos, math.sin
 
@@ -263,7 +264,10 @@ function PreviewMixin:SetTooltipIndex(index)
     end
     Group(L["Config - Menus - Tooltip - Control"] .. " " .. control)
     if action.kind == Menu_Kinds.Kind.Submenu then
-        local submenuText = action.spread and L["Config - Menus - Submenu - Spread"] or L["Config - Menus - Submenu - Description"]
+        -- With a controller, the D-pad scrolls it instead of the mouse wheel.
+        local controller = env.IsGamepadUI() or Utils_ConsolePort.IsActive()
+        local submenuText = action.spread and L["Config - Menus - Submenu - Spread"]
+            or L["Config - Menus - Submenu - Description" .. (controller and " - Controller" or "")]
         -- A scroll list is flat: say so when this submenu has submenus of its own.
         if not action.spread and Menu_Live.HasSubmenus(action.menu) then
             submenuText = submenuText .. " " .. L["Config - Menus - Submenu - Flatten"]

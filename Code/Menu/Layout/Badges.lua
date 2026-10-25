@@ -23,7 +23,8 @@ local BADGE_FRAME_LEVEL = 9
 local SCROLL_BADGE_ATLASES = { "newplayertutorial-icon-mouse-middlebutton", "clickcast-icon-mouse" }
 -- A menu opened by a controller scrolls with the D-pad, so it shows the D-pad (up and down) art
 -- instead, when the client has it (WoW Forever's gamepad UI, whose D-pad shapes are shared by
--- every controller family).
+-- every controller family), else the game's D-pad up icon for the current controller
+-- (ConsolePort in retail).
 local SCROLL_BADGE_PAD_ATLASES = { "gamepad-ps-dpadupdown-normal" }
 local SCROLL_BADGE_SIZE = 30
 -- Its center's offset from the icon's bottom-left corner (the item count is bottom-right).
@@ -131,7 +132,7 @@ local function CreateScrollBadgeArt(wheel, wedge)
         badge.Texture:SetAllPoints()
         badge.Texture:SetAtlas(atlas)
         badge.mouseAtlas = atlas
-        badge.padAtlas = FirstAtlas(SCROLL_BADGE_PAD_ATLASES) or atlas
+        badge.padAtlas = FirstAtlas(SCROLL_BADGE_PAD_ATLASES)
     else
         badge:SetSize(SCROLL_PILL_WIDTH, SCROLL_PILL_HEIGHT)
         badge:SetPoint("TOP", wedge.Button, "BOTTOM", 0, SCROLL_PILL_OFFSET)
@@ -290,6 +291,13 @@ end
 ---@class MenuWheel
 local WheelMixin = Private.WheelMixin
 
+--- The game's D-pad up icon for the current controller, from its binding text, or nil.
+---@return string?
+local function GetPadUpAtlas()
+    local name = GetBindingText("PADDUP"):match("|A:([^:|]+)")
+    return name and Private.HasAtlas(name) and name or nil
+end
+
 --- Badges on submenus: the mouse wheel when they scroll, and stacked frames with the number of
 --- actions they add when they're spread.
 ---@param actions Action[] the menu's own actions (not what the wedges show, which resolves submenus)
@@ -297,13 +305,17 @@ local WheelMixin = Private.WheelMixin
 ---     right now, since there's nothing to scroll to (the in-game menu, the preview always shows it)
 ---@param pad boolean? opened by a controller, so it shows the D-pad, which scrolls it
 function WheelMixin:SetScrollBadges(actions, hideSingleScroll, pad)
+    local padUpAtlas = pad and GetPadUpAtlas()
     for i = 1, #self.Wedges do
         local action = i <= (self.actionCount or 0) and actions[i] or nil
         local scrolls = Menu_Live.IsScroll(action)
         if scrolls and hideSingleScroll then scrolls = #Menu_Live.GetScrollActions(action) > 1 end
         local badge = self.Wedges[i].ScrollBadge
         badge:SetShown(scrolls)
-        if scrolls and badge.Texture then badge.Texture:SetAtlas((pad and badge.padAtlas or badge.mouseAtlas) --[[@as string]]) end
+        if scrolls and badge.Texture then
+            local padAtlas = pad and (badge.padAtlas or padUpAtlas)
+            badge.Texture:SetAtlas((padAtlas or badge.mouseAtlas) --[[@as string]])
+        end
         local spreadBadge = self.Wedges[i].SpreadBadge
         local spread = Menu_Live.IsSpread(action)
         spreadBadge:SetShown(spread)
