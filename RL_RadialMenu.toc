@@ -13,7 +13,6 @@
 
 
 libs\AX_Modules\packages.xml
-libs\libs.xml
 
 Preload.lua
 Config.lua

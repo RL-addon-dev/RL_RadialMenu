@@ -13,8 +13,6 @@ Included libraries:
 - libs\AX_Modules   UI toolkit from WaypointUI by AdaptiveX, GPL-3.0 (its NOTICE and LICENSE)
 - libs\AX_Settings  settings framework from WaypointUI by AdaptiveX, GPL-3.0 (its NOTICE and
                     LICENSE)
-- libs\LibEditMode  by Adrian L Lange (p3lim), unmodified, under its own licence
-                    (libs\LibEditMode\LICENSE.txt), included as a separate work
 
 Techniques adapted from other addons (no code included):
 - Code\Menu\Menu_Stick.lua  keeping the right stick from turning the camera follows the technique

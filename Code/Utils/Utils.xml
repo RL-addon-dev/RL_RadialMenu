@@ -13,4 +13,5 @@
     <Script file="Utils_Housing.lua"/>
     <Script file="Utils_Text.lua"/>
     <Script file="Utils_ConsolePort.lua"/>
+    <Script file="Utils_EditMode.lua"/>
 </Ui>
