@@ -56,6 +56,8 @@ Menu_Secure.Click = Utils_Standard.Strict({
 }, "secure click")
 
 local Controller = CreateFrame("Frame", "RLRM_Controller", UIParent, "SecureHandlerBaseTemplate") --[[@as Frame]]
+Controller:SetAttribute("BindPad", Private.BIND_PAD)
+Controller:SetAttribute("UnbindPad", Private.UNBIND_PAD)
 
 local Screen = CreateFrame("Frame", "RLRM_Screen", UIParent, "SecureFrameTemplate") --[[@as Frame]]
 Screen:SetAllPoints(UIParent)

@@ -13,6 +13,7 @@ local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
 local Menu_Crossbar = env.AX_Modules:Import("@\\Menu\\Crossbar")
 local Menu_Secure = env.AX_Modules:Import("@\\Menu\\Secure")
 local Private = env.AX_Modules:Import("@\\Menu\\Secure\\Private")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 
 local InCombatLockdown = InCombatLockdown
 
@@ -54,6 +55,7 @@ local function Rebuild()
     end
     ClearOverrideBindings(Private.Controller)
     ClearOverrideBindings(Private.Helper)
+    Utils_ConsolePort.SetupClaims(Private.Controller)
 
     -- Menus that were deleted, or lost their keybind, keep their button (frames can't be
     -- destroyed) but become inert.

@@ -12,4 +12,5 @@
     <Script file="Utils_Unit.lua"/>
     <Script file="Utils_Housing.lua"/>
     <Script file="Utils_Text.lua"/>
+    <Script file="Utils_ConsolePort.lua"/>
 </Ui>

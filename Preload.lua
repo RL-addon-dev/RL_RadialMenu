@@ -40,8 +40,8 @@ function env.IsForThisGame(versions)
     return false
 end
 
---- Whether WoW Forever's gamepad UI is on (always false on Retail). Every controller feature
---- checks this, since controller support only exists in that UI. It changes with
+--- Whether WoW Forever's gamepad UI is on (always false on Retail). Its controller features check
+--- this, and ConsolePort's check Utils_ConsolePort.IsActive. It changes with
 --- "INPUT_DEVICE_INTERFACE_TRANSITION" (Forever only).
 ---@return boolean
 do
