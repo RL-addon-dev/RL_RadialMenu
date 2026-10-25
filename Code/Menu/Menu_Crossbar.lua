@@ -58,6 +58,14 @@ Menu_Crossbar.Binding = Utils_Standard.Strict({
     LeftTargeting  = LEFT_TARGETING,  -- LB
     RightTargeting = RIGHT_TARGETING, -- RB
 }, "gamepad binding")
+-- The buttons the gamepad UI binds those to by default. Its bindings only exist while it's on, so
+-- outside it combos are shown with these (Menu_Crossbar.GetBoundKey).
+local DEFAULT_KEYS = {
+    [LEFT_MODIFIER]   = "PADLTRIGGER",
+    [RIGHT_MODIFIER]  = "PADRTRIGGER",
+    [LEFT_TARGETING]  = "PADLSHOULDER",
+    [RIGHT_TARGETING] = "PADRSHOULDER",
+}
 local ACTION_BUTTON = "GAMEPADACTIONBUTTON" -- 1 to ACTION_BUTTONS, a crossbar's slots
 local ACTION_BUTTONS = 8
 
@@ -170,11 +178,12 @@ local function GetKeys(action)
     return { GetBindingKey(action, 1) }
 end
 
---- The first button bound to gamepad UI binding `action` (GAMEPADLEFTMOD is LT...), or nil.
+--- The first button bound to gamepad UI binding `action` (GAMEPADLEFTMOD is LT...). Outside the
+--- gamepad UI, or when it's unbound, that's its default button, or nil for other bindings.
 ---@param action string
 ---@return string?
 function Menu_Crossbar.GetBoundKey(action)
-    return GetKeys(action)[1]
+    return GetKeys(action)[1] or DEFAULT_KEYS[action]
 end
 
 --- Whether `button` is bound to any of `actions`.
@@ -272,7 +281,7 @@ function Menu_Crossbar.GetDisplayText(key)
     if not side then return tostring(key) end
     local parts = {}
     for _, action in ipairs(MODIFIERS[side]) do
-        local bound = GetKeys(action)[1]
+        local bound = Menu_Crossbar.GetBoundKey(action)
         parts[#parts + 1] = (bound and GetBindingText(bound)) or action
     end
     parts[#parts + 1] = GetBindingText(button)
