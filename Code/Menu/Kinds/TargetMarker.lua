@@ -12,14 +12,20 @@
         - Cursor + Focus: menus of only target markers mark any unit, in combat too, by making it
           your focus while open (Menu_Secure).
         - Otherwise, your target.
+
+    ConsolePort hides the mouse, so it has its own setting (ConsolePortMarkerUnit) instead: your
+    target, or Soft Target, the unit it points at as the marker fires (your target when there's
+    none). That's just the /tm line, so it works in combat without stealing your focus.
 ]]
 
 ---@class TargetMarkerAction : Action
 ---@field id number 1 Star to 8 Skull, or 0 to clear every target marker
 
 local env = select(2, ...)
+local Config = env.Config
 local L = env.L
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 local Utils_Unit = env.AX_Modules:Import("@\\Utils\\Unit")
 
 local CLEAR = 0
@@ -29,14 +35,28 @@ local MAX_MARKER = 8
 local MARKERS = { 8, 7, 6, 5, 4, 3, 2, 1, CLEAR }
 Menu_Kinds.TARGET_MARKERS = MARKERS
 
---- The /tm line for marker `id` on `unit`. Nil means your target, and "mouseover" the unit under
---- the mouse as it fires (your target when there's nothing there).
+--- Whether target markers mark the unit ConsolePort points at (its Soft Target setting).
+---@return boolean
+local function IsSoftTarget()
+    return Utils_ConsolePort.IsActive()
+        and Config.Get(Config.Key.ConsolePortMarkerUnit) == env.Enum.ConsolePortMarkerUnit.SoftTarget
+end
+
+--- The /tm line for marker `id` on `unit`. Nil means your target (with ConsolePort's Soft Target,
+--- the unit it points at as it fires first), and "mouseover" the unit under the mouse as it fires
+--- (your target when there's nothing there).
 ---@param id number
 ---@param unit string?
 ---@return string
 function Menu_Kinds.GetTargetMarkerText(id, unit)
     if unit == "mouseover" then return format("/tm [@mouseover,exists][] %d", id) end
-    return (unit and format("/tm [@%s] %d", unit, id)) or ("/tm " .. id)
+    if unit then return format("/tm [@%s] %d", unit, id) end
+    if not IsSoftTarget() then return "/tm " .. id end
+    local conditions = ""
+    for _, token in ipairs(Utils_ConsolePort.GetPointedUnits()) do
+        conditions = conditions .. format("[@%s,exists]", token)
+    end
+    return format("/tm %s[] %d", conditions, id)
 end
 
 --- Whether `action` puts a marker on a unit (it isn't Clear).
