@@ -7,10 +7,10 @@
     Loads after Preload.lua (enums) and before libs\AX_Settings\AX_Settings.xml, which
     reads env.AX_SettingsOptions while it loads.
 
-        RL_RadialMenuDB_Global              settings (General tab); wiped by the settings' Reset
+        RL_RadialMenuDB_Global              settings (General tab), wiped by the settings' Reset
         RL_RadialMenuDB_Global_Persistent   account data kept by Reset: menus, keybinds, positions
         RL_RadialMenuDB_Local               per character settings (none yet)
-        RL_RadialMenuDB_Local_Persistent    per character data: menus, keybinds, Last Used, ...
+        RL_RadialMenuDB_Local_Persistent    per character data: menus, keybinds, Last Used...
     The menus' own data is described in Code\Ring\Data\Store.lua.
 ]]
 
@@ -20,13 +20,15 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 
-local Config = {}; env.Config = Config
+local Config = {}
+env.Config = Config
 
 
 
 -- Values of settings with a fixed set of choices. They're the positions of the options in the
 -- settings' dropdowns (Setting_Schema.lua), so the two must list them in the same order.
-local Enum = {}; env.Enum = Enum
+local Enum = {}
+env.Enum = Enum
 
 -- Open Menus At (DisplayOpenAt): at the cursor, or at the fixed position set in Edit Mode.
 Enum.OpenAt = {
@@ -34,14 +36,14 @@ Enum.OpenAt = {
     Fixed  = 2
 }
 
--- Select From (SelectFrom), fixed position only: the direction moved from the key-down spot, or
+-- Select From (SelectFrom), fixed position only: the direction moved from the key down spot, or
 -- where the cursor is relative to the menu's center.
 Enum.SelectFrom = {
     Cursor = 1,
     Menu   = 2
 }
 
--- Menu Style (MenuStyle), named like the ping wheel's: Quick picks on the keybind's release;
+-- Menu Style (MenuStyle), named like the ping wheel's. Quick picks on the keybind's release.
 -- Relaxed keeps the menu open after the release, and a left click picks (Ring_Secure).
 Enum.MenuStyle = {
     Quick   = 1,
@@ -56,8 +58,8 @@ Enum.WorldMarkerPlacement = {
 }
 
 -- Mark Target Markers On (TargetMarkerUnit): your target, or the unit under the mouse when the
--- keybind was pressed (out of combat; Ring_Secure). CursorFocus: also any unit, in combat too, in
--- menus of only target markers, by stealing your focus while the menu is open.
+-- keybind was pressed (out of combat, Ring_Secure). CursorFocus also marks any unit, in combat
+-- too, in menus of only target markers, by stealing your focus while the menu is open.
 Enum.TargetMarkerUnit = {
     Target = 1,
     Cursor = 2,
@@ -114,6 +116,7 @@ Config.DBGlobalPersistent = nil
 Config.DBLocal = nil
 Config.DBLocalPersistent = nil
 
+--- Loads the saved variables with their defaults, then fires env.Event.DatabaseReady.
 function Config.LoadDB()
     Config.DBGlobal = SavedVariables.RegisterDatabase(NAME_GLOBAL).defaults(DB_GLOBAL_DEFAULTS)
     Config.DBGlobalPersistent = SavedVariables.RegisterDatabase(NAME_GLOBAL_PERSISTENT).defaults(DB_GLOBAL_PERSISTENT_DEFAULTS)
@@ -169,7 +172,7 @@ env.AX_SettingsOptions = {
         end,
     },
     getSchema = function() return env.AX_Modules:Import("@\\Setting\\Schema").SCHEMA end,
-    -- Not in Options -> AddOns when the game loads in WoW Forever's gamepad UI: the settings open
-    -- from the addon drawer there (switching later leaves it as it was).
+    -- Not in Options, AddOns when the game loads in WoW Forever's gamepad UI, since the settings
+    -- open from the addon drawer there (switching later leaves it as it was).
     showInOptions = function() return not env.IsGamepadUI() end,
 }

@@ -1,5 +1,5 @@
 --[[
-    Loads first, with what every other file uses. Addon info, the game version, the addon's events,
+    Loads first, with what every other file uses: addon info, the game version, the addon's events,
     the locale table (filled by Locales\*.lua), and chat output.
 ]]
 
@@ -10,7 +10,7 @@ local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 
 -- Basic addon information
 env.NAME = "RL: |cff00e900Radial Menu|r"
-env.NAME_ALT = "Radial Menu" -- without the prefix / color (Edit Mode, About)
+env.NAME_ALT = "Radial Menu" -- without the prefix or color (Edit Mode, About)
 env.ICON = Path.Root .. "\\Art\\Icon\\logo-1024.png"
 env.VERSION_STRING = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?" -- from the .toc
 
@@ -28,8 +28,10 @@ do
         or env.GameVersion.Classic
 end
 
---- Whether something limited to `versions` (a list of env.GameVersion values; nil = every
---- version) exists in the game this is running in. Built-in menus and action kinds use it.
+--- Whether something limited to `versions` exists in the game this is running in. Built-in
+--- menus and action kinds use it.
+---@param versions string[]? env.GameVersion values (nil means every version)
+---@return boolean
 function env.IsForThisGame(versions)
     if not versions then return true end
     for _, version in ipairs(versions) do
@@ -38,9 +40,10 @@ function env.IsForThisGame(versions)
     return false
 end
 
---- Whether WoW Forever's gamepad UI is on (always false on retail). Every controller feature
---- checks this: controller support only exists in that UI. It changes with
+--- Whether WoW Forever's gamepad UI is on (always false on Retail). Every controller feature
+--- checks this, since controller support only exists in that UI. It changes with
 --- "INPUT_DEVICE_INTERFACE_TRANSITION" (Forever only).
+---@return boolean
 do
     local C_InputInterfaceStyle = _G["C_InputInterfaceStyle"]
     local InterfaceType = Enum and Enum["InputDeviceInterfaceType"]
@@ -50,8 +53,10 @@ do
     end
 end
 
---- Whether this client has `event`: registering one it doesn't have is an error, and the game
---- versions don't share every event (WoW Forever lacks some of retail's).
+--- Whether this client has `event`. Registering one it doesn't have is an error, and the game
+--- versions don't share every event (WoW Forever lacks some of Retail's).
+---@param event string
+---@return boolean
 function env.IsEventValid(event)
     if C_EventUtils and C_EventUtils.IsEventValid then return C_EventUtils.IsEventValid(event) end
     return true
@@ -76,19 +81,22 @@ env.ChangeReason = Utils_Standard.Strict({
     Auto = "auto", -- start-up, built-in refills or the menu moving, rebuilt without the combat message
 }, "change reason")
 
--- Development only: chat output for menu use (what fired) and drag & drop (cursor info). Set to
--- true here to turn it on; there's no in-game switch.
+-- Development only: chat output for menu use (what fired) and drag and drop (cursor info). Set
+-- it to true here to turn it on, since there's no in-game switch.
 env.DEBUG_MODE = false
 
--- Localization table
-local L = {}; env.L = L
+-- The locale table, filled by Locales\*.lua.
+local L = {}
+env.L = L
 
--- Chat output
+--- Prints `msg` in chat, after the addon's name.
+---@param msg string
 function env.Print(msg)
     print(env.NAME .. ": " .. msg)
 end
 
---- Chat output for development, only with env.DEBUG_MODE.
+--- Prints `msg` in chat, only with env.DEBUG_MODE (for development).
+---@param msg string
 function env.Debug(msg)
     if env.DEBUG_MODE then env.Print(msg) end
 end

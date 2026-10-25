@@ -1,8 +1,7 @@
 --[[
-    Performance log: /rm perf toggles a line in chat every 5 seconds with what the addon cost in
-    that time, to find what's heavy while playing (and for testers to send):
-
-        cpu      the game's addon profiler: recent average per frame, and the peak (Retail)
+    Perf: the performance log. /rm perf turns on a line in chat every 5 seconds with what the addon
+    cost in that time, to find what's heavy while playing (and for testers to send).
+        cpu      the game's addon profiler: the recent average per frame, and the peak (Retail)
         mem      memory now, and how much it grew in those 5 s (temporary data not yet collected)
         updates  Ring_Auto's background updates: how many, their time, built-in menus refilled
         events   the events that asked for them, most first
@@ -10,27 +9,29 @@
                  UIKit layout passes (how many, time), animations running now
         open     what's on screen that runs every frame (a menu, the settings)
 
-    When UIKit frames asked for layout, two more lines: the frames that asked most (with their
-    size), and the calls that led to the first one (file:line, newest first). A frame asking every
-    pass is a layout loop.
+    When UIKit frames asked for layout, there are two more lines: the frames that asked most (with
+    their size), and the calls that led to the first one (file:line, newest first). A frame asking
+    every pass is a layout loop.
 
-    Off by default and costs nothing then: no timer, Ring_Auto and the preview only count while
-    `enabled`, and UIKit's functions are only wrapped while it's on.
+    It's off by default and costs nothing then. There's no timer, Ring_Auto and the preview only
+    count while `enabled`, and UIKit's functions are only wrapped while it's on. It stays in the
+    shipped addon, so testers can send their numbers.
 ]]
 
 local addonName, env = ...
+local L = env.L
 local UIAnim = env.AX_Modules:Import("ax_modules\\ui-anim")
 local UIKit_Cleaner = env.AX_Modules:Import("ax_modules\\ui-kit\\renderer\\cleaner")
 local UIKit_Scanner = env.AX_Modules:Import("ax_modules\\ui-kit\\ui\\scanner")
 local Perf = env.AX_Modules:New("@\\Perf")
 local Setting = env.AX_Modules:Await("@\\Setting")
 
-local INTERVAL = 5     -- s between lines
+local INTERVAL = 5     -- seconds between lines
 local TOP_EVENTS = 4   -- events named per line
 local TOP_SCANS = 3    -- frames named per rescans line
 local NAME_LENGTH = 70 -- frame names are shortened to their end
 
-Perf.enabled = false
+Perf.enabled = false -- the log is on (others only count while it is)
 
 local ticker, lastMemory
 
@@ -55,19 +56,23 @@ local function ResetCounters()
 end
 ResetCounters()
 
---- An event that asked Ring_Auto for an update (while enabled).
+--- Counts an event that asked Ring_Auto for an update (while enabled).
+---@param event string
 function Perf.CountEvent(event)
     eventCounts[event] = (eventCounts[event] or 0) + 1
 end
 
---- One Ring_Auto update: its time in ms and how many built-in menus it refilled (while enabled).
+--- Counts one Ring_Auto update (while enabled).
+---@param ms number its time
+---@param refilled integer how many built-in menus it refilled
 function Perf.CountUpdate(ms, refilled)
     updates = updates + 1
     updateMs = updateMs + ms
     refills = refills + refilled
 end
 
---- One run of the settings preview's per-frame script (while enabled).
+--- Counts one run of the settings preview's per-frame script (while enabled).
+---@param ms number its time
 function Perf.CountPreviewFrame(ms)
     previewFrames = previewFrames + 1
     previewMs = previewMs + ms
@@ -75,7 +80,7 @@ end
 
 
 
--- UIKit, wrapped while the log is on: its timer and scans call these through the module tables,
+-- UIKit, wrapped while the log is on. Its timer and scans call these through the module tables,
 -- so the wrappers are what run.
 
 -- Layout passes: how many, and their time.
@@ -110,7 +115,10 @@ end
 
 -- The line
 
---- `counts` ({ [name] = count }) as { name, count } pairs, most first, at most `limit`.
+--- `counts` as { name, count } pairs, most first, at most `limit`.
+---@param counts table<string, integer>
+---@param limit integer
+---@return table[]
 local function Top(counts, limit)
     local list = {}
     for name, count in pairs(counts) do list[#list + 1] = { name, count } end
@@ -119,6 +127,7 @@ local function Top(counts, limit)
     return list
 end
 
+---@return string?
 local function CpuText()
     local profiler = C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric
     local metric = Enum.AddOnProfilerMetric
@@ -127,12 +136,14 @@ local function CpuText()
         profiler(addonName, metric.PeakTime) or 0)
 end
 
+---@return string
 local function EventsText()
     local parts = {}
     for i, entry in ipairs(Top(eventCounts, TOP_EVENTS)) do parts[i] = entry[1] .. " " .. entry[2] end
     return "events: " .. (#parts > 0 and table.concat(parts, ", ") or "none")
 end
 
+---@return string
 local function OpenText()
     local open = {}
     local view = _G["RLRM_RingView"] -- the in-game menu (Ring_View)
@@ -142,6 +153,8 @@ local function OpenText()
 end
 
 --- The rescans line and its caller line, or nil when no frame asked for layout.
+---@return string?
+---@return string?
 local function ScansText()
     local top = Top(scanCounts, TOP_SCANS)
     if #top == 0 then return nil end
@@ -150,6 +163,7 @@ local function ScansText()
     return "rescans: " .. table.concat(parts, ", "), "rescan caller: " .. (scanCallers[top[1][1]] or "?")
 end
 
+--- Prints the line, and starts counting again.
 local function Report()
     UpdateAddOnMemoryUsage()
     local memory = GetAddOnMemoryUsage(addonName) / 1024
@@ -175,7 +189,7 @@ end
 
 
 
---- /rm perf: turns the log on or off.
+--- Turns the log on or off (/rm perf).
 function Perf.Toggle()
     Perf.enabled = not Perf.enabled
     if Perf.enabled then
@@ -184,12 +198,12 @@ function Perf.Toggle()
         UIKit_Cleaner.Wash = TimedWash
         UIKit_Scanner.ScanFrame = CountedScan
         ticker = C_Timer.NewTicker(INTERVAL, Report)
-        env.Print(format("performance log on (every %d s; /rm perf to stop)", INTERVAL))
+        env.Print(format(L["Perf - On"], INTERVAL))
     else
         UIKit_Cleaner.Wash = originalWash
         UIKit_Scanner.ScanFrame = originalScan
         if ticker then ticker:Cancel() end
         ticker = nil
-        env.Print("performance log off")
+        env.Print(L["Perf - Off"])
     end
 end
