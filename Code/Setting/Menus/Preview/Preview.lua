@@ -68,6 +68,7 @@ local Text = UIKit.UI.Frames[5]
 local UICCommon = env.AX_Modules:Import("ax_modules\\uic-common")
 local GenericEnum = env.AX_Modules:Import("ax_modules\\generic-enum")
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 local Menus_Preview = env.AX_Modules:New("@\\Setting\\Menus\\Preview")
 local Private = env.AX_Modules:New("@\\Setting\\Menus\\Preview\\Private")
 
@@ -281,7 +282,7 @@ function PreviewMixin:SetMenu(menu)
     local hasTapOnly = menu ~= nil and Menu_Data.GetQuickAction(menu) ~= nil
     wheel:SetActions(displayActions, nil, hasTapOnly)
     -- Scroll submenus show what scrolls them in game, the D-pad when playing with a controller.
-    wheel:SetScrollBadges(actions, nil, env.IsGamepadUI())
+    wheel:SetScrollBadges(actions, nil, env.IsGamepadUI() or Utils_ConsolePort.IsActive())
     wheel:SetConditionBadges(actions)
     for i = 1, #wheel.Wedges do
         local wedge = wheel.Wedges[i]
