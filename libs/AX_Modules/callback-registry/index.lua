@@ -1,3 +1,8 @@
+--[[
+    CallbackRegistry: named events inside the addon. Add a callback for an id, and Trigger the id
+    to call them all, in priority order (lowest first, then in the order they were added).
+]]
+
 local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:New("ax_modules\\callback-registry")
 
@@ -21,6 +26,10 @@ local function insertCallback(callbacks, entry)
     tinsert(callbacks, low, entry)
 end
 
+--- Calls `func(id, ...)` whenever `id` is triggered.
+---@param id string
+---@param func fun(id: string, ...)
+---@param priority number? lower runs first (0 by default)
 function CallbackRegistry.Add(id, func, priority)
     local callbacks = db[id]
     if not callbacks then
@@ -34,6 +43,9 @@ function CallbackRegistry.Add(id, func, priority)
     })
 end
 
+--- Calls every callback added for `id`, with `id` and the other arguments.
+---@param id string
+---@param ... any
 function CallbackRegistry.Trigger(id, ...)
     local callbacks = db[id]
     if not callbacks then return end

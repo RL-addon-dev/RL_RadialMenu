@@ -23,6 +23,9 @@ end
 
 --- `folder`\`file`, or `folder`\<skin>\`file` when this game version has its own art (Path.Skin).
 --- Only for files that have a variant in every skin folder.
+---@param folder string
+---@param file string
+---@return string
 function Path.Skinned(folder, file)
     if Path.Skin then return folder .. "\\" .. Path.Skin .. "\\" .. file end
     return folder .. "\\" .. file

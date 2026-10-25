@@ -19,6 +19,7 @@ local env = select(2, ...)
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local SavedVariables = env.AX_Modules:Import("ax_modules\\saved-variables")
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
+local WoWClient = env.AX_Modules:Import("ax_modules\\wow-client")
 
 local Config = {}
 env.Config = Config
@@ -150,7 +151,7 @@ function Config.OnChange(key, callback)
 end
 
 -- Saved variables exist once the addon has loaded.
-CallbackRegistry.Add("WoWClient.OnAddonLoaded", Config.LoadDB)
+CallbackRegistry.Add(WoWClient.Event.OnAddonLoaded, Config.LoadDB)
 
 
 
