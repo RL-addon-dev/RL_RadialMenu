@@ -20,13 +20,14 @@ local InCombatLockdown = InCombatLockdown
 -- The settings a rebuild reads. They live in secure attributes, or decide what the snippets and
 -- the bindings do.
 local REBUILD_SETTINGS = {
-    Config.Key.Deadzone,             -- Distance to Select
-    Config.Key.ProbeSize,            -- the center probe
-    Config.Key.WorldMarkerPlacement, -- world marker actions' macro
-    Config.Key.TargetMarkerUnit,     -- target markers' tap copies
-    Config.Key.RightClickDismiss,    -- whether held menus bind right click
-    Config.Key.MenuStyle,            -- what the release and the mouse do
-    Config.Key.FlickToSelect,        -- what the stick's release does
+    Config.Key.Deadzone,              -- Distance to Select
+    Config.Key.ProbeSize,             -- the center probe
+    Config.Key.WorldMarkerPlacement,  -- world marker actions' macro
+    Config.Key.TargetMarkerUnit,      -- target markers' tap copies
+    Config.Key.ConsolePortMarkerUnit, -- target markers' macro, with ConsolePort
+    Config.Key.RightClickDismiss,     -- whether held menus bind right click
+    Config.Key.MenuStyle,             -- what the release and the mouse do
+    Config.Key.FlickToSelect,         -- what the stick's release does
 }
 
 local QueueRebuild -- defined below, and also run when the open menu is released (Callbacks.lua)

@@ -50,10 +50,12 @@ Private.pendingBindings = {}
 
 --- Mark Target Markers On, as two answers. The first says whether markers mark the unit under the
 --- mouse (Cursor or Cursor + Focus). The second says whether menus of only target markers steal
---- your focus for it (Cursor + Focus).
+--- your focus for it (Cursor + Focus). Both are false with ConsolePort, which has its own setting
+--- (Kinds\TargetMarker.lua).
 ---@return boolean cursor
 ---@return boolean steal
 function Private.GetMarkerMode()
+    if Utils_ConsolePort.IsActive() then return false, false end
     local value = Config.Get(Config.Key.TargetMarkerUnit)
     local steal = value == env.Enum.TargetMarkerUnit.CursorFocus
     return steal or value == env.Enum.TargetMarkerUnit.Cursor, steal

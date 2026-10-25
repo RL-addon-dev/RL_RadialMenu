@@ -67,6 +67,13 @@ Enum.TargetMarkerUnit = {
     CursorFocus = 3
 }
 
+-- Mark Target Markers On with ConsolePort, which hides the mouse: your target, or the unit it
+-- points at (its soft target) as the marker fires, else your target.
+Enum.ConsolePortMarkerUnit = {
+    Target = 1,
+    SoftTarget = 2
+}
+
 
 
 -- Defaults
@@ -94,6 +101,7 @@ local DB_GLOBAL_DEFAULTS = {
     RightClickDismiss    = true,                            -- right click closes a held menu (Menu_Secure)
     WorldMarkerPlacement = Enum.WorldMarkerPlacement.Mouse,
     TargetMarkerUnit     = Enum.TargetMarkerUnit.Cursor,    -- like the ping menu
+    ConsolePortMarkerUnit = Enum.ConsolePortMarkerUnit.SoftTarget,
     PreviewHideHidden    = false,                           -- the settings preview leaves out actions hidden
                                                             -- in game right now (the eye toggle)
 }

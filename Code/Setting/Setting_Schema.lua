@@ -356,7 +356,24 @@ do -- Schema
                                     L["Config - Behavior - TargetMarkerUnit - CursorFocus" .. suffix]
                                 }
                             end,
-                            key                      = Config.Key.TargetMarkerUnit
+                            key                      = Config.Key.TargetMarkerUnit,
+                            showWhen                 = function() return not Utils_ConsolePort.IsActive() end
+                        },
+                        {
+                            -- ConsolePort hides the mouse, so it has its own setting: your target,
+                            -- or the unit it points at (Kinds\TargetMarker.lua).
+                            widgetName               = L["Config - Behavior - TargetMarkerUnit"],
+                            widgetDescription        = Description(function()
+                                local soft = Config.Get(Config.Key.ConsolePortMarkerUnit) == env.Enum.ConsolePortMarkerUnit.SoftTarget
+                                return L["Config - Behavior - TargetMarkerUnit - Description - " .. (soft and "SoftTarget" or "Target")]
+                            end),
+                            widgetType               = Setting_Enum.WidgetType.SelectionMenu,
+                            widgetSelectionMenu_data = { -- in env.Enum.ConsolePortMarkerUnit's order (Config.lua)
+                                L["Config - Behavior - TargetMarkerUnit - Target"],
+                                L["Config - Behavior - TargetMarkerUnit - SoftTarget"]
+                            },
+                            key                      = Config.Key.ConsolePortMarkerUnit,
+                            showWhen                 = function() return Utils_ConsolePort.IsActive() end
                         }
                     }
                 },

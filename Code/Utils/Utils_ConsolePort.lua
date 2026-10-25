@@ -20,12 +20,21 @@ local EMULATED_MODIFIER_CVARS = {
 -- The game's setting that sends the right stick's directions as keys (PADRSTICKUP...). ConsolePort
 -- owns it (its Allow Radial Bindings option), and puts its own value back whenever bindings change.
 local STICK_KEYS_CVAR = "GamePadStickAxisButtons"
+local POINTED_UNITS = { "softenemy", "softfriend" }
+local NO_UNITS = {}
 
 --- Whether ConsolePort drives the controller: it's loaded, controller input is on, and Forever's
 --- gamepad UI isn't (that keeps its own controller support).
 ---@return boolean
 function Utils_ConsolePort.IsActive()
     return _G["ConsolePort"] ~= nil and C_GamePad ~= nil and C_GamePad.IsEnabled() and not env.IsGamepadUI()
+end
+
+--- The units ConsolePort points at in place of the mouseover (its soft targets, enemy first), or
+--- none when it isn't active.
+---@return string[]
+function Utils_ConsolePort.GetPointedUnits()
+    return Utils_ConsolePort.IsActive() and POINTED_UNITS or NO_UNITS
 end
 
 
