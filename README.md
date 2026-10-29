@@ -3,8 +3,6 @@
 Open a radial menu of actions with one keybind. It works in combat, with a mouse or a controller,
 on Retail and WoW Forever.
 
-[![Watch the overview video (2:32)](Media/overview-poster.jpg)](Media/overview.mp4)
-
 ## Getting started
 
 1. Open the settings from the minimap's addon drawer, under Esc → Options → AddOns → Radial Menu,
