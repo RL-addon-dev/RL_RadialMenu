@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.2
+
+- Supports patch 12.1.7.
+- Fixes the issues found by Ketho's WoW API checks.
+
 ## v1.0.1
 
 The first release.

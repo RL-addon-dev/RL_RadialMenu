@@ -1,4 +1,4 @@
-## Interface: 120100, 120105, 16001
+## Interface: 120107, 16001
 ## Title: RL: |cff00e900Radial Menu|r
 ## Notes: Radial menus for your spells, items, toys, mounts and markers. Hold a key, flick, release.
 ## Author: RL
