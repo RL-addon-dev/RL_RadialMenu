@@ -5,7 +5,10 @@
 local env = select(2, ...)
 local L = env.L
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Utils_Spell = env.AX_Modules:Import("@\\Utils\\Spell")
+
+local GetActionTexture = Utils_API.GetActionTexture
 
 -- Shown while there's no Extra Action. INV_Misc_Rune_01 was used before, but it's the
 -- Hearthstone's icon.

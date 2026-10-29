@@ -33,7 +33,13 @@
 local env = select(2, ...)
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Menu_Crossbar = env.AX_Modules:New("@\\Menu\\Crossbar")
+
+local HasAction = Utils_API.HasAction
+local GetActionText = Utils_API.GetActionText
+local GetSpellInfo = Utils_API.GetSpellInfo
+local GetItemInfo = Utils_API.GetItemInfo
 
 -- A combo's side: the crossbar modifiers held (saved data, never renamed). Menu_Secure's
 -- STICK_CLICK snippet spells these out too.

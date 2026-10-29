@@ -10,9 +10,11 @@
 local env = select(2, ...)
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Utils_Item = env.AX_Modules:Import("@\\Utils\\Item")
 
-local GetNumEntries = (C_QuestLog and C_QuestLog.GetNumQuestLogEntries) or GetNumQuestLogEntries
+local GetNumEntries = Utils_API.GetNumQuestLogEntries
+local GetQuestLogTitle = Utils_API.GetQuestLogTitle
 
 --- Quest log entry `index`, its quest id and whether it's complete. Nil for a header.
 ---@param index integer

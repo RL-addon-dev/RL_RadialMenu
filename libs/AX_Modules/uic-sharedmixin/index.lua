@@ -360,7 +360,7 @@ do -- Input
 end
 
 do -- Color Input
-    local ColorInputMixin = CreateFromMixins(UICSharedMixin.ButtonMixin)
+    local ColorInputMixin = CreateFromMixins(UICSharedMixin.ButtonMixin) --[[@as table]]
     UICSharedMixin.ColorInputMixin = ColorInputMixin
 
     local function ColorPicker_OnColorChanged(self)

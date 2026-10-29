@@ -4,9 +4,12 @@
 ]]
 
 local env = select(2, ...)
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Utils_Spell = env.AX_Modules:New("@\\Utils\\Spell")
 
-local GetSpellSubtext = (C_Spell and C_Spell.GetSpellSubtext) or GetSpellSubtext
+local GetSpellSubtext = Utils_API.GetSpellSubtext
+local HasAction = Utils_API.HasAction
+local HasExtraActionBar = Utils_API.HasExtraActionBar
 
 ---@class SpellBookSpell
 ---@field name string
@@ -152,7 +155,7 @@ local function RememberPickup(spell)
     lastPickedUpSpell = (type(spell) == "number" and spell) or nil
 end
 if C_Spell and C_Spell.PickupSpell then hooksecurefunc(C_Spell, "PickupSpell", RememberPickup) end
-if PickupSpell then hooksecurefunc("PickupSpell", RememberPickup) end
+if Utils_API.PickupSpell then hooksecurefunc("PickupSpell", RememberPickup) end
 
 --- The id of the last spell picked up with C_Spell.PickupSpell (or PickupSpell), or nil when it
 --- was picked up by name.

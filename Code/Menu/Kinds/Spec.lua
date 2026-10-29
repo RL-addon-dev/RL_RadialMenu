@@ -10,9 +10,10 @@
 local env = select(2, ...)
 local L = env.L
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Utils_Spec = env.AX_Modules:Import("@\\Utils\\Spec")
 
-local SetSpecialization = (C_SpecializationInfo and C_SpecializationInfo.SetSpecialization) or SetSpecialization
+local SetSpecialization = Utils_API.SetSpecialization
 
 ---@param specID number
 local function Switch(specID)
