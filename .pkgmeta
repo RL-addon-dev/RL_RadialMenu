@@ -1,5 +1,10 @@
 package-as: RL_RadialMenu
 
+# The release changelog, instead of one generated from the git log.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 # Left out of the release zip: repo-only files. LICENSE and NOTICE stay in (GPL).
 ignore:
   - README.md
