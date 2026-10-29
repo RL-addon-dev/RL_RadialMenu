@@ -6,7 +6,7 @@
 ## OptionalDeps: ConsolePort
 ## X-License: GPL-3.0
 ## IconTexture: Interface/AddOns/RL_RadialMenu/Art/Icon/logo-1024.png
-## Version: 0.0.3
+## Version: @project-version@
 ## SavedVariables: RL_RadialMenuDB_Global, RL_RadialMenuDB_Global_Persistent
 ## SavedVariablesPerCharacter: RL_RadialMenuDB_Local, RL_RadialMenuDB_Local_Persistent
 ## AddonCompartmentFunc: RLRadialMenuAPI_OpenSettingUI

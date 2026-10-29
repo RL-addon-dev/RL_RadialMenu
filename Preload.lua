@@ -12,7 +12,9 @@ local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 env.NAME = "RL: |cff00e900Radial Menu|r"
 env.NAME_ALT = "Radial Menu" -- without the prefix or color (Edit Mode, About)
 env.ICON = Path.Root .. "\\Art\\Icon\\logo-1024.png"
-env.VERSION_STRING = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?" -- from the .toc
+-- From the .toc. The packager sets it from the release tag. A git checkout still has the placeholder.
+local tocVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"
+env.VERSION_STRING = tocVersion:find("^@") and "dev" or tocVersion
 
 -- Which game this is running in (the .toc lists the interfaces it supports). Library menus can be
 -- limited to some of them (Code\Menu\Data\Library.lua). WoW Forever's builds are 1.6x (16001...).
