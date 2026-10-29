@@ -12,6 +12,8 @@
 ]]
 
 local env = select(2, ...)
+
+local MyAddonDB = { collapsedGroups = {} }
 local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Setting_Define = env.AX_Modules:Import("@\\Setting\\Define")
 local Setting_Enum = env.AX_Modules:Import("@\\Setting\\Enum")

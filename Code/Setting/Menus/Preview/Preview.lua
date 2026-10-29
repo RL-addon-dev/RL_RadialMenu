@@ -195,13 +195,16 @@ local function IsHidingHidden()
     return Config.DBGlobal and Config.Get(Config.Key.PreviewHideHidden) and true or false
 end
 
+---@class PreviewRemoveButton : Button
+---@field Texture Texture
+
 --- The X on an icon's top-right corner.
 ---@param preview MenuPreview
 ---@param wedge table a MenuWedge, or { Button = the center's icon }
 ---@param onClick function? removing the wedge's action by default
----@return Button
+---@return PreviewRemoveButton
 local function CreateRemoveButton(preview, wedge, onClick)
-    local button = CreateFrame("Button", nil, wedge.Button)
+    local button = CreateFrame("Button", nil, wedge.Button) --[[@as PreviewRemoveButton]]
     button:SetSize(REMOVE_SIZE, REMOVE_SIZE)
     button:SetPoint("CENTER", wedge.Button, "TOPRIGHT", -REMOVE_OFFSET + REMOVE_SIZE / 2, -REMOVE_OFFSET + REMOVE_SIZE / 2)
     button:SetFrameLevel(preview.wheel:GetFrameLevel() + REMOVE_FRAME_LEVEL)

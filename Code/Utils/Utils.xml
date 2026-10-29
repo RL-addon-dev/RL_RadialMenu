@@ -5,6 +5,7 @@
         wrap WoW APIs and aren't about menus, so any part of the addon can use them, and one day
         they could move into the AX libraries. They load before the settings and the menus.
     -->
+    <Script file="Utils_API.lua"/>
     <Script file="Utils_Spell.lua"/>
     <Script file="Utils_Spec.lua"/>
     <Script file="Utils_Pet.lua"/>

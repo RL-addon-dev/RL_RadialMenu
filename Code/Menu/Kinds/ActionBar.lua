@@ -28,6 +28,14 @@ local env = select(2, ...)
 local L = env.L
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
+local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
+
+local HasAction = Utils_API.HasAction
+local GetActionTexture = Utils_API.GetActionTexture
+local GetActionText = Utils_API.GetActionText
+local GetOverrideBarIndex = Utils_API.GetOverrideBarIndex
+local GetVehicleBarIndex = Utils_API.GetVehicleBarIndex
+local GetTempShapeshiftBarIndex = Utils_API.GetTempShapeshiftBarIndex
 
 local NUM_BARS = 8
 local NUM_BUTTONS = 12

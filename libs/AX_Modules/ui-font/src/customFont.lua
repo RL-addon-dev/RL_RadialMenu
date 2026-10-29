@@ -7,13 +7,19 @@ local tinsert = table.insert
 local UIFont_CustomFont = env.AX_Modules:New("ax_modules\\ui-font\\custom-font")
 
 
+---@class LibSharedMedia
+---@field HashTable fun(self: LibSharedMedia, mediaType: string): table<string, string>
+
+---@type LibSharedMedia?
 local LibSharedMedia = nil
 
+--- LibSharedMedia when another addon loaded it, else nil.
+---@return LibSharedMedia?
 local function GetLibSharedMedia()
     if not LibSharedMedia and LibStub then
-        LibSharedMedia = LibStub:GetLibrary("LibSharedMedia-3.0", true)
+        LibSharedMedia = LibStub:GetLibrary("LibSharedMedia-3.0", true) --[[@as LibSharedMedia?]]
     end
-    return LibSharedMedia ~= nil
+    return LibSharedMedia
 end
 
 
@@ -29,9 +35,10 @@ function UIFont_CustomFont.RefreshFontList()
     tinsert(fonts.paths, gameFontPath)
 
     -- Populate LibSharedMedia fonts
-    if GetLibSharedMedia() then
+    local lsm = GetLibSharedMedia()
+    if lsm then
         local lsmFonts = {}
-        for name, path in pairs(LibSharedMedia:HashTable("font")) do
+        for name, path in pairs(lsm:HashTable("font")) do
             tinsert(lsmFonts, { name = name, path = path })
         end
 
