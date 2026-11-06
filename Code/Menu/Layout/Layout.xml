@@ -6,4 +6,5 @@
     <Script file="Wheel.lua"/>
     <Script file="Badges.lua"/>
     <Script file="ActionIcon.lua"/>
+    <Script file="Masque.lua"/>
 </Ui>

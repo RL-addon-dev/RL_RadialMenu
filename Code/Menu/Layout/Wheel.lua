@@ -123,6 +123,7 @@ function WheelMixin:GetWedge(index)
 
     wedge.Pieces = {} -- the highlight art (WedgeArt.lua)
     wedge.Button = Menu_Layout.CreateActionIcon(wedge, ICON_SIZE)
+    Menu_Layout.SkinActionIcon(wedge.Button, Menu_Layout.MasqueGroup.Actions)
     Private.CreateScrollBadge(self, wedge)
     Private.CreateConditionBadge(self, wedge)
     -- The action name, shown while highlighted (SetShowLabels). It's a child of the wheel, not of
@@ -375,7 +376,8 @@ end
 ---@param action Action? the action the icon stands for, for its border and cooldown (nil for none)
 function WheelMixin:SetQuickIcon(icon, action)
     Menu_Layout.SetIcon(self.Quick.Icon, icon)
-    self.Quick.Border:SetShown(not (action and Menu_Actions.HasNoIconBorder(action)))
+    local bordered = not (action and Menu_Actions.HasNoIconBorder(action))
+    self.Quick.Border:SetShown(bordered and self.Quick.skinShowsBorder ~= false)
     Menu_Layout.SetUnderlay(self.Quick, action)
     self.quickAction = action
     Menu_Layout.UpdateIconCooldown(self.Quick, action)
@@ -443,6 +445,7 @@ local function CreateCenter(wheel)
     wheel.CancelIcon:SetAtlas(ATLAS_CANCEL_ICON, true)
 
     wheel.Quick = Menu_Layout.CreateActionIcon(wheel, QUICK_ICON_SIZE)
+    Menu_Layout.SkinActionIcon(wheel.Quick, Menu_Layout.MasqueGroup.QuickAction)
     -- The quick action's visibility badge (settings preview only).
     wheel.QuickBadges = { Button = wheel.Quick }
     Private.CreateConditionBadge(wheel, wheel.QuickBadges)
