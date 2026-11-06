@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0
+
+- Supports Masque. The menu's actions and its quick action are separate groups, so each can have its own skin.
+
 ## v1.0.2
 
 - Supports patch 12.1.7.
