@@ -38,6 +38,9 @@ Private.COOLDOWN_EVENTS = {
 --- An action icon (Menu_Layout.CreateActionIcon).
 ---@class ActionIcon : Frame
 ---@field Icon TintedTexture the icon to set (Menu_Layout.SetIcon)
+---@field IconMask MaskTexture the action bar mask on the icon and the out of range shade
+---@field skinned boolean? a Masque skin is on it (Masque.lua)
+---@field skinShowsBorder boolean? its skin shows the border (Masque.lua)
 ---@field Underlay Texture a kind's art behind the icon
 ---@field OutOfRange Texture? the out of range shade, on clients with its art
 ---@field Border Texture
@@ -77,7 +80,8 @@ end
 ---@param action Action?
 function Menu_Layout.SetActionIcon(iconFrame, action)
     Menu_Layout.SetIcon(iconFrame.Icon, action and Menu_Actions.GetIcon(action) or Menu_Kinds.QUESTION_MARK_ICON)
-    iconFrame.Border:SetShown(not (action and Menu_Actions.HasNoIconBorder(action)))
+    local bordered = not (action and Menu_Actions.HasNoIconBorder(action))
+    iconFrame.Border:SetShown(bordered and iconFrame.skinShowsBorder ~= false)
     Menu_Layout.SetUnderlay(iconFrame, action)
 end
 
@@ -126,6 +130,7 @@ function Menu_Layout.CreateActionIcon(parent, size)
     end
     mask:SetPoint("CENTER", frame.Icon)
     frame.Icon:AddMaskTexture(mask)
+    frame.IconMask = mask
 
     -- Out of range, a shadow over the icon besides its red tint, like the Cooldown Manager
     -- (UpdateIconState). Clients without its art get the tint only.
@@ -382,7 +387,8 @@ function Menu_Layout.UpdateIconState(icon, action, fresh)
     else
         icon.Icon:SetVertexColor(1, 1, 1)
     end
-    if icon.OutOfRange then icon.OutOfRange:SetShown(inRange == false) end
+    -- The shade's square doesn't fit a skin's shape, so skinned icons get the tint only.
+    if icon.OutOfRange then icon.OutOfRange:SetShown(inRange == false and not icon.skinned) end
     icon.Checked:SetShown(active)
 
     if fresh or glowing ~= (icon.procGlowing or false) then
