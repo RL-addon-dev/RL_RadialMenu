@@ -10,9 +10,6 @@ on Retail and WoW Forever.
 2. On the `Menus` tab, click `+ New` and set a keybind.
 3. Drag spells or items onto the menu, or search with `+`.
 
-> **NOTE**: In WoW Forever's gamepad UI, you can only open the settings from the minimap's addon
-> drawer. The other ways can crash the game because of a Blizzard bug.
-
 ## Features
 
 ### Ping-style menus
