@@ -181,7 +181,4 @@ env.AX_SettingsOptions = {
         end,
     },
     getSchema = function() return env.AX_Modules:Import("@\\Setting\\Schema").SCHEMA end,
-    -- Not in Options, AddOns when the game loads in WoW Forever's gamepad UI, since the settings
-    -- open from the addon drawer there (switching later leaves it as it was).
-    showInOptions = function() return not env.IsGamepadUI() end,
 }
