@@ -6,6 +6,7 @@
 ]]
 
 local env = select(2, ...)
+local Config = env.Config
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Menu_Actions = env.AX_Modules:Import("@\\Menu\\Actions")
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
@@ -133,6 +134,22 @@ local function SetStickKeys(on)
     end
 end
 
+local mouselookWatcher = CreateFrame("Frame")
+mouselookWatcher:SetScript("OnEvent", function(_, _, button)
+    if button == "RightButton" and IsMouselooking() then MouselookStop() end
+end)
+
+--- Stops mouse turning when right click is let go, or no longer does. Right-Click to Cancel takes
+--- that release from the game while a menu is open.
+---@param on boolean
+local function SetMouselookRelease(on)
+    if on then
+        mouselookWatcher:RegisterEvent("GLOBAL_MOUSE_UP")
+    else
+        mouselookWatcher:UnregisterEvent("GLOBAL_MOUSE_UP")
+    end
+end
+
 --- The debug output for a pick: what fired, and the attributes the click used (the same suffix
 --- as the PRE_CLICK snippet's).
 ---@param live SecureLiveMenu?
@@ -179,6 +196,7 @@ function Private.Controller:OnMenuOpen(menuId, startX, startY, relaxed, gamepad)
         end
     end
     if gamepad and not Utils_ConsolePort.IsActive() then SetStickKeys(true) end
+    if Config.Get(Config.Key.RightClickDismiss) then SetMouselookRelease(true) end
     local displayActions = GetDisplayActions(menu, button)
     local quickIndex = button:GetAttribute(Menu_Secure.Attribute.Quick)
     local quickAction = (quickIndex == Private.QUICK_SUFFIX and ShowRedirect(menu, button, menu.quickAction))
@@ -226,6 +244,7 @@ end
 function Private.Controller:OnMenuClose(menuId, result, index)
     Menu_View:Close()
     SetStickKeys(false)
+    SetMouselookRelease(false)
     openMenuId, openRelaxed = nil, false
     -- The pick fires after this returns, so the aimed markers are cleared just after it.
     if aimedButton then C_Timer.After(0, ResetAimedMarkers) end
