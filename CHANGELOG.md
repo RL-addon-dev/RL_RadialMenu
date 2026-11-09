@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.1
+
+- In WoW Forever's gamepad UI, the settings open from the chat commands and Options → AddOns again, now that Blizzard fixed the crash.
+
 ## v1.1.0
 
 - Supports Masque. The menu's actions and its quick action are separate groups, so each can have its own skin.
