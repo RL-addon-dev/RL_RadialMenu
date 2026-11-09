@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2
+
+- With Right-Click to Cancel on, opening a menu while turning with right click no longer leaves the mouse stuck turning. Letting go of right click frees the cursor so you can pick from the menu.
+
 ## v1.1.1
 
 - In WoW Forever's gamepad UI, the settings open from the chat commands and Options → AddOns again, now that Blizzard fixed the crash.
