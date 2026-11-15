@@ -78,6 +78,10 @@ local function GetModifierPrefix(binding)
     return (prefix ~= "" and prefix) or nil
 end
 
+-- The right stick's proxies, one per axis, so a roll from one direction to the next keeps its
+-- release. The game tracks one held key per button.
+local AIM_AXES = { "Vertical", "Horizontal" }
+
 --- The menu's secure button, created on first use. Frames can't be destroyed, so it's reused.
 ---@param menuId string
 ---@return Button
@@ -90,6 +94,16 @@ local function GetMenuButton(menuId)
         button:RegisterForClicks("AnyDown", "AnyUp")
         button:SetAttribute("useOnKeyDown", false)
         SecureHandlerWrapScript(button, "OnClick", Private.Controller, Private.PRE_CLICK)
+        for _, axis in ipairs(AIM_AXES) do
+            local proxy = CreateFrame("Button", button:GetName() .. "_Aim" .. axis, UIParent,
+                "SecureActionButtonTemplate") --[[@as Button]]
+            proxy:SetSize(1, 1)
+            proxy:EnableMouse(false)
+            proxy:RegisterForClicks("AnyDown", "AnyUp")
+            proxy:SetAttribute("type", "click")
+            proxy:SetAttribute("clickbutton", button)
+            SecureHandlerWrapScript(proxy, "OnClick", Private.Controller, Private.AIM_PROXY_CLICK)
+        end
         Private.buttonsById[menuId] = button
     end
     return button

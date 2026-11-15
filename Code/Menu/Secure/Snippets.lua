@@ -89,8 +89,8 @@
     the helper binds these.
         - B (PAD2) and R3 (PADRSTICK) close it.
         - D-pad up and down scroll the aimed wedge's scroll submenu.
-        - The right stick's directions, as keys (SetStickKeys), click the menu's button as "Aim".
-          They keep the pick the stick leaves ("menu-sticky"), which Menu_View shows.
+        - The right stick's directions, as keys (SetStickKeys), click the menu's button through
+          its proxies. They keep the pick the stick leaves ("menu-sticky"), which Menu_View shows.
         - A (PAD1) picks the stick's direction, else the sticky pick, else the quick action, else
           closes the menu.
     A Quick release picks the same way. In Relaxed, the keybind again closes the menu, like B. With
@@ -122,6 +122,12 @@ Private.UNBIND_PAD = [[
     self:RunAttribute("consoleport-release", key)
 ]]
 
+-- A stick proxy's OnClick (Setup.lua). It passes the press or release on to its menu's button.
+Private.AIM_PROXY_CLICK = [[
+    self:SetAttribute("useOnKeyDown", down)
+    return (down and "AimPress") or "AimRelease"
+]]
+
 -- The menu button's OnClick, wrapped by the controller (Setup.lua). It returns the button to
 -- redirect the click to ("s3", "s3_2", "FocusSteal"...), or false to fire nothing.
 Private.PRE_CLICK = [[
@@ -137,7 +143,7 @@ Private.PRE_CLICK = [[
     if isPick and down then return false end
     -- A controller's A ("PadUse", bound below) acts on its press only, on the open menu.
     local isPadUse = button == "PadUse"
-    -- In a controller's open (GAMEPAD_OPEN), the right stick's direction keys ("Aim", bound below)
+    -- In a controller's open (GAMEPAD_OPEN), the right stick's direction keys (proxied, bound below)
     -- keep the pick the stick leaves ("menu-sticky"), which A or a Quick release uses and Menu_View
     -- shows. The stick left the middle on the press and springs back on the release, straight
     -- through where it aimed, so a small tilt still counts. A menu whose own key is D-pad up or
@@ -145,7 +151,8 @@ Private.PRE_CLICK = [[
     -- ("menu-flick"), a direction key's release with the stick back under halfway (let go, not
     -- turned to another direction) fires the pick on that release, in either menu style.
     local isFlick = false
-    if button == "Aim" then
+    if button == "AimPress" or button == "AimRelease" then
+        down = button == "AimPress"
         if OPEN_MENU ~= menuId then return false end
         local count = self:GetAttribute("menu-count") or 0
         local state = GetGamePadState()
@@ -284,10 +291,11 @@ Private.PRE_CLICK = [[
                 owner:RunAttribute("BindPad", prefix .. "PAD2", helperName, "Dismiss")
                 owner:RunAttribute("BindPad", prefix .. "PAD1", menuName, "PadUse")
                 if keyBase ~= "PADRSTICK" then owner:RunAttribute("BindPad", prefix .. "PADRSTICK", helperName, "Dismiss") end
-                owner:RunAttribute("BindPad", prefix .. "PADRSTICKUP", menuName, "Aim")
-                owner:RunAttribute("BindPad", prefix .. "PADRSTICKDOWN", menuName, "Aim")
-                owner:RunAttribute("BindPad", prefix .. "PADRSTICKLEFT", menuName, "Aim")
-                owner:RunAttribute("BindPad", prefix .. "PADRSTICKRIGHT", menuName, "Aim")
+                -- The stick's proxies (Setup.lua)
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKUP", menuName .. "_AimVertical", "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKDOWN", menuName .. "_AimVertical", "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKLEFT", menuName .. "_AimHorizontal", "Aim")
+                owner:RunAttribute("BindPad", prefix .. "PADRSTICKRIGHT", menuName .. "_AimHorizontal", "Aim")
                 if scrollPad then
                     owner:RunAttribute("BindPad", prefix .. "PADDUP", helperName, "PadUp")
                     owner:RunAttribute("BindPad", prefix .. "PADDDOWN", helperName, "PadDown")
