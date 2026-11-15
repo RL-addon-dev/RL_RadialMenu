@@ -126,9 +126,9 @@ local function SetStickKeys(on)
     local setter = (C_CVar and C_CVar.SetCVar) or SetCVar
     if on and stickKeysSaved == nil then
         local value = getter(STICK_KEYS_SETTING)
-        if value ~= nil and value ~= "1" and pcall(setter, STICK_KEYS_SETTING, "1") then
-            stickKeysSaved = value
-        end
+        if value == nil then return end
+        if value == "1" then pcall(setter, STICK_KEYS_SETTING, "0") end
+        if pcall(setter, STICK_KEYS_SETTING, "1") then stickKeysSaved = value end
     elseif not on and stickKeysSaved ~= nil then
         if pcall(setter, STICK_KEYS_SETTING, stickKeysSaved) then stickKeysSaved = nil end
     end

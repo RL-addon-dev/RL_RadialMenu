@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.4
+
+- Flick to Select now works on a controller right after launching the game. Before, it only started working after a /reload.
+
 ## v1.1.3
 
 - With Flick to Select on a controller, rolling the right stick from one action to another and letting go now uses the action you end on. Before, nothing was used.
