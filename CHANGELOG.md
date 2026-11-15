@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3
+
+- With Flick to Select on a controller, rolling the right stick from one action to another and letting go now uses the action you end on. Before, nothing was used.
+
 ## v1.1.2
 
 - With Right-Click to Cancel on, opening a menu while turning with right click no longer leaves the mouse stuck turning. Letting go of right click frees the cursor so you can pick from the menu.
