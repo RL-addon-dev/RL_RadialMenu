@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.0
+
+- The Library has new menus made from your flyouts: Portals, Teleports, Hero's Path, Call Pet, Skyriding and more. There's also a Stances & Forms menu, and in WoW Forever, a totem menu for each element plus Totem Utilities. Each one only shows on characters that can use it.
+
 ## v1.1.4
 
 - Flick to Select now works on a controller right after launching the game. Before, it only started working after a /reload.

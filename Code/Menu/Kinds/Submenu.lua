@@ -76,12 +76,13 @@ Menu_Kinds.Register({
     search = {
         filter  = "submenu",
         dynamic = true,
-        -- Every other menu. Menus that already contain the one being edited are listed but
+        -- Every other menu, except library menus this character can't use (another class's
+        -- flyouts). Menus that already contain the one being edited are listed but
         -- `blocked`, because adding them would nest in a loop, so the user sees why they can't be
         -- added.
         scan    = function(add, menuId)
             for _, menu in ipairs(Menu_Data.GetMenus()) do
-                if menu.id ~= menuId then
+                if menu.id ~= menuId and Menu_Data.IsLibraryMenuShown(menu) then
                     local candidate = add({ kind = Menu_Kinds.Kind.Submenu, menu = menu.id }, menu.name)
                     if candidate and Menu_Data.WouldCreateCycle(menuId, menu.id) then
                         candidate.blocked = L["Config - Menus - Search - Blocked - Loop"]

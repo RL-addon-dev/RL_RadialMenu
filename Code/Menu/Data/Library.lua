@@ -17,7 +17,12 @@
             scan     = function() return actions end,          -- what it holds right now
             category = Menu_Data.LibraryCategory.Situational,  -- its Library group (Situational by default)
             versions = { env.GameVersion.Retail },             -- the games it exists in (every one by default)
+            shown    = function() return true end,             -- whether this character can use it (always by default)
         })
+
+    A menu named by the game (a flyout) gives its name as `label` instead of `name`. One with
+    `shown` is left out of the Library and the submenu picker while it returns false, and keeps
+    its keybind and order meanwhile.
 
     Keys are one lowercase word ("targetmarkers"), like action kind names and for the same reason
     (see Menu_Kinds.lua). They're saved data, so renaming one after release needs a migration, or
@@ -47,6 +52,7 @@ Menu_Data.LibraryCategory = Utils_Standard.Strict({
     Character   = "character",
     Consumables = "consumables",
     Equipment   = "equipment",
+    Flyouts     = "flyouts",
     Markers     = "markers",
     Situational = "situational",
     Travel      = "travel"
@@ -55,7 +61,8 @@ Menu_Data.LibraryCategory = Utils_Standard.Strict({
 Menu_Data.LibraryCategoryOrder = {
     Menu_Data.LibraryCategory.ActionBars, Menu_Data.LibraryCategory.Character,
     Menu_Data.LibraryCategory.Consumables, Menu_Data.LibraryCategory.Equipment,
-    Menu_Data.LibraryCategory.Markers, Menu_Data.LibraryCategory.Situational,
+    Menu_Data.LibraryCategory.Flyouts, Menu_Data.LibraryCategory.Markers,
+    Menu_Data.LibraryCategory.Situational,
     Menu_Data.LibraryCategory.Travel
 }
 
@@ -77,6 +84,15 @@ end
 function Menu_Data.GetLibraryCategory(menu)
     local definition = menu and menu.library and definitions[menu.library]
     return (definition and definition.category) or Menu_Data.LibraryCategory.Situational
+end
+
+--- Whether library menu `menu` is one this character can use, so it's listed. Every menu that
+--- isn't a library menu is.
+---@param menu Menu?
+---@return boolean
+function Menu_Data.IsLibraryMenuShown(menu)
+    local definition = menu and menu.library and definitions[menu.library]
+    return not (definition and definition.shown) or definition.shown()
 end
 
 --- Every library menu definition, in registration order.
@@ -299,7 +315,7 @@ function Private.EnsureLibraryMenus()
     end
 
     for _, definition in ipairs(order) do
-        local name = env.L[definition.name] or definition.key
+        local name = (definition.name and env.L[definition.name]) or definition.label or definition.key
         local menu = existing[definition.key]
         if menu then
             menu.name = name

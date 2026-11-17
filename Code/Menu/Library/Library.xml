@@ -15,4 +15,7 @@
     <Script file="EquipmentSets.lua"/>
     <Script file="Equipment.lua"/>
     <Script file="ActionBars.lua"/>
+    <Script file="Flyouts.lua"/>
+    <Script file="Totems.lua"/>
+    <Script file="Stances.lua"/>
 </Ui>
