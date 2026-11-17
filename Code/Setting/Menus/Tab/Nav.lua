@@ -150,13 +150,14 @@ function PageMixin:GetMyMenusItems()
     return items
 end
 
---- Library: every library menu by category, each group closed until opened.
+--- Library: every library menu this character can use, by category, each group closed until
+--- opened.
 ---@return table[]
 function PageMixin:GetLibraryItems()
     local byCategory = {}
     for _, category in ipairs(Menu_Data.LibraryCategoryOrder) do byCategory[category] = {} end
     for _, menu in ipairs(Menu_Data.GetMenus()) do
-        if Menu_Data.IsLibraryMenu(menu) then
+        if Menu_Data.IsLibraryMenu(menu) and Menu_Data.IsLibraryMenuShown(menu) then
             table.insert(byCategory[Menu_Data.GetLibraryCategory(menu)], menu)
         end
     end

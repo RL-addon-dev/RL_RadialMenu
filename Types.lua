@@ -119,7 +119,9 @@
 --- each field.
 ---@class LibraryDefinition
 ---@field key string saved as Menu.library, so one lowercase word that's never renamed
----@field name string the locale key of its name
+---@field name string? the locale key of its name
+---@field label string? its name as the game gives it (a flyout's), when it has no `name`
+---@field shown (fun(): boolean)? whether this character can use it, so it's listed (always when nil)
 ---@field events string[]? game events after which it refills (Menu_Auto)
 ---@field scan fun(): Action[] what it holds right now
 ---@field category string? a Menu_Data.LibraryCategory value (Situational by default)

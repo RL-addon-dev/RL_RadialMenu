@@ -1,6 +1,7 @@
 --[[
-    Spells and abilities: the player's spellbook, spell ranks, profession spells, the zone ability,
-    the Extra Action Button, and the last spell picked up onto the cursor.
+    Spells and abilities: the player's spellbook, spell ranks, profession spells, flyouts, totems,
+    stances, the zone ability, the Extra Action Button, and the last spell picked up onto the
+    cursor.
 ]]
 
 local env = select(2, ...)
@@ -68,6 +69,62 @@ function Utils_Spell.ForEachPlayerSpell(callback)
             end
         end
     end
+end
+
+--- Every flyout the game has, every class's and not just yours (Portal, Summon Demon...).
+---@return number[] flyoutIDs
+function Utils_Spell.GetFlyoutIDs()
+    local flyoutIDs = {}
+    if not (GetNumFlyouts and GetFlyoutID) then return flyoutIDs end
+    for index = 1, GetNumFlyouts() do
+        local flyoutID = GetFlyoutID(index)
+        if flyoutID then flyoutIDs[#flyoutIDs + 1] = flyoutID end
+    end
+    return flyoutIDs
+end
+
+--- Flyout `flyoutID`'s name, like "Portal".
+---@param flyoutID number
+---@return string?
+function Utils_Spell.GetFlyoutName(flyoutID)
+    return (GetFlyoutInfo(flyoutID))
+end
+
+---@param flyoutID number
+---@return boolean
+function Utils_Spell.IsFlyoutKnown(flyoutID)
+    return select(4, GetFlyoutInfo(flyoutID)) == true
+end
+
+--- The spells you know inside flyout `flyoutID`, as what each casts now. Passive ones are skipped.
+---@param flyoutID number
+---@return number[] spellIDs
+function Utils_Spell.GetFlyoutSpells(flyoutID)
+    local spellIDs = {}
+    ForEachFlyoutSpell(flyoutID, false, function(spellID, info)
+        if not info.isPassive then spellIDs[#spellIDs + 1] = spellID end
+    end)
+    return spellIDs
+end
+
+--- The totems you know for totem bar slot `slot` (WoW Forever's shaman totem bar). The slots are
+--- the game's FIRE_TOTEM_SLOT (1), then earth, water and air. Empty in game versions without it.
+---@param slot integer
+---@return number[] spellIDs
+function Utils_Spell.GetTotemSpells(slot)
+    if not GetMultiCastTotemSpells then return {} end
+    return { GetMultiCastTotemSpells(slot) }
+end
+
+--- The spells on your stance bar (stances, forms, auras, presences), in its order.
+---@return number[] spellIDs
+function Utils_Spell.GetStanceSpells()
+    local spellIDs = {}
+    for index = 1, GetNumShapeshiftForms() do
+        local spellID = select(4, GetShapeshiftFormInfo(index))
+        if spellID then spellIDs[#spellIDs + 1] = spellID end
+    end
+    return spellIDs
 end
 
 --- A spell's rank, in game versions that have spell ranks (WoW Forever and Classic). Retail has
