@@ -30,6 +30,7 @@ local COUNT_INSET = 2 -- the count's offset from the bottom-right corner, like t
 Private.COOLDOWN_EVENTS = {
     "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED",
 }
+Menu_Layout.COOLDOWN_EVENTS = Private.COOLDOWN_EVENTS -- menus' macro slots too (Menu_Secure)
 
 --- An icon texture that may hold an addon symbol's tint (Menu_Layout.SetIcon).
 ---@class TintedTexture : Texture

@@ -18,11 +18,12 @@
     In the gamepad UI or with ConsolePort, the same macro pressed with the controller opens the
     menu like a controller (Snippets.lua, "menu-padmacro").
 
-    The slot shows the menu's quick action, as the wheel's center does (Last Used and First Action
-    show what they'd fire), with a small badge in the top-left corner (Blizzard's loading
-    spinner) and the macro's name, the menu's. On Blizzard's bars and the gamepad UI's crossbar
-    that's drawn over the button, so it follows every change, in combat too. The macro's own icon
-    follows it as well, out of combat, for bar addons, where the button can't be found.
+    The slot shows the menu's quick action with its cooldown and count, as the wheel's center does
+    (Last Used and First Action show what they'd fire). It also shows a small badge in the top-left
+    corner (Blizzard's loading spinner) and the macro's name, the menu's. On Blizzard's bars and the
+    gamepad UI's crossbar that's drawn over the button, so it follows every change, in combat too.
+    The macro's own icon follows it as well, out of combat, for bar addons, where the button can't
+    be found.
 ]]
 
 local env = select(2, ...)
@@ -199,10 +200,13 @@ local BUTTON_PREFIXES = {
 -- Crossbar buttons have a round and a square mask, and show one.
 local ICON_MASK_KEYS = { "IconMask", "CircleMask", "SquareMask" }
 local DEFAULT_ICON_SIZE = 45 -- for an icon that isn't laid out yet
+-- The crossbar's round buttons swipe their cooldown in this shape.
+local ROUND_SWIPE = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 ---@class BlizzardActionButton : Button
 ---@field action number? the action slot it shows now
 ---@field icon Texture?
+---@field cooldown Cooldown?
 ---@field IconMask MaskTexture?
 ---@field CircleMask MaskTexture? a crossbar button's round shape
 ---@field SquareMask MaskTexture? a crossbar button's square shape
@@ -211,6 +215,10 @@ local DEFAULT_ICON_SIZE = 45 -- for an icon that isn't laid out yet
 ---@class MacroSlotOverlay
 ---@field Icon Texture the quick action's icon, over the button's own
 ---@field Badge MenuBadge the menu badge, in the top-left corner
+---@field Cooldown Cooldown
+---@field ChargeCooldown Cooldown
+---@field Count FontString
+---@field action Action? the quick action it shows, for its cooldown
 
 local overlays = {} -- [button] = MacroSlotOverlay
 local crossbarButtons = {} -- the gamepad UI's crossbar buttons (BlizzardActionButton)
@@ -241,9 +249,35 @@ local function GetOverlay(button)
     end
     local iconRegion = button.icon or button
     local iconSize = iconRegion:GetWidth()
-    local badge = Menu_Layout.CreateMenuBadge(button, iconRegion, iconSize > 0 and iconSize or DEFAULT_ICON_SIZE)
+    -- Like the wheel's cooldowns (CreateActionIcon), over the button's own, which never runs.
+    local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate") --[[@as Cooldown]]
+    cooldown:SetAllPoints(button.cooldown or iconRegion)
+    cooldown:SetDrawBling(false)
+    if button.CircleMask and button.CircleMask:IsShown() then
+        ---@diagnostic disable-next-line: missing-parameter texture only, like Blizzard's crossbar
+        cooldown:SetSwipeTexture(ROUND_SWIPE)
+    end
+    local chargeCooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate") --[[@as Cooldown]]
+    chargeCooldown:SetAllPoints(cooldown)
+    chargeCooldown:SetDrawSwipe(false)
+    chargeCooldown:SetDrawEdge(true)
+    chargeCooldown:SetDrawBling(false)
+    chargeCooldown:SetHideCountdownNumbers(true)
+    -- The count and badge, above the cooldowns.
+    local top = CreateFrame("Frame", nil, button) --[[@as Frame]]
+    top:SetAllPoints(iconRegion)
+    top:SetFrameLevel(chargeCooldown:GetFrameLevel() + 2)
+    local count = top:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    count:SetPoint("BOTTOMRIGHT", -2, 2)
+    local badge = Menu_Layout.CreateMenuBadge(top, iconRegion, iconSize > 0 and iconSize or DEFAULT_ICON_SIZE)
     icon:Hide()
-    overlays[button] = { Icon = icon, Badge = badge }
+    overlays[button] = {
+        Icon           = icon,
+        Badge          = badge,
+        Cooldown       = cooldown,
+        ChargeCooldown = chargeCooldown,
+        Count          = count,
+    }
     return overlays[button]
 end
 
@@ -253,6 +287,14 @@ end
 local function GetQuickIcon(menuId)
     local action = Private.GetQuickShownAction(menuId)
     return action and Menu_Actions.GetIcon(action)
+end
+
+--- Refreshes the cooldowns and counts on the overlays (Menu_Layout.COOLDOWN_EVENTS).
+local function UpdateOverlayCooldowns()
+    for _, overlay in pairs(overlays) do
+        -- It reads only Cooldown, ChargeCooldown and Count.
+        Menu_Layout.UpdateIconCooldown(overlay --[[@as ActionIcon]], overlay.action)
+    end
 end
 
 --- The macros' own icons follow their menu's quick action, for bars whose buttons aren't drawn
@@ -275,13 +317,15 @@ function Private.RefreshMacroSlotIcons()
     ForEachActionButton(function(button)
         local slot = button.action
         local menuId = type(slot) == "number" and GetSlotMenuId(slot)
-        local icon = menuId and GetQuickIcon(menuId)
         local overlay = (menuId and GetOverlay(button)) or overlays[button]
         if not overlay then return end
+        overlay.action = menuId and Private.GetQuickShownAction(menuId) or nil
+        local icon = overlay.action and Menu_Actions.GetIcon(overlay.action)
         if icon then Menu_Layout.SetIcon(overlay.Icon, icon) end
         overlay.Icon:SetShown(icon ~= nil)
         overlay.Badge:SetShown(menuId and true or false)
     end)
+    UpdateOverlayCooldowns()
     UpdateMacroIcons()
 end
 
@@ -301,6 +345,10 @@ iconWatcher:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
 iconWatcher:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
 iconWatcher:RegisterEvent("PLAYER_REGEN_ENABLED") -- overlays and macro icons skipped in combat
 iconWatcher:SetScript("OnEvent", Private.RequestMacroSlotIcons)
+
+local cooldownWatcher = CreateFrame("Frame")
+for _, event in ipairs(Menu_Layout.COOLDOWN_EVENTS) do cooldownWatcher:RegisterEvent(event) end
+cooldownWatcher:SetScript("OnEvent", UpdateOverlayCooldowns)
 
 -- Forever's crossbar pages without the events above, so its buttons' UpdateAction is hooked.
 EventUtil.ContinueOnAddOnLoaded("Blizzard_GamepadActionBars", function()
