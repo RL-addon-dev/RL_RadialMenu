@@ -301,6 +301,7 @@ local Page = UIKit.Template(function(id, name, children, ...)
             Setting_Widgets.ContainerWithTitle(name .. ".Settings", {
                 Setting_Widgets.ElementInput(name .. ".Name"):id("NameRow", id),
                 Setting_Widgets.ElementButton(name .. ".Keybind"):id("KeybindRow", id),
+                Setting_Widgets.ElementButton(name .. ".Macro"):id("MacroRow", id),
                 Setting_Widgets.ElementSelectionMenu(name .. ".Scope"):id("ScopeRow", id)
             })
                 :id("Settings", id),
@@ -338,6 +339,7 @@ local Page = UIKit.Template(function(id, name, children, ...)
     frame.Empty = UIKit.GetElementById("Empty", id)
     frame.NameRow = UIKit.GetElementById("NameRow", id)
     frame.KeybindRow = UIKit.GetElementById("KeybindRow", id)
+    frame.MacroRow = UIKit.GetElementById("MacroRow", id)
     frame.ScopeRow = UIKit.GetElementById("ScopeRow", id)
     frame.DeleteRow = UIKit.GetElementById("DeleteRow", id)
     frame.ShareBox = UIKit.GetElementById("ShareBox", id)

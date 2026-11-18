@@ -3,6 +3,9 @@
 ## v1.2.0
 
 - The Library has new menus made from your flyouts: Portals, Teleports, Hero's Path, Call Pet, Skyriding and more. There's also a Stances & Forms menu, and in WoW Forever, a totem menu for each element plus Totem Utilities. Each one only shows on characters that can use it.
+- Added menu macros that can be placed on your action bars. Click Place on Bar in a menu's settings, then drop the macro on any slot. The slot shows the menu's quick action, and its key opens the menu.
+- Menu macros have a small badge, on your bars, in the macro window and inside other menus.
+- In WoW Forever's gamepad UI, your existing macros are updated to the new menu macros.
 
 ## v1.1.4
 

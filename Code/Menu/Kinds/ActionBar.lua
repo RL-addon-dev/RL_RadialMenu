@@ -101,6 +101,12 @@ local function IsBarEnabled(bar)
     return toggles[bar - 1] and true or false
 end
 
+-- For macro slots (Menu_Secure's MacroSlots.lua), which bind the slots' keys.
+Menu_Kinds.ACTION_BAR_FIRST_SLOT = FIRST_SLOT
+Menu_Kinds.GetActionBarPageConditions = GetPageConditions
+Menu_Kinds.IsActionBarAddonLoaded = IsBarAddonLoaded
+Menu_Kinds.IsActionBarEnabled = IsBarEnabled
+
 --- What the slot's cooldown and state follow, its spell or item (for a macro, the spell it casts).
 ---@param action ActionBarSlotAction
 ---@return string? source Menu_Kinds.Source.Spell or Item

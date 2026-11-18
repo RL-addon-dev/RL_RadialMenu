@@ -36,6 +36,7 @@ Menu_Secure.Attribute = Utils_Standard.Strict({
     KeyBase     = "menu-keybase",     -- the keybind without modifiers, left to the menu while open
     RightClick  = "menu-rightclick",  -- Right-Click to Cancel
     Relaxed     = "menu-relaxed",     -- Menu Style is Relaxed (always in the gamepad UI)
+    PadMacro    = "menu-padmacro",    -- a controller is in use, so a menu macro's click is a controller's open
     Flick       = "menu-flick",       -- Flick to Select
     Sticky      = "menu-sticky",      -- the wedge a controller's right stick last aimed at
     -- A stick dispatcher's (Keys.lua), by side ("TOP", "LEFT", "RIGHT", "BOTH").
@@ -47,9 +48,10 @@ Menu_Secure.Attribute = Utils_Standard.Strict({
 Menu_Secure.ORIGIN_MENU = "menu"
 
 -- The clicks the insecure side sends or binds. The snippets also use "RelaxedSelect", "PadUse",
--- "Aim", "Dismiss", "PadUp", "PadDown", "WheelUp" and "WheelDown" among themselves.
+-- "Aim", "Dismiss", "PadUp", "PadDown", "WheelUp" and "WheelDown" among themselves, and get
+-- "Macro" from menus' macros (Menu_Macros).
 Menu_Secure.Click = Utils_Standard.Strict({
-    Gamepad    = "Gamepad",    -- a controller's open (a controller button, a crossbar macro, a stick)
+    Gamepad    = "Gamepad",    -- a controller's open (a controller button, a stick)
     LeftButton = "LeftButton", -- any other keybind's open
     FocusSteal = "FocusSteal", -- Cursor + Focus: steals your focus on the press
     FocusClear = "FocusClear", -- Cursor + Focus: clears it on the way out

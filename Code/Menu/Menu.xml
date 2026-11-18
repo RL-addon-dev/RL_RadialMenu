@@ -13,6 +13,7 @@
     <Script file="Menu_CursorGuide.lua"/>
     <Script file="Menu_Stick.lua"/>
     <Script file="Menu_View.lua"/>
+    <Script file="Menu_Macros.lua"/>
     <Script file="Menu_Crossbar.lua"/>
     <Include file="Secure\Secure.xml"/>
 </Ui>

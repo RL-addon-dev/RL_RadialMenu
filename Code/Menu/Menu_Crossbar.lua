@@ -10,19 +10,12 @@
     pressed. For example, "PAD:LEFT:PAD1" is LT + A, "PAD:TOP:PADDUP" is D-pad up, and
     "PAD:BOTH:PADRSTICK" is LT + RT + R3.
 
-    A crossbar slot (a face button or D-pad direction) opens its menu through an account macro
-    placed in the slot, on the current page, which does a controller's open (Menu_Secure):
-
-        #rlrm
-        /click RLRM_<id> Gamepad 1
-        /click RLRM_<id> Gamepad
-
-    The "#rlrm" line marks the macros this file manages, so hand-made ones are never touched. Some
-    slots are reserved for the gamepad UI's own actions (the top bar's face buttons, like jump and
-    interact), and those can't be used. Reconcile (each rebuild, out of combat) keeps the macros in
-    step with the menus. They're renamed with their menu, and removed from the crossbar and deleted
-    once their menu has no slot or is gone. Macros from before the buttons were renamed click
-    RLRM_Ring_<id>, and Reconcile rewrites them.
+    A crossbar slot (a face button or D-pad direction) opens its menu through the menu's account
+    macro (Menu_Macros) placed in the slot, on the current page. In this UI its click is a
+    controller's open (Menu_Secure). Some slots are reserved for the gamepad UI's own actions (the
+    top bar's face buttons, like jump and interact), and those can't be used. Reconcile (each
+    rebuild, out of combat) takes the macro off the crossbar once its menu's keybind is no longer
+    a slot. The macro itself is renamed and deleted with its menu (Menu_Macros.Reconcile).
 
     L3 and R3 (plain, or with LT, RT or both) aren't crossbar slots. The stick is bound to a
     dispatcher that opens the menu of the modifiers held (Menu_Secure's Keys.lua, STICK_CLICK).
@@ -33,6 +26,7 @@
 local env = select(2, ...)
 local Utils_Standard = env.AX_Modules:Import("ax_modules\\utils\\standard")
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
+local Menu_Macros = env.AX_Modules:Import("@\\Menu\\Macros")
 local Utils_API = env.AX_Modules:Import("@\\Utils\\API")
 local Menu_Crossbar = env.AX_Modules:New("@\\Menu\\Crossbar")
 
@@ -93,15 +87,7 @@ local MODIFIERS = {
 local CROSSBAR_MODIFIERS = MODIFIERS[Menu_Crossbar.Side.Both]
 local STICKS = { PADLSTICK = true, PADRSTICK = true }
 
-local MACRO_MARKER = "#rlrm"
-local MACRO_BODY = MACRO_MARKER .. "\n/click RLRM_%s Gamepad 1\n/click RLRM_%s Gamepad"
-local MACRO_MENU_PATTERN = "^" .. MACRO_MARKER .. "\n/click RLRM_(%d+) Gamepad"
-local OLD_MACRO_MENU_PATTERN = "^" .. MACRO_MARKER .. "\n/click RLRM_Ring_(%d+) Gamepad" -- before the rename
-local MACRO_NAME_LENGTH = 16 -- the longest macro name the game takes
--- The macros' icons, one per menu in turn: the same icon in five colours.
-local MACRO_ICONS = { 4630454, 4630455, 4630456, 4630457, 4630458 }
--- How many macros were made so far, saved account-wide (DBGlobalPersistent). See NextMacroIcon.
-local MADE_KEY = "CrossbarMacrosMade"
+local crossbarMenus = {} -- [menuId] = true while its keybind was a crossbar slot at the last Reconcile
 
 -- Why a controller press can't be a keybind (Menu_Crossbar.FromPress). The values end the
 -- locale keys "Config - Menus - Keybind - Crossbar - <value>" (Held has none, it keeps listening).
@@ -327,58 +313,6 @@ end
 
 -- Macros (account macros only)
 
---- The menu id a macro this file made opens, from its body, or nil for any other macro.
----@param body string?
----@return string? menuId
----@return boolean old the body is from before the buttons were renamed
-local function ParseMacro(body)
-    if not body then return nil, false end
-    local menuId = body:match(MACRO_MENU_PATTERN)
-    if menuId then return menuId, false end
-    menuId = body:match(OLD_MACRO_MENU_PATTERN)
-    return menuId, menuId ~= nil
-end
-
---- The index of the account macro this file made for menu `menuId`, or nil.
----@param menuId string|number
----@return integer?
-local function FindMacro(menuId)
-    local numAccount = GetNumMacros()
-    for index = 1, numAccount do
-        if ParseMacro(GetMacroBody(index)) == tostring(menuId) then return index end
-    end
-end
-
---- "RM <menu name>", cut to the macro name limit without splitting a character.
----@param menu Menu
----@return string
-local function GetMacroName(menu)
-    local name = "RM " .. (menu.name or "")
-    if #name <= MACRO_NAME_LENGTH then return name end
-    return (name:sub(1, MACRO_NAME_LENGTH):gsub("[\192-\255][\128-\191]*$", ""))
-end
-
---- How many macros were made so far.
----@return integer
-local function GetMacrosMade()
-    local db = env.Config.DBGlobalPersistent
-    return (db and tonumber(db:GetVariable(MADE_KEY))) or 0
-end
-
---- The next macro's icon, the palette colours in turn. The count of macros made so far is saved
---- account-wide (the macros are account macros, and settings resets keep it), so the colours
---- follow the palette's order whatever was deleted since. It's counted once the macro is made
---- (CountMacroMade).
----@return number
-local function NextMacroIcon()
-    return MACRO_ICONS[GetMacrosMade() % #MACRO_ICONS + 1]
-end
-
-local function CountMacroMade()
-    local db = env.Config.DBGlobalPersistent
-    if db then db:SetVariable(MADE_KEY, GetMacrosMade() + 1) end
-end
-
 --- Removes macro `macroIndex` from every crossbar slot holding it.
 ---@param macroIndex integer
 local function ClearFromCrossbar(macroIndex)
@@ -388,23 +322,6 @@ local function ClearFromCrossbar(macroIndex)
         local actionType, id = GetActionInfo(slot)
         if actionType == "macro" and id == macroIndex then util.ClearActionFromGamepadSlot(slot) end
     end)
-end
-
---- The menu's macro: the existing one (renamed if its menu was), else a new one.
----@param menu Menu
----@return integer? index nil when the account macros are full
-local function EnsureMacro(menu)
-    local name = GetMacroName(menu)
-    local index = FindMacro(menu.id)
-    if index then
-        local currentName, icon, body = GetMacroInfo(index)
-        if currentName ~= name then index = EditMacro(index, name, icon, body) end
-        return index
-    end
-    local ok, created = pcall(CreateMacro, name, NextMacroIcon(), MACRO_BODY:format(menu.id, menu.id), false)
-    if not (ok and created) then return nil end
-    CountMacroMade()
-    return created
 end
 
 
@@ -421,7 +338,7 @@ function Menu_Crossbar.GetOccupant(menuId, key)
     if not slot or not HasAction(slot) then return nil end
     local actionType, id = GetActionInfo(slot)
     if actionType == "macro" then
-        if id == FindMacro(menuId) then return nil end
+        if id == Menu_Macros.Find(menuId) then return nil end
         return (GetMacroInfo(id))
     elseif actionType == "spell" then
         return (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) or actionType
@@ -443,7 +360,7 @@ function Menu_Crossbar.Place(menuId, key)
     local slot = GetStorageSlot(key)
     local util = _G["GamepadActionBarBindingUtil"]
     if not (menu and slot and util) then return false, Menu_Crossbar.PlaceError.NoCrossbar end
-    local macroIndex = EnsureMacro(menu)
+    local macroIndex = Menu_Macros.Ensure(menu)
     if not macroIndex then return false, Menu_Crossbar.PlaceError.Full end
     ClearFromCrossbar(macroIndex)
     util.AssignActionToGamepadStandardSlot(slot, PickupMacro, macroIndex)
@@ -454,32 +371,17 @@ end
 
 -- Keeping macros in step with the menus
 
---- Renames the macros of menus that were renamed, and removes (from the crossbar, then deletes)
---- those whose menu has no crossbar slot any more, or no longer exists. Menus that live elsewhere
---- (another class's or character's) keep theirs. Out of combat (Menu_Secure's rebuild).
+--- Takes a menu's macro off the crossbar once its keybind stops being a crossbar slot. The macro
+--- stays, since it can be on other bars too, and Menu_Macros.Reconcile deletes it with its menu.
+--- Out of combat (Menu_Secure's rebuild).
 function Menu_Crossbar.Reconcile()
     if InCombatLockdown() then return end
-    -- The menus first, because renaming or deleting a macro re-sorts the list, so each is looked
-    -- up again. An old body is rewritten on the way, which keeps the name and so the order.
-    local menuIds = {}
-    for index = 1, GetNumMacros() do
-        local menuId, old = ParseMacro(GetMacroBody(index))
-        if old then
-            local name, icon = GetMacroInfo(index)
-            EditMacro(index, name, icon, MACRO_BODY:format(menuId, menuId))
+    for _, menu in ipairs(Menu_Data.GetMenus()) do
+        local onCrossbar = Menu_Crossbar.IsSlot(Menu_Data.GetBinding(menu.id)) or nil
+        if crossbarMenus[menu.id] and not onCrossbar then
+            local index = Menu_Macros.Find(menu.id)
+            if index then ClearFromCrossbar(index) end
         end
-        if menuId then menuIds[#menuIds + 1] = menuId end
-    end
-    for _, menuId in ipairs(menuIds) do
-        local index = FindMacro(menuId) -- nil for a duplicate already handled
-        local menu = Menu_Data.GetMenu(menuId)
-        if index and menu and Menu_Crossbar.IsSlot(Menu_Data.GetBinding(menuId)) then
-            local name = GetMacroName(menu)
-            local currentName, icon, body = GetMacroInfo(index)
-            if currentName ~= name then EditMacro(index, name, icon, body) end
-        elseif index and (menu or not Menu_Data.GetElsewhereMenu(menuId)) then
-            ClearFromCrossbar(index)
-            DeleteMacro(index)
-        end
+        crossbarMenus[menu.id] = onCrossbar
     end
 end

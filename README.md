@@ -139,6 +139,16 @@ menus themselves cannot be deleted. The full list is in [Library menus](#referen
 
 Here, the Hearthstones menu is opened and one hearthstone is removed.
 
+### Macros
+
+![Placing a weapon enchant menu on the action bar as a macro](Media/macros.gif)
+
+Menus can be placed on your action bars as macros. Click `Place on Bar` in a menu's settings,
+then drop the macro on any slot. The slot shows the menu's quick action, and its key opens the
+menu.
+
+Here, a weapon enchant menu is placed on the action bar and used from there.
+
 ### ConsolePort
 
 ![Marking targets with a controller through ConsolePort](Media/consoleport.gif)
@@ -290,8 +300,9 @@ play with a controller (WoW Forever's gamepad UI, or ConsolePort).
 |---|---|---|---|---|
 | `Reset to default` | Button |  | Resets settings only. Your menus are kept. | Always |
 
-In the `Menus` tab, each menu has a name, a `Keybind`, `Available On` (all your characters, the
-characters of your class, or just this one), and its `Share Menu` string. In the menu preview:
+In the `Menus` tab, each menu has a name, a `Keybind`, a `Macro` to place on your action bars,
+`Available On` (all your characters, the characters of your class, or just this one), and its
+`Share Menu` string. In the menu preview:
 
 - Drag any action to the center to make it the quick action, or double-click the center to switch
   between Close Menu, Last Used Action, and First Action.
