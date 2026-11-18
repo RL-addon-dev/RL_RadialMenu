@@ -51,6 +51,13 @@ local function GetBindingClick(key)
     return Menu_Secure.Click.LeftButton
 end
 
+--- Whether `key` is a menu's own keybind, which macro slots leave alone.
+---@param key string
+---@return boolean
+function Private.IsMenuKey(key)
+    return ownedKeys[key] ~= nil
+end
+
 --- Binds `key` to click `buttonName`, as the controller's priority override.
 ---@param key string
 ---@param buttonName string

@@ -76,6 +76,20 @@ local function ShowRedirect(live, button, action)
     return GetLiveShownAction(live, target, button:GetAttribute(Menu_Secure.Attribute.Scroll .. target)) or action
 end
 
+--- What menu `menuId`'s quick action shows right now, for its macro slots' icons. That's
+--- what a Last Used or First Action fires, or a scroll wedge's shown action. Nil without one.
+---@param menuId string
+---@return Action?
+function Private.GetQuickShownAction(menuId)
+    local live, button = Private.menusById[menuId], Private.buttonsById[menuId]
+    if not (live and button) then return nil end
+    local quickIndex = button:GetAttribute(Menu_Secure.Attribute.Quick)
+    if quickIndex == Private.QUICK_SUFFIX then return ShowRedirect(live, button, live.quickAction) end
+    if not quickIndex then return nil end
+    local shown = GetLiveShownAction(live, quickIndex, button:GetAttribute(Menu_Secure.Attribute.Scroll .. quickIndex))
+    return ShowRedirect(live, button, shown)
+end
+
 --- Points live menu `live`'s target marker slots at `unit` (nil for your target). Out of combat.
 ---@param button Button
 ---@param live SecureLiveMenu
@@ -220,6 +234,7 @@ function Private.Controller:OnMenuScroll(menuId, index, current)
     -- The quick action is this scroll wedge, and a tap fires the action shown, so the center follows.
     local button = Private.buttonsById[menuId]
     if button:GetAttribute(Menu_Secure.Attribute.Quick) == index then Menu_View:SetQuickAction(shown) end
+    Private.RequestMacroSlotIcons() -- a menu's macro shows the quick action too
     -- This is the first wedge, so First Actions fire (and show) the action shown now, on a wedge
     -- or in the center.
     if button:GetAttribute(Menu_Secure.Attribute.First) == index then
@@ -264,4 +279,6 @@ function Private.Controller:OnMenuClose(menuId, result, index)
     -- A rebuild asked for while the menu was open runs next frame. This runs inside the release's
     -- snippet, before the chosen button is clicked.
     C_Timer.After(0, Private.QueueRebuild)
+    -- Menus' macros show the quick action, which a Last Used action just changed.
+    Private.RequestMacroSlotIcons()
 end

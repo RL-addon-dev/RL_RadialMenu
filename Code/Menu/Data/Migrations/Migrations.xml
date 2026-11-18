@@ -27,4 +27,5 @@
     <Script file="001_CenterQuickSlot.lua"/>
     <Script file="002_LastUsedByKey.lua"/>
     <Script file="003_ActionBarMenus.lua"/>
+    <Script file="004_MenuMacroClick.lua"/>
 </Ui>

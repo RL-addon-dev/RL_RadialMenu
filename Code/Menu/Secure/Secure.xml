@@ -6,5 +6,6 @@
     <Script file="Setup.lua"/>
     <Script file="Callbacks.lua"/>
     <Script file="Keys.lua"/>
+    <Script file="MacroSlots.lua"/>
     <Script file="Rebuild.lua"/>
 </Ui>

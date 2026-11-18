@@ -83,10 +83,11 @@
     (OPEN_MENU, OPEN_BUTTON, RELAXED_OPEN, START_X and START_Y).
 
     Controller (WoW Forever's gamepad UI only): a controller's open (GAMEPAD_OPEN) is a click sent
-    as "Gamepad". It comes from a keybind on a controller button (GetBindingClick), a crossbar
-    macro or a stick's dispatcher (/click RLRM_<id> Gamepad 1, then without the 1 for the
-    release). Menus work like Relaxed in that UI ("menu-relaxed", Setup.lua). While a menu is up,
-    the helper binds these.
+    as "Gamepad". It comes from a keybind on a controller button (GetBindingClick) or a stick's
+    dispatcher (/click RLRM_<id> Gamepad 1, then without the 1 for the release). A menu's macro
+    (Menu_Macros) clicks as "Macro", and in that UI or with ConsolePort it's a controller's open
+    too ("menu-padmacro"), since it's pressed with the controller. Menus work like Relaxed in that
+    UI ("menu-relaxed", Setup.lua). While a menu is up, the helper binds these.
         - B (PAD2) and R3 (PADRSTICK) close it.
         - D-pad up and down scroll the aimed wedge's scroll submenu.
         - The right stick's directions, as keys (SetStickKeys), click the menu's button through
@@ -135,9 +136,10 @@ Private.PRE_CLICK = [[
     local probe = owner:GetFrameRef("probe")
     local helper = owner:GetFrameRef("helper")
     local menuId = self:GetAttribute("menu-id")
-    -- Relaxed is the Menu Style setting (always on in WoW Forever's gamepad UI), or a controller's
-    -- click ("Gamepad"), since a macro can't hold the key.
-    local relaxed = self:GetAttribute("menu-relaxed") or button == "Gamepad"
+    -- Relaxed is the Menu Style setting (always on in WoW Forever's gamepad UI), or a click from a
+    -- macro, since a macro can't hold the key. That's a stick dispatcher's ("Gamepad") or a menu's
+    -- macro ("Macro", Menu_Macros).
+    local relaxed = self:GetAttribute("menu-relaxed") or button == "Gamepad" or button == "Macro"
     -- In Relaxed, a left click on the open menu ("RelaxedSelect", bound below) picks on its release.
     local isPick = button == "RelaxedSelect"
     if isPick and down then return false end
@@ -250,7 +252,7 @@ Private.PRE_CLICK = [[
         OPEN_BUTTON = self
         RELAXED_OPEN = nil
         FOCUS_STOLEN = nil
-        GAMEPAD_OPEN = button == "Gamepad"
+        GAMEPAD_OPEN = button == "Gamepad" or (button == "Macro" and self:GetAttribute("menu-padmacro") == true)
 
         local probeSize = self:GetAttribute("menu-probe")
         probe:ClearAllPoints()

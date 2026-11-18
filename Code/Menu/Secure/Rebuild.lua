@@ -11,6 +11,7 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Menu_Kinds = env.AX_Modules:Import("@\\Menu\\Kinds")
 local Menu_Crossbar = env.AX_Modules:Import("@\\Menu\\Crossbar")
+local Menu_Macros = env.AX_Modules:Import("@\\Menu\\Macros")
 local Menu_Secure = env.AX_Modules:Import("@\\Menu\\Secure")
 local Private = env.AX_Modules:Import("@\\Menu\\Secure\\Private")
 local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
@@ -66,15 +67,18 @@ local function Rebuild()
         Private.menusById[menuId] = nil
     end
 
-    -- Only keybound menus get a button. A menu is opened by its key, and its submenus' actions are
-    -- set on its own button (Menu_Live), so submenus need none of their own.
+    -- Only menus that can be opened get a button, so keybound ones and ones with a macro
+    -- (MacroSlots.lua). Submenus' actions are set on their menu's own button
+    -- (Menu_Live), so submenus need none of their own.
     wipe(Private.pendingBindings)
+    local macroMenus = Private.GetMacroMenuIds()
     for _, menu in ipairs(Menu_Data.GetMenus()) do
-        if Menu_Data.GetBinding(menu.id) then Private.SetupMenu(menu) end
+        if Menu_Data.GetBinding(menu.id) or macroMenus[menu.id] then Private.SetupMenu(menu) end
     end
     Private.BindMenuKeys()
-    -- Crossbar combo macros are renamed with their menu, and deleted with their combo (Menu_Crossbar).
+    Private.RefreshMacroSlotKeys()
     Menu_Crossbar.Reconcile()
+    Menu_Macros.Reconcile()
     CallbackRegistry.Trigger(env.Event.Rebuilt)
 end
 
@@ -111,6 +115,11 @@ combatWaiter:SetScript("OnEvent", function(self)
     self:UnregisterEvent("PLAYER_REGEN_ENABLED")
     QueueRebuild()
 end)
+
+--- Asks for a rebuild, for a macro placed for a menu with no button yet (MacroSlots.lua).
+function Private.RequestRebuild()
+    RequestRebuild(env.ChangeReason.Auto)
+end
 
 
 

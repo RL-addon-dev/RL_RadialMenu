@@ -1,6 +1,6 @@
 --[[
-    Menus_Tab (see Tab.lua): the Menu Settings rows (Name, Keybind with its capture, Available On)
-    and the Delete box.
+    Menus_Tab (see Tab.lua): the Menu Settings rows (Name, Keybind with its capture, Macro,
+    Available On) and the Delete box.
 ]]
 
 local env = select(2, ...)
@@ -8,10 +8,12 @@ local L = env.L
 local Setting_Preload = env.AX_Modules:Import("@\\Setting\\Preload")
 local Menu_Data = env.AX_Modules:Await("@\\Menu\\Data")
 local Menu_Crossbar = env.AX_Modules:Await("@\\Menu\\Crossbar")
+local Menu_Macros = env.AX_Modules:Await("@\\Menu\\Macros")
 local Menus_Keybind = env.AX_Modules:Import("@\\Setting\\Menus\\Keybind")
 local Menus_Common = env.AX_Modules:Import("@\\Setting\\Menus\\Common")
 local Private = env.AX_Modules:Import("@\\Setting\\Menus\\Tab\\Private")
 local Utils_Text = env.AX_Modules:Import("@\\Utils\\Text")
+local Utils_ConsolePort = env.AX_Modules:Import("@\\Utils\\ConsolePort")
 
 local format = string.format
 
@@ -64,6 +66,8 @@ function PageMixin:RefreshSettingRows(menu)
 
     self:RefreshKeybindRow(menu)
     self.KeybindRow:GetButton():SetEnabled(elsewhere == nil)
+    self.MacroRow:SetShown(elsewhere == nil)
+    self:RefreshMacroRow()
 
     self.ScopeRow:SetShown(elsewhere == nil)
     local _, scope = Menu_Data.GetMenu(menu.id)
@@ -112,6 +116,39 @@ end
 
 
 
+-- Macro
+
+--- Fills the Macro row's text. The note on Relaxed shows only with mouse and keyboard, since with a
+--- controller (the gamepad UI or ConsolePort) the macro opens the menu like a controller instead.
+function PageMixin:RefreshMacroRow()
+    local description = L["Config - Menus - Macro - Description"]
+    if not (env.IsGamepadUI() or Utils_ConsolePort.IsActive()) then
+        description = description .. "\n\n" .. Utils_Text.Gold(L["Config - Menus - Macro - Relaxed"])
+    end
+    self.MacroRow:SetInfo(L["Config - Menus - Macro"], description)
+end
+
+--- Puts the menu's macro (made if needed) on the cursor, to drop on a bar slot.
+--- Out of combat.
+function PageMixin:PlaceOnBar()
+    local menu = self:GetSelectedMenu()
+    if not menu then return end
+    if InCombatLockdown() then
+        env.Print(L["Config - Menus - Macro - Error - Combat"])
+        return
+    end
+    local index = Menu_Macros.Ensure(menu)
+    if not index then
+        env.Print(L["Config - Menus - Macro - Error - Full"])
+        return
+    end
+    ClearCursor()
+    PickupMacro(index)
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+end
+
+
+
 -- Keybind
 
 --- Fills the Keybind row: the key, and where it's saved, its conflicts and overrides.
@@ -148,14 +185,16 @@ function PageMixin:RefreshKeybindRow(menu)
     -- "Config - Menus - Keybind - Account", "- Class" or "- Character".
     local savedKey = "Config - Menus - Keybind - " .. Menus_Common.GetScopeKeyName(scope)
     local description = format(L[savedKey], Menu_Data.GetScopeWhere(scope)) .. " " .. KeybindDescription()
+    local warnings = {}
     local conflict = key and Menus_Keybind.GetBlizzardConflict(key)
     if conflict then
-        description = description .. "\n" .. Utils_Text.Gold(format(L["Config - Menus - Keybind - Conflict"], conflict))
+        warnings[#warnings + 1] = Utils_Text.Gold(format(L["Config - Menus - Keybind - Conflict"], conflict))
     end
     for _, override in ipairs(Menu_Data.GetBindingOverrides(menu.id)) do
-        description = description .. "\n" .. Utils_Text.Gold(format(L["Config - Menus - Keybind - Overridden"],
+        warnings[#warnings + 1] = Utils_Text.Gold(format(L["Config - Menus - Keybind - Overridden"],
             Menu_Data.GetScopeWhere(override.scope), override.menu.name))
     end
+    if #warnings > 0 then description = description .. "\n\n" .. table.concat(warnings, "\n") end
     self.KeybindRow:SetInfo(L["Config - Menus - Keybind"], description)
 end
 
@@ -300,6 +339,9 @@ function Private.SetupSettingRows(page)
     -- It remembers which mouse button pressed it, since a right click clears instead of capturing.
     keybindButton:HookScript("OnMouseDown", function(_, mouseButton) keybindButton.lastMouseButton = mouseButton end)
     keybindButton:HookClick(function() page:OnKeybindClicked(keybindButton.lastMouseButton) end)
+
+    page.MacroRow:GetButton():SetText(L["Config - Menus - Macro - Button"])
+    page.MacroRow:GetButton():HookClick(function() page:PlaceOnBar() end)
 
     page.ScopeRow:SetInfo(L["Config - Menus - Scope"], L["Config - Menus - Scope - Description"])
     local scopeMenu = Menus_Common.SetupScopeMenu(page.ScopeRow)

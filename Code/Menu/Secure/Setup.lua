@@ -299,6 +299,7 @@ function Private.SetupMenu(menu)
     local controller = env.IsGamepadUI() or Utils_ConsolePort.IsActive()
     local relaxed = controller or Config.Get(Config.Key.MenuStyle) == env.Enum.MenuStyle.Relaxed
     button:SetAttribute(Menu_Secure.Attribute.Relaxed, relaxed or nil)
+    button:SetAttribute(Menu_Secure.Attribute.PadMacro, controller or nil)
     button:SetAttribute(Menu_Secure.Attribute.Flick, (Config.Get(Config.Key.FlickToSelect) and true) or nil)
     -- A crossbar slot isn't a key. Its macro on the crossbar opens the menu (Menu_Crossbar).
     if binding and not Menu_Crossbar.IsSlot(binding) and (count > 0 or live.quickAction) then

@@ -67,6 +67,7 @@ Menu_Layout.ATLAS_CANCEL_ICON = ATLAS_CANCEL_ICON -- the preview's X buttons
 ---@field ScrollBadge ScrollBadge
 ---@field SpreadBadge SpreadBadge
 ---@field ConditionBadge ConditionBadge
+---@field MenuBadge MenuBadge
 ---@field RemoveButton Button? the settings preview's X (Menus_Preview)
 
 --- A wheel (Menu_Layout.CreateWheel). WheelMixin holds its methods, and Badges.lua adds some.
@@ -126,6 +127,7 @@ function WheelMixin:GetWedge(index)
     Menu_Layout.SkinActionIcon(wedge.Button, Menu_Layout.MasqueGroup.Actions)
     Private.CreateScrollBadge(self, wedge)
     Private.CreateConditionBadge(self, wedge)
+    Private.CreateMenuBadge(self, wedge, ICON_SIZE)
     -- The action name, shown while highlighted (SetShowLabels). It's a child of the wheel, not of
     -- the icon, so it doesn't grow with the selected icon, but it follows it (anchored to it)
     -- through the slide.
@@ -212,6 +214,7 @@ function WheelMixin:LayoutWedge(index, count, action)
     Private.SetupWedgeArt(wedge, count, angle)
 
     Menu_Layout.SetActionIcon(wedge.Button, action)
+    Private.UpdateMenuBadge(wedge, action)
     SetWedgeLabel(wedge, action)
     self:SetWedgeSelected(wedge, false)
     wedge.Button:Show() -- SetCenter may have hidden it while this was a single-action menu
@@ -351,6 +354,7 @@ function WheelMixin:SetWedgeAction(index, action)
     if not (wedge and action) then return end
     self.actions[index] = action
     Menu_Layout.SetActionIcon(wedge.Button, action)
+    Private.UpdateMenuBadge(wedge, action)
     SetWedgeLabel(wedge, action)
     Menu_Layout.UpdateIconCooldown(wedge.Button, action)
     if self.showStates then Menu_Layout.UpdateIconState(wedge.Button, action, true) end

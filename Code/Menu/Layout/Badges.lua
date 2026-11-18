@@ -4,6 +4,9 @@
         spread      stacked frames with a count, on a submenu spread into this menu (preview)
         visibility  an eye, on an action that hides when it has nothing to fire, crossed out while
                     hidden (preview, also on the center for the quick action)
+        menu        Blizzard's loading spinner ring, on a macro that opens a menu (in game and in
+                    the preview). The same badge marks those macros on action bar slots and in
+                    the macro window (Menu_Layout.CreateMenuBadge).
     Wheel.lua creates them for each wedge, and the WheelMixin methods at the end of this file show
     them.
 ]]
@@ -13,6 +16,7 @@ local Menu_Actions = env.AX_Modules:Import("@\\Menu\\Actions")
 local Menu_Live = env.AX_Modules:Import("@\\Menu\\Live")
 local Menu_Layout = env.AX_Modules:Import("@\\Menu\\Layout")
 local Private = env.AX_Modules:Import("@\\Menu\\Layout\\Private")
+local Menu_Macros = env.AX_Modules:Await("@\\Menu\\Macros") -- loads after Menu_Layout
 
 -- Badges sit this many levels above the wheel, over its art and icons.
 local BADGE_FRAME_LEVEL = 9
@@ -75,6 +79,15 @@ local SPREAD_COUNT_SUBLEVEL = 7
 local SPREAD_COUNT_X = 0
 local SPREAD_COUNT_MAX = 99
 
+-- The menu badge is Blizzard's loading spinner frame over a white disc.
+local MENU_BADGE_DISC = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
+local MENU_BADGE_RING = "Interface\\COMMON\\StreamFrame"
+local MENU_BADGE_DISC_SCALE = 0.44 -- the disc's width as a share of the ring texture
+local MENU_BADGE_RING_SHARE = 0.5  -- the ring fills only the middle of its texture
+-- The ring's width and inset as shares of the icon's width (16 and 4 px on a 45 px button).
+local MENU_BADGE_ICON_SHARE = 16 / 45
+local MENU_BADGE_INSET_SHARE = 4 / 45
+
 
 ---@class ScrollBadge : Frame
 ---@field Texture Texture? the mouse or D-pad art (none on the text pill)
@@ -85,6 +98,9 @@ local SPREAD_COUNT_MAX = 99
 
 ---@class SpreadBadge : Frame
 ---@field Count FontString
+
+---@class MenuBadge : Frame
+---@field Disc Texture
 
 ---@class ConditionBadge : Frame
 ---@field Texture Texture
@@ -282,6 +298,60 @@ local function ShowConditionBadge(badge, action)
     local hasCondition = action and Menu_Actions.GetVisibilityCondition(action) ~= nil or false
     badge:SetShown(hasCondition)
     if hasCondition then badge:SetHidden(not Menu_Actions.IsActionAvailable(action)) end
+end
+
+
+
+-- Menu badge
+
+--- Places `badge` on `icon`'s top-left corner, sized for an icon `iconSize` px wide.
+---@param badge MenuBadge
+---@param icon Region
+---@param iconSize number
+function Menu_Layout.PlaceMenuBadge(badge, icon, iconSize)
+    local ring = iconSize * MENU_BADGE_ICON_SHARE
+    local size = ring / MENU_BADGE_RING_SHARE
+    badge:SetSize(size, size)
+    badge.Disc:SetSize(size * MENU_BADGE_DISC_SCALE, size * MENU_BADGE_DISC_SCALE)
+    -- The ring's center, so its edge sits the inset from the corner.
+    local offset = iconSize * MENU_BADGE_INSET_SHARE + ring / 2
+    badge:ClearAllPoints()
+    badge:SetPoint("CENTER", icon, "TOPLEFT", offset, -offset)
+end
+
+--- A hidden menu badge, a child of `parent`, on `icon`'s top-left corner (PlaceMenuBadge).
+---@param parent Frame
+---@param icon Region
+---@param iconSize number
+---@return MenuBadge
+function Menu_Layout.CreateMenuBadge(parent, icon, iconSize)
+    local badge = CreateFrame("Frame", nil, parent) --[[@as MenuBadge]]
+    badge.Disc = badge:CreateTexture(nil, "OVERLAY", nil, 1)
+    badge.Disc:SetPoint("CENTER")
+    badge.Disc:SetTexture(MENU_BADGE_DISC)
+    local ring = badge:CreateTexture(nil, "OVERLAY", nil, 2)
+    ring:SetAllPoints()
+    ring:SetTexture(MENU_BADGE_RING)
+    Menu_Layout.PlaceMenuBadge(badge, icon, iconSize)
+    badge:Hide()
+    return badge
+end
+
+--- The menu badge on `wedge`'s icon, above the wheel.
+---@param wheel MenuWheel
+---@param wedge MenuWedge
+---@param iconSize number
+function Private.CreateMenuBadge(wheel, wedge, iconSize)
+    local badge = Menu_Layout.CreateMenuBadge(wedge.Button, wedge.Button, iconSize)
+    badge:SetFrameLevel(wheel:GetFrameLevel() + BADGE_FRAME_LEVEL)
+    wedge.MenuBadge = badge
+end
+
+--- Shows the menu badge on `wedge` while its action is a macro that opens a menu.
+---@param wedge MenuWedge
+---@param action Action?
+function Private.UpdateMenuBadge(wedge, action)
+    wedge.MenuBadge:SetShown(Menu_Macros.IsMenuAction(action))
 end
 
 
