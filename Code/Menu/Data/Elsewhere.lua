@@ -9,7 +9,7 @@
                            only loads for that character. So each character keeps a copy of them
                            account-wide, refreshed when it logs in and out, as of its last session.
 
-            RL_RadialMenuDB_Global_Persistent.CharacterMenus["<name>-<realm>"] =
+            RL_RadialMenuDB_Global_Persistent.CharacterMenus[<character GUID>] =
                 { name, realm, class, updated (time()), menus = { [id] = menu }, bindings = { [id] = key } }
 
     Menu ids are unique across scopes and characters (Store.lua's NextMenuId is account-wide), so
@@ -22,10 +22,17 @@ local CallbackRegistry = env.AX_Modules:Import("ax_modules\\callback-registry")
 local Menu_Data = env.AX_Modules:Import("@\\Menu\\Data")
 local Private = env.AX_Modules:Import("@\\Menu\\Data\\Private")
 
---- This character's key in the saved copies, "<name>-<realm>".
+--- The key copies were saved under before, "<name>-<realm>".
 ---@return string
-local function CharacterKey()
+local function OldCharacterKey()
     return UnitName("player") .. "-" .. (GetRealmName() or "")
+end
+
+--- This character's key in the saved copies, its GUID. A name and realm isn't enough, since WoW
+--- Forever gives every realm of a server the same realm name. Nil until the game knows it.
+---@return string?
+local function CharacterKey()
+    return UnitGUID("player")
 end
 
 --- Every character's saved copy of their menus, by character key.
@@ -36,11 +43,28 @@ end
 
 -- Copies of this character's menus
 
+--- Forgets this character's copy under its old key. Characters of the same name could share
+--- that key, so it's only forgotten when every menu in it is this character's.
+---@param snapshots table
+---@param menus table<string, Menu> this character's menus
+local function ForgetOldSnapshot(snapshots, menus)
+    local key = OldCharacterKey()
+    local snapshot = snapshots[key]
+    if type(snapshot) ~= "table" then return end
+    for id in pairs(type(snapshot.menus) == "table" and snapshot.menus or {}) do
+        if not menus[id] then return end
+    end
+    snapshots[key] = nil
+end
+
 --- Copies this character's menus and their keybinds account-wide, or forgets the copy when none
---- are left.
+--- are left. Without a key yet it waits for the next save, at logout at the latest.
 local function SaveSnapshot()
+    local key = CharacterKey()
+    if not key then return end
     local menus = Private.GetScopeTable(Menu_Data.Scope.Character)
-    local snapshots, key = GetSnapshots(), CharacterKey()
+    local snapshots = GetSnapshots()
+    ForgetOldSnapshot(snapshots, menus)
     if not next(menus) then
         snapshots[key] = nil
         return

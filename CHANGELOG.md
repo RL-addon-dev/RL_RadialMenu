@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.1
+
+- In WoW Forever, menu macros for character menus no longer disappear from your bars when you switch between characters with the same name.
+
 ## v1.2.0
 
 - The Library has new menus made from your flyouts: Portals, Teleports, Hero's Path, Call Pet, Skyriding and more. There's also a Stances & Forms menu, and in WoW Forever, a totem menu for each element plus Totem Utilities. Each one only shows on characters that can use it.
